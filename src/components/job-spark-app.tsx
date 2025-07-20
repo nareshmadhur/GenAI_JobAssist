@@ -1,10 +1,10 @@
 
 "use client";
 
-import React, { useState, useTransition, useEffect } from "react";
+import React, { useState, useTransition, useEffect, useCallback } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2 } from "lucide-react";
 import Markdown from 'react-markdown';
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ import {
 } from "@/lib/schemas";
 import { generateAction, reviseAction } from "@/app/actions";
 import { Skeleton } from "./ui/skeleton";
+
+const LOCAL_STORAGE_KEY = 'jobspark_form_data';
 
 function OutputSkeletons() {
   return (
@@ -213,6 +215,35 @@ export function JobSparkApp() {
     },
   });
 
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        const validationResult = JobApplicationSchema.partial().safeParse(parsedData);
+        if (validationResult.success) {
+          form.reset(validationResult.data);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load or parse data from localStorage", e);
+    }
+  }, [form]);
+
+  // Save to localStorage on change
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(value));
+      } catch (e) {
+        console.error("Failed to save data to localStorage", e);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch]);
+
+
   const onSubmit = (data: JobApplicationData) => {
     setError(null);
     setResult(null);
@@ -234,23 +265,28 @@ export function JobSparkApp() {
     });
   }
 
+  const handleClear = () => {
+    form.reset({ jobDescription: "", bio: "" });
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
+    } catch (e) {
+      console.error("Failed to clear data from localStorage", e);
+    }
+  };
+
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if ((event.altKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      form.handleSubmit(onSubmit)();
+    }
+  }, [form, onSubmit]);
+
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.altKey && event.key === 'Enter') {
-        // Stop the default action to prevent it from typing in a textarea
-        event.preventDefault();
-        // Trigger the form submission
-        form.handleSubmit(onSubmit)();
-      }
-    };
-
     document.addEventListener('keydown', handleKeyDown);
-
-    // Cleanup the event listener on component unmount
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [form, onSubmit]); // We need to include form and onSubmit in the dependency array
+  }, [handleKeyDown]);
 
   const renderMarkdownList = (items: string[]) => {
     return items.map((item, index) => {
@@ -306,14 +342,20 @@ export function JobSparkApp() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={isPending} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
-                  {isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="mr-2 h-4 w-4" />
-                  )}
-                  Generate Responses
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" disabled={isPending} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
+                    {isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="mr-2 h-4 w-4" />
+                    )}
+                    Generate Responses
+                  </Button>
+                  <Button type="button" variant="outline" onClick={handleClear} className="w-full sm:w-auto">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Clear
+                  </Button>
+                </div>
               </form>
             </FormProvider>
           </CardContent>
@@ -381,5 +423,3 @@ export function JobSparkApp() {
     </div>
   );
 }
-
-    
