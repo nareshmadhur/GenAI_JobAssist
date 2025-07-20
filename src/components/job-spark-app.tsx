@@ -154,9 +154,6 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete }: { o
 
 function GeneratedResponse({ initialValue, onValueChange }: { initialValue: string, onValueChange: (value: string) => void }) {
   const [isEditing, setIsEditing] = useState(false);
-  
-  // Add two spaces to the end of each line to create a hard break in Markdown.
-  const formattedValue = initialValue.replace(/\n/g, '  \n');
 
   useEffect(() => {
     // When the initial value changes (i.e. a new response is generated), exit edit mode.
@@ -187,8 +184,8 @@ function GeneratedResponse({ initialValue, onValueChange }: { initialValue: stri
         </>
       ) : (
         <>
-          <div className="prose prose-sm max-w-none p-4 min-h-[250px] rounded-md border bg-background font-code">
-             <Markdown>{formattedValue}</Markdown>
+          <div className="prose prose-sm max-w-none p-4 min-h-[250px] rounded-md border bg-background font-code whitespace-pre-wrap">
+             <Markdown>{initialValue}</Markdown>
           </div>
           <Button variant="ghost" size="icon" onClick={handleEdit} className="absolute top-2 right-2">
             <Edit className="h-4 w-4" />
@@ -257,8 +254,7 @@ export function JobSparkApp() {
 
   const renderMarkdownList = (items: string[]) => {
     return items.map((item, index) => {
-      const formattedItem = item.replace(/\n/g, '  \n');
-      return <Markdown key={index} components={{p: ({children}) => <p className="list-item ml-5">{children}</p>}}>{formattedItem}</Markdown>
+      return <Markdown key={index} components={{p: ({children}) => <li className="list-item ml-5">{children}</li>}}>{item}</Markdown>
     })
   }
 
@@ -365,7 +361,7 @@ export function JobSparkApp() {
                     Your Strengths
                   </h3>
                   <div className="prose prose-sm text-muted-foreground max-w-none">
-                    {renderMarkdownList(result.analysis.matches)}
+                    <ul>{renderMarkdownList(result.analysis.matches)}</ul>
                   </div>
                 </div>
                  <div className="space-y-4">
@@ -374,7 +370,7 @@ export function JobSparkApp() {
                     Potential Gaps
                   </h3>
                    <div className="prose prose-sm text-muted-foreground max-w-none">
-                    {renderMarkdownList(result.analysis.gaps)}
+                     <ul>{renderMarkdownList(result.analysis.gaps)}</ul>
                   </div>
                 </div>
               </CardContent>
@@ -385,3 +381,5 @@ export function JobSparkApp() {
     </div>
   );
 }
+
+    
