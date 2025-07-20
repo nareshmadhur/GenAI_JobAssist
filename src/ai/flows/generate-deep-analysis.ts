@@ -49,12 +49,16 @@ const prompt = ai.definePrompt({
 
 **Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** All analysis must be grounded in the provided texts.
 
-For each section (Key Strengths, Gaps, Improvement Areas), provide a list of detailed bullet points. For strengths, the bullet points should cite evidence from the bio. For gaps, identify missing requirements. For improvements, the bullet points should offer concrete, actionable suggestions.
+Generate three distinct sections: Key Strengths, Gaps, and Improvement Areas.
 
-**IMPORTANT FORMATTING RULE**: Every single bullet point you generate for Key Strengths, Gaps, and Improvement Areas MUST begin with a concise, bolded category followed by a colon. For example:
-- **Experience Match:** Your background in project management aligns well with the stated requirement.
-- **Missing Skill:** The job description asks for Python experience, which is not mentioned in your bio.
-- **Actionable Advice:** Consider adding a section to your bio highlighting your data analysis projects.
+1.  **Key Strengths**: Identify direct matches between the user's bio and the job description. Cite specific evidence from the bio.
+    *   Example: **Experience Match:** Your background in project management aligns well with the stated requirement.
+2.  **Gaps**: Identify specific requirements from the job description that are clearly **missing** from the user's bio. This is about factual omissions, not style.
+    *   Example: **Missing Skill:** The job description asks for Python experience, which is not mentioned in your bio.
+3.  **Improvement Areas**: Provide actionable advice on how to **better present** the information that is already in the bio. This is about enhancing the existing content, not pointing out what's missing.
+    *   Example: **Actionable Advice:** Consider adding metrics to your project management experience to show impact, such as 'managed a team of 5 and delivered the project 10% under budget'.
+
+**IMPORTANT FORMATTING RULE**: Every single bullet point you generate for these three sections MUST begin with a concise, bolded category followed by a colon.
 
 Job Description:
 {{{jobDescription}}}
