@@ -18,7 +18,7 @@ export type QAndAInput = z.infer<typeof QAndAInputSchema>;
 
 const QuestionAnswerPairSchema = z.object({
   question: z.string().describe('The verbatim question found in the job description.'),
-  answer: z.string().describe("A concise and professional answer based on the user's bio."),
+  answer: z.string().describe("A concise and professional answer based on the user's bio. If the answer cannot be found in the bio, return the exact string '[Answer not found in bio]'."),
 });
 
 const QAndAOutputSchema = z.object({
@@ -40,7 +40,8 @@ const prompt = ai.definePrompt({
 **Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned. All answers must be truthful to the provided bio.**
 
 If no questions are found, set 'questionsFound' to false and leave 'qaPairs' as an empty array.
-If questions are found, set 'questionsFound' to true. For each question, provide a clear and concise answer derived from the user's bio. The answer should be professional and ready to be copy-pasted.
+If questions are found, set 'questionsFound' to true. For each question, provide a clear and concise answer derived from the user's bio.
+**If you cannot find the answer to a specific question in the user's bio, you MUST return the exact string '[Answer not found in bio]' for that answer.**
 
 Job Description:
 {{{jobDescription}}}

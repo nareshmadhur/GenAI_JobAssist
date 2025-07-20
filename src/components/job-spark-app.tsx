@@ -4,7 +4,7 @@
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle } from "lucide-react";
 import Markdown from 'react-markdown';
 
 import { Button } from "@/components/ui/button";
@@ -310,29 +310,48 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
   }
 
   const allAnswers = qAndA.qaPairs.map(p => `Q: ${p.question}\nA: ${p.answer}`).join('\n\n');
+  const missingAnswersCount = qAndA.qaPairs.filter(p => p.answer === '[Answer not found in bio]').length;
+  const NOT_FOUND_STRING = '[Answer not found in bio]';
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquareMore className="h-6 w-6 text-primary" />
-            Generated Answers
-          </CardTitle>
-          <CardDescription className="prose-sm">Answers for questions found in the job description.</CardDescription>
-        </div>
-        <CopyButton textToCopy={allAnswers} />
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {qAndA.qaPairs.map((pair, index) => (
-          <div key={index} className="p-4 rounded-md border bg-muted/50 relative">
-            <p className="font-semibold text-primary mb-2 pr-10 prose-sm">{pair.question}</p>
-            <Markdown className="prose prose-sm max-w-none whitespace-pre-wrap">{pair.answer}</Markdown>
-            <CopyButton textToCopy={pair.answer} className="absolute top-2 right-2" />
+    <div className="space-y-6">
+      {missingAnswersCount > 0 && (
+        <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Missing Information</AlertTitle>
+            <AlertDescription>
+                {missingAnswersCount} question{missingAnswersCount > 1 ? 's' : ''} could not be answered based on your bio. These are highlighted in red below.
+            </AlertDescription>
+        </Alert>
+      )}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquareMore className="h-6 w-6 text-primary" />
+              Generated Answers
+            </CardTitle>
+            <CardDescription className="prose-sm">Answers for questions found in the job description.</CardDescription>
           </div>
-        ))}
-      </CardContent>
-    </Card>
+          <CopyButton textToCopy={allAnswers} />
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {qAndA.qaPairs.map((pair, index) => (
+            <div key={index} className="p-4 rounded-md border bg-muted/50 relative">
+              <p className="font-semibold text-primary mb-2 pr-10 prose-sm">{pair.question}</p>
+              <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                  {pair.answer === NOT_FOUND_STRING ? (
+                      <span className="text-destructive">{pair.answer}</span>
+                  ) : (
+                      <Markdown>{pair.answer}</Markdown>
+                  )}
+              </div>
+              {pair.answer !== NOT_FOUND_STRING && <CopyButton textToCopy={pair.answer} className="absolute top-2 right-2" />}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
@@ -497,7 +516,7 @@ export function JobSparkApp() {
   const isPending = isGenerating || isSwitching;
 
   const renderContent = () => {
-    if (isPending) return <OutputSkeletons />;
+    if (isSwitching) return <OutputSkeletons />;
   
     switch (activeTab) {
       case 'coverLetter':
