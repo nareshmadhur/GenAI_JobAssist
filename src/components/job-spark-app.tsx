@@ -6,6 +6,7 @@ import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle } from "lucide-react";
 import Markdown from 'react-markdown';
+import { compiler } from 'markdown-to-jsx';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -92,12 +93,31 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
   const [isCopied, setIsCopied] = useState(false);
   const { toast } = useToast();
 
-  const copy = () => {
-    navigator.clipboard.writeText(textToCopy).then(() => {
+  const copy = async () => {
+    try {
+      // Use a simple but effective regex to create a basic HTML representation
+      // This is a simplified approach. For complex markdown, a library would be better.
+      const html = compiler(textToCopy, { forceBlock: true }).props.children;
+      
+      const blobHtml = new Blob([html], { type: 'text/html' });
+      const blobText = new Blob([textToCopy], { type: 'text/plain' });
+      const clipboardItem = new ClipboardItem({
+        'text/html': blobHtml,
+        'text/plain': blobText,
+      });
+      await navigator.clipboard.write([clipboardItem]);
       setIsCopied(true);
       toast({ title: "Copied to clipboard!" });
       setTimeout(() => setIsCopied(false), 2000);
-    });
+    } catch(err) {
+      console.error("Failed to copy rich text: ", err);
+      // Fallback to plain text
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        setIsCopied(true);
+        toast({ title: "Copied to clipboard! (plain text)" });
+        setTimeout(() => setIsCopied(false), 2000);
+      });
+    }
   };
 
   return (
@@ -257,7 +277,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-6 w-6 text-green-500" />
-            Key Strengths
+            <span className="text-green-600">Key Strengths</span>
           </CardTitle>
           <CardDescription className="prose-sm">How your bio aligns with the job requirements.</CardDescription>
         </CardHeader>
@@ -270,7 +290,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <XCircle className="h-6 w-6 text-red-500" />
-            Gaps
+            <span className="text-red-600">Gaps</span>
           </CardTitle>
           <CardDescription className="prose-sm">Areas where your bio is missing required experience.</CardDescription>
         </CardHeader>
@@ -283,7 +303,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Wand2 className="h-6 w-6 text-yellow-500" />
-            Improvement Areas
+            <span className="text-yellow-600">Improvement Areas</span>
           </CardTitle>
            <CardDescription className="prose-sm">Actionable advice to better present your experience.</CardDescription>
         </CardHeader>
@@ -295,7 +315,8 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
   )
 }
 
-function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
+function QAndAView({ qAndA, isSwitching }: { qAndA: QAndAOutput, isSwitching: boolean }) {
+  if (isSwitching) return <OutputSkeletons />;
   if (!qAndA.questionsFound) {
     return (
       <Card>
@@ -556,7 +577,7 @@ export function JobSparkApp() {
       case 'deepAnalysis':
         return allResults?.deepAnalysis ? <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} /> : <OutputSkeletons />;
       case 'qAndA':
-        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} /> : <OutputSkeletons />;
+        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} isSwitching={isSwitching} /> : <OutputSkeletons />;
       default:
         return null;
     }
