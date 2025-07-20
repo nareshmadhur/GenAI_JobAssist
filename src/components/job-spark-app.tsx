@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
-import { useForm, useFormContext, Controller } from "react-hook-form";
+import React, { useState, useTransition, useEffect } from "react";
+import { useForm, useFormContext, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2 } from "lucide-react";
+import Markdown from 'react-markdown';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -71,10 +72,11 @@ function CopyButton({ textToCopy }: { textToCopy: string }) {
   );
 }
 
-function RevisionForm({ originalData, currentResponse }: { originalData: JobApplicationData, currentResponse: string }) {
+function RevisionForm({ originalData, currentResponse, onRevisionComplete }: { originalData: JobApplicationData, currentResponse: string, onRevisionComplete: (newResponse: string) => void }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-  const form = useForm<ReviseResponseData>({
+  
+  const revisionForm = useForm<ReviseResponseData>({
     resolver: zodResolver(ReviseResponseSchema),
     defaultValues: {
       ...originalData,
@@ -83,15 +85,21 @@ function RevisionForm({ originalData, currentResponse }: { originalData: JobAppl
     },
   });
 
-  // This is a bit of a hack to get the parent form's state updating logic
-  const { setValue } = useFormContext(); 
+  useEffect(() => {
+    revisionForm.reset({
+      ...originalData,
+      originalResponse: currentResponse,
+      revisionComments: "",
+    })
+  }, [currentResponse, originalData, revisionForm])
+
 
   async function onRevise(data: ReviseResponseData) {
     startTransition(async () => {
       const result = await reviseAction(data);
       if (result.success) {
-        // Update parent state with new response
-        setValue("response.responses", result.data.responses); 
+        onRevisionComplete(result.data.responses);
+        revisionForm.reset({ ...data, originalResponse: result.data.responses, revisionComments: '' });
       } else {
          toast({
           variant: "destructive",
@@ -109,10 +117,10 @@ function RevisionForm({ originalData, currentResponse }: { originalData: JobAppl
         <CardDescription>Not quite right? Tell the AI how to improve the response.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onRevise)} className="space-y-4">
+        <FormProvider {...revisionForm}>
+          <form onSubmit={revisionForm.handleSubmit(onRevise)} className="space-y-4">
             <FormField
-              control={form.control}
+              control={revisionForm.control}
               name="revisionComments"
               render={({ field }) => (
                 <FormItem>
@@ -137,10 +145,27 @@ function RevisionForm({ originalData, currentResponse }: { originalData: JobAppl
               Revise
             </Button>
           </form>
-        </Form>
+        </FormProvider>
       </CardContent>
     </Card>
   )
+}
+
+function GeneratedResponse({ control, initialValue }: { control: any, initialValue: string }) {
+  const [response, setResponse] = useState(initialValue);
+  
+  useEffect(() => {
+    setResponse(initialValue);
+  }, [initialValue]);
+
+  return (
+     <Textarea
+        value={response}
+        onChange={(e) => setResponse(e.target.value)}
+        className="min-h-[250px] font-code bg-background"
+        aria-label="Generated Response"
+      />
+  );
 }
 
 export function JobSparkApp() {
@@ -148,6 +173,8 @@ export function JobSparkApp() {
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastSubmittedData, setLastSubmittedData] = useState<JobApplicationData | null>(null);
+  const [currentResponse, setCurrentResponse] = useState<string>("");
+
   const { toast } = useToast();
 
   const form = useForm<JobApplicationData>({
@@ -158,18 +185,16 @@ export function JobSparkApp() {
     },
   });
 
-  const generatedResponseValue = form.watch("response.responses");
-
   function onSubmit(data: JobApplicationData) {
     setError(null);
     setResult(null);
+    setCurrentResponse("");
     setLastSubmittedData(data);
     startTransition(async () => {
       const response = await generateAction(data);
       if (response.success) {
         setResult(response.data);
-        // Also update form state to allow revision form to see the generated text
-        form.setValue("response", response.data.response);
+        setCurrentResponse(response.data.response.responses);
       } else {
         setError(response.error);
         toast({
@@ -190,7 +215,7 @@ export function JobSparkApp() {
             <CardTitle>Your Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
+            <FormProvider {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <FormField
                   control={form.control}
@@ -238,7 +263,7 @@ export function JobSparkApp() {
                   Generate Responses
                 </Button>
               </form>
-            </Form>
+            </FormProvider>
           </CardContent>
         </Card>
       </div>
@@ -258,31 +283,19 @@ export function JobSparkApp() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Your Tailored Response</CardTitle>
-                <CopyButton textToCopy={generatedResponseValue || result.response.responses} />
+                <CopyButton textToCopy={currentResponse} />
               </CardHeader>
               <CardContent>
-                  <Controller
-                    control={form.control}
-                    name="response.responses"
-                    defaultValue={result.response.responses}
-                    render={({ field }) => (
-                       <Textarea
-                          {...field}
-                          className="min-h-[250px] font-code bg-background"
-                          aria-label="Generated Response"
-                        />
-                    )}
-                  />
+                  <GeneratedResponse control={form.control} initialValue={currentResponse} />
               </CardContent>
             </Card>
 
             {lastSubmittedData && (
-              <Form {...form}>
-                <RevisionForm 
-                  originalData={lastSubmittedData} 
-                  currentResponse={generatedResponseValue || result.response.responses} 
-                />
-              </Form>
+              <RevisionForm 
+                originalData={lastSubmittedData} 
+                currentResponse={currentResponse} 
+                onRevisionComplete={setCurrentResponse}
+              />
             )}
 
             <Card>
@@ -295,18 +308,18 @@ export function JobSparkApp() {
                     <CheckCircle2 className="h-5 w-5 mr-2 text-green-500" />
                     Your Strengths
                   </h3>
-                  <ul className="space-y-2 list-disc pl-5 text-muted-foreground">
-                    {result.analysis.matches.map((item, index) => <li key={`match-${index}`}>{item}</li>)}
-                  </ul>
+                  <div className="space-y-2 text-muted-foreground">
+                    {result.analysis.matches.map((item, index) => <Markdown key={`match-${index}`} components={{p: ({children}) => <p className="list-item ml-5">{children}</p>}}>{item}</Markdown>)}
+                  </div>
                 </div>
                  <div className="space-y-4">
                   <h3 className="flex items-center font-semibold text-lg">
                     <XCircle className="h-5 w-5 mr-2 text-red-500" />
                     Potential Gaps
                   </h3>
-                  <ul className="space-y-2 list-disc pl-5 text-muted-foreground">
-                    {result.analysis.gaps.map((item, index) => <li key={`gap-${index}`}>{item}</li>)}
-                  </ul>
+                   <div className="space-y-2 text-muted-foreground">
+                    {result.analysis.gaps.map((item, index) => <Markdown key={`gap-${index}`} components={{p: ({children}) => <p className="list-item ml-5">{children}</p>}}>{item}</Markdown>)}
+                  </div>
                 </div>
               </CardContent>
             </Card>

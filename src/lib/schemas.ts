@@ -3,8 +3,6 @@ import { z } from 'zod';
 export const JobApplicationSchema = z.object({
   jobDescription: z.string().min(50, { message: "Job description must be at least 50 characters long." }),
   bio: z.string().min(100, { message: "Your bio must be at least 100 characters long to provide enough detail." }),
-  // This is now optional and will be populated after the first generation
-  response: z.object({ responses: z.string() }).optional(),
 });
 
 export type JobApplicationData = z.infer<typeof JobApplicationSchema>;

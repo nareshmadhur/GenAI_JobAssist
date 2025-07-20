@@ -4,7 +4,7 @@
  * @fileOverview Analyzes a job description and user bio to find matches and gaps.
  *
  * - analyzeJobDescription - A function that handles the job description and bio analysis process.
- * - AnalyzeJobDescriptionInput - The input type for the analyzeJobDescription function.
+ * - AnalyzeJobDescriptionInput - The input type for the analyzeJobdescription function.
  * - AnalyzeJobDescriptionOutput - The return type for the analyzeJobDescription function.
  */
 
@@ -18,8 +18,8 @@ const AnalyzeJobDescriptionInputSchema = z.object({
 export type AnalyzeJobDescriptionInput = z.infer<typeof AnalyzeJobDescriptionInputSchema>;
 
 const AnalyzeJobDescriptionOutputSchema = z.object({
-  matches: z.array(z.string()).describe("A list of bullet points where the user's bio matches the job requirements."),
-  gaps: z.array(z.string()).describe("A list of bullet points where the user's bio has gaps when compared to the job requirements."),
+  matches: z.array(z.string()).describe("A list of simple bullet points where the user's bio matches the job requirements. Use markdown bolding for key phrases."),
+  gaps: z.array(z.string()).describe("A list of simple bullet points where the user's bio has gaps when compared to the job requirements. Use markdown bolding for key phrases."),
 });
 export type AnalyzeJobDescriptionOutput = z.infer<typeof AnalyzeJobDescriptionOutputSchema>;
 
@@ -31,7 +31,9 @@ const prompt = ai.definePrompt({
   name: 'analyzeJobDescriptionPrompt',
   input: {schema: AnalyzeJobDescriptionInputSchema},
   output: {schema: AnalyzeJobDescriptionOutputSchema},
-  prompt: `You are an expert career advisor. Analyze the following job description and user's bio. Your task is to identify where the user's experience matches the job requirements and where there are gaps. Present your findings as two distinct lists of bullet points.
+  prompt: `You are an expert career advisor. Analyze the following job description and user's bio.
+Your task is to identify where the user's experience matches the job requirements and where there are gaps.
+Present your findings as two distinct lists of simple, clear bullet points. **Bold** important keywords or phrases.
 
 Job Description:
 {{{jobDescription}}}
@@ -40,7 +42,7 @@ User Bio:
 {{{bio}}}
 
 Analysis:
-1.  **Matches**: Create a bulleted list of specific skills, experiences, or qualifications from the user's bio that directly align with the requirements mentioned in the job description. Be precise and quote or refer to parts of the bio and job description.
+1.  **Matches**: Create a bulleted list of specific skills, experiences, or qualifications from the user's bio that directly align with the requirements mentioned in the job description. Be precise.
 2.  **Gaps**: Create a bulleted list of key requirements from the job description that are not clearly addressed in the user's bio.
 
 Provide only the bulleted lists for matches and gaps.`,
