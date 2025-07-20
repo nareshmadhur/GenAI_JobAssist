@@ -10,10 +10,10 @@ export default function Home() {
             <JobSparkLogo className="w-10 h-10 text-primary" />
             <div className="flex flex-col">
               <h1 className="text-2xl font-bold md:text-3xl font-headline text-primary">
-                JobSpark
+                AI Job Assist
               </h1>
               <p className="text-xs text-muted-foreground">
-                Tailor your job applications in a spark.
+                An attempt to make job application easier (for chickadee) made with love.
               </p>
             </div>
           </div>
