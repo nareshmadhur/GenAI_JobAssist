@@ -4,7 +4,7 @@
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, Target, MessageSquareMore } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore } from "lucide-react";
 import Markdown from 'react-markdown';
 
 import { Button } from "@/components/ui/button";
@@ -237,6 +237,18 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
 
   return (
     <div className="space-y-6">
+       <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Briefcase className="h-6 w-6 text-primary" />
+            Job Summary
+          </CardTitle>
+          <CardDescription className="prose-sm">An expert summary of the role's core requirements.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="prose-sm">{deepAnalysis.jobSummary}</p>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -425,17 +437,19 @@ export function JobSparkApp() {
   }
 
   const handleRevisionComplete = (result: any) => {
-      if (result.success) {
-        const newResponseText = result.data.responses;
-        setCurrentResponse(newResponseText);
-        setAllResults(prev => ({...prev!, [activeTab]: { responses: newResponseText }}));
-      } else {
-         toast({
-          variant: "destructive",
-          title: "Revision Failed",
-          description: result.error,
-        });
-      }
+      startRevising(async () => {
+        if (result.success) {
+          const newResponseText = result.data.responses;
+          setCurrentResponse(newResponseText);
+          setAllResults(prev => ({...prev!, [activeTab]: { responses: newResponseText }}));
+        } else {
+           toast({
+            variant: "destructive",
+            title: "Revision Failed",
+            description: result.error,
+          });
+        }
+      });
   };
 
   const handleManualEdit = (newValue: string) => {
@@ -480,8 +494,7 @@ export function JobSparkApp() {
   const isPending = isGenerating || isSwitching;
 
   const renderContent = () => {
-    if (isSwitching) return <OutputSkeletons />;
-    if (isGenerating && !allResults) return <OutputSkeletons />;
+    if (isPending) return <OutputSkeletons />;
   
     switch (activeTab) {
       case 'coverLetter':
@@ -507,7 +520,7 @@ export function JobSparkApp() {
               <RevisionForm 
                 originalData={lastSubmittedData}
                 currentResponse={debouncedEditableResponse} 
-                onRevisionComplete={(res) => startRevising(async () => handleRevisionComplete(res))}
+                onRevisionComplete={handleRevisionComplete}
                 generationType={activeTab}
                 isRevising={isRevising}
               />
@@ -622,7 +635,7 @@ export function JobSparkApp() {
       {/* Output Column */}
       <div className="flex flex-col gap-8">
         {isGenerating && !allResults && <OutputSkeletons />}
-        {error && !isGenerating && !allResults &&(
+        {error && !isPending && !allResults &&(
           <Alert variant="destructive">
             <Info className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
@@ -649,3 +662,4 @@ export function JobSparkApp() {
     </div>
   );
 }
+

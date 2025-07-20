@@ -22,17 +22,10 @@ const AnalysisDetailSchema = z.object({
 });
 
 const DeepAnalysisOutputSchema = z.object({
-  overallAlignment: z.object({
-      score: z.string().describe('A percentage score (e.g., "85% Match").'),
-      justification: z.string().describe("A brief justification for the score."),
-  }),
+  jobSummary: z.string().describe("A professional summary of the job description, abstracting jargon and focusing on key takeaways."),
   keyStrengths: AnalysisDetailSchema.describe("An analysis of the user's key strengths against the job description."),
   gaps: AnalysisDetailSchema.describe("An analysis of the gaps between the user's bio and the job description."),
   improvementAreas: AnalysisDetailSchema.describe("An analysis of areas where the user's bio could be improved for this role."),
-  languageAndTone: z.object({
-    analysis: z.string().describe("An analysis of the job description's tone."),
-    suggestion: z.string().describe("A suggestion for adjusting the user's application to match the tone.")
-  }).describe("An assessment of language and tone.")
 });
 
 export type DeepAnalysisOutput = z.infer<typeof DeepAnalysisOutputSchema>;
@@ -49,7 +42,9 @@ const prompt = ai.definePrompt({
 
 **Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** All analysis must be grounded in the provided texts.
 
-Generate three distinct sections: Key Strengths, Gaps, and Improvement Areas.
+First, act as a professional in the field of the job description and write a concise summary of the role. Abstract away any corporate jargon and focus on the core responsibilities and what the employer is truly looking for.
+
+Then, generate three distinct sections: Key Strengths, Gaps, and Improvement Areas.
 
 1.  **Key Strengths**: Identify direct matches between the user's bio and the job description. Cite specific evidence from the bio.
     *   Example: **Experience Match:** Your background in project management aligns well with the stated requirement.
@@ -58,7 +53,7 @@ Generate three distinct sections: Key Strengths, Gaps, and Improvement Areas.
 3.  **Improvement Areas**: Provide actionable advice on how to **better present** the information that is already in the bio. This is about enhancing the existing content, not pointing out what's missing.
     *   Example: **Actionable Advice:** Consider adding metrics to your project management experience to show impact, such as 'managed a team of 5 and delivered the project 10% under budget'.
 
-**IMPORTANT FORMATTING RULE**: Every single bullet point you generate for these three sections MUST begin with a concise, bolded category followed by a colon.
+**IMPORTANT FORMATTING RULE**: Every single bullet point you generate for Key Strengths, Gaps, and Improvement Areas MUST begin with a concise, bolded category followed by a colon.
 
 Job Description:
 {{{jobDescription}}}
@@ -80,3 +75,4 @@ const generateDeepAnalysisFlow = ai.defineFlow(
     return output!;
   }
 );
+
