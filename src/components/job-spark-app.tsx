@@ -4,7 +4,7 @@
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, FileJson, Briefcase, BotMessageSquare, Lightbulb, Target, MessageSquareMore } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, BotMessageSquare, Lightbulb, Target, MessageSquareMore } from "lucide-react";
 import Markdown from 'react-markdown';
 
 import { Button } from "@/components/ui/button";
@@ -518,7 +518,7 @@ export function JobSparkApp() {
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Your Tailored {activeTab === 'cv' ? 'CV' : 'Cover Letter'}</CardTitle>
+                <CardTitle>Your Tailored {activeTab === 'cv' ? 'CV' : 'Letter'}</CardTitle>
                 <CopyButton textToCopy={currentResponse} />
               </CardHeader>
               <CardContent>
@@ -555,7 +555,7 @@ export function JobSparkApp() {
           <CardHeader>
             <CardTitle>Your Information</CardTitle>
             <CardDescription>
-              Select an output type, provide your info, and let the AI work its magic.
+              Select an output, provide your info, and let the AI work its magic.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -570,14 +570,14 @@ export function JobSparkApp() {
                       <FormControl>
                         <Tabs
                           defaultValue={field.value}
-                          onValueChange={field.onChange}
+                          onValueChange={(value) => field.onChange(value as GenerationType)}
                           className="w-full"
                         >
                           <TabsList className="grid w-full grid-cols-4">
-                            <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4" />Cover Letter</TabsTrigger>
+                            <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4" />Letter</TabsTrigger>
                             <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
                             <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4" />Q&A</TabsTrigger>
-                            <TabsTrigger value="deepAnalysis" disabled={isPending}><FileJson className="mr-2 h-4 w-4" />Deep Analysis</TabsTrigger>
+                            <TabsTrigger value="deepAnalysis" disabled={isPending}><Lightbulb className="mr-2 h-4 w-4" />Analysis</TabsTrigger>
                           </TabsList>
                         </Tabs>
                       </FormControl>
@@ -657,10 +657,10 @@ export function JobSparkApp() {
           <div className="space-y-4">
              <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4" />Cover Letter</TabsTrigger>
+                <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4" />Letter</TabsTrigger>
                 <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
                 <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4" />Q&A</TabsTrigger>
-                <TabsTrigger value="deepAnalysis" disabled={isPending}><FileJson className="mr-2 h-4 w-4" />Deep Analysis</TabsTrigger>
+                <TabsTrigger value="deepAnalysis" disabled={isPending}><Lightbulb className="mr-2 h-4 w-4" />Analysis</TabsTrigger>
               </TabsList>
             </Tabs>
             
