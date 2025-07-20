@@ -120,7 +120,7 @@ function RevisionForm({ originalData, currentResponse }: { originalData: JobAppl
                   <FormControl>
                     <Textarea
                       placeholder="e.g., 'Make it more formal.' or 'Mention my experience with project management tools.'"
-                      className="min-h-[100px] bg-background"
+                      className="min-h-[100px] bg-background font-code"
                       {...field}
                     />
                   </FormControl>
@@ -218,7 +218,7 @@ export function JobSparkApp() {
                       <FormControl>
                         <Textarea
                           placeholder="Provide your detailed bio. The more details, the better the result!"
-                          className="min-h-[200px]"
+                          className="min-h-[200px] font-code"
                           {...field}
                         />
                       </FormControl>

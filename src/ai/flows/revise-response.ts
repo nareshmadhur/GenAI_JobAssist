@@ -23,9 +23,11 @@ const prompt = ai.definePrompt({
   name: 'reviseResponsePrompt',
   input: {schema: ReviseResponseSchema},
   output: {schema: ResponseSchema},
-  prompt: `You are a professional resume and cover letter writer. A previous response was generated for a user based on their bio and a job description. The user has provided feedback for revision.
+  prompt: `You are a professional resume and cover letter writer. A previous response was generated for a user. The user has provided feedback for revision.
 
-Your task is to revise the original response based on the user's comments, while still considering the original job description and user bio for context. The new response should incorporate the feedback seamlessly and maintain a professional tone appropriate for the job application.
+Your task is to revise the original response based on the user's comments, while still considering the original job description and user bio for context. The new response should incorporate the feedback seamlessly.
+
+It must be concise and impactful. Use Markdown for formatting, specifically **bolding** to highlight key skills and experiences.
 
 Job Description:
 {{{jobDescription}}}
