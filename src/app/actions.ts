@@ -6,6 +6,7 @@ import { analyzeJobDescription, type AnalyzeJobDescriptionOutput } from '@/ai/fl
 import { generateCoverLetter, type CoverLetterOutput } from '@/ai/flows/generate-cover-letter';
 import { generateCv, type CvOutput } from '@/ai/flows/generate-cv';
 import { generateDeepAnalysis, type DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
+import { generateQAndA, type QAndAOutput } from '@/ai/flows/generate-q-and-a';
 import { reviseResponse, type ReviseResponseInput } from '@/ai/flows/revise-response';
 import { JobApplicationSchema, ReviseResponseSchema, type ResponseData } from '@/lib/schemas';
 
@@ -26,6 +27,7 @@ export interface AllGenerationResults {
     coverLetter?: CoverLetterOutput;
     cv?: CvOutput;
     deepAnalysis?: DeepAnalysisOutput;
+    qAndA?: QAndAOutput;
 }
 
 // This action generates ONLY the initial analysis and one content type.
@@ -49,6 +51,9 @@ export async function generateInitialAction(
         case 'deepAnalysis':
             responsePromise = generateDeepAnalysis({ jobDescription: data.jobDescription, userBio: data.bio });
             break;
+        case 'qAndA':
+            responsePromise = generateQAndA({ jobDescription: data.jobDescription, userBio: data.bio });
+            break;
         case 'coverLetter':
         default:
             responsePromise = generateCoverLetter({ jobDescription: data.jobDescription, userBio: data.bio });
@@ -64,6 +69,8 @@ export async function generateInitialAction(
     if (data.generationType === 'coverLetter') result.coverLetter = response as CoverLetterOutput;
     if (data.generationType === 'cv') result.cv = response as CvOutput;
     if (data.generationType === 'deepAnalysis') result.deepAnalysis = response as DeepAnalysisOutput;
+    if (data.generationType === 'qAndA') result.qAndA = response as QAndAOutput;
+
 
     return {
       success: true,
@@ -83,6 +90,7 @@ export async function generateSingleAction(
     | SingleGenerateActionResponse<CoverLetterOutput>
     | SingleGenerateActionResponse<CvOutput>
     | SingleGenerateActionResponse<DeepAnalysisOutput>
+    | SingleGenerateActionResponse<QAndAOutput>
     | { success: false; error: string }
 > {
     const validationResult = JobApplicationSchema.pick({ jobDescription: true, bio: true, generationType: true }).safeParse(rawData);
@@ -99,6 +107,9 @@ export async function generateSingleAction(
                 break;
             case 'deepAnalysis':
                 response = await generateDeepAnalysis({ jobDescription, userBio: bio });
+                break;
+            case 'qAndA':
+                response = await generateQAndA({ jobDescription, userBio: bio });
                 break;
             case 'coverLetter':
             default:
