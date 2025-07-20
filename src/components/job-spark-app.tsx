@@ -10,12 +10,6 @@ import Markdown from 'react-markdown';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
   Form,
   FormControl,
   FormDescription,
@@ -34,7 +28,7 @@ import {
   type ReviseResponseData,
 } from "@/lib/schemas";
 import { generateInitialAction, generateSingleAction, reviseAction, AllGenerationResults } from "@/app/actions";
-import { DeepAnalysisOutput, QAndAOutput, AnalyzeJobDescriptionOutput } from "@/ai/flows";
+import { DeepAnalysisOutput, QAndAOutput } from "@/ai/flows";
 import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -61,19 +55,33 @@ function useDebounce<T>(value: T, delay: number): T {
 function OutputSkeletons() {
   return (
     <div className="space-y-6">
-       <div className="grid w-full grid-cols-4 gap-2">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
       <Card>
         <CardHeader>
-          <Skeleton className="h-7 w-2/5" />
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <Skeleton className="h-7 w-2/5" />
+          </div>
           <Skeleton className="h-4 w-4/5 mt-2" />
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-5/6 mb-2" />
+          <Skeleton className="h-4 w-full mt-4 mb-2" />
+          <Skeleton className="h-4 w-4/6" />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <Skeleton className="h-7 w-2/5" />
+          </div>
+          <Skeleton className="h-4 w-4/5 mt-2" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-5/6" />
         </CardContent>
       </Card>
     </div>
@@ -121,7 +129,7 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
           revisionComments: "",
           generationType,
       });
-  }, [currentResponse, originalData.jobDescription, originalData.bio, generationType, revisionForm.reset]);
+  }, [currentResponse, originalData.jobDescription, originalData.bio, generationType, revisionForm]);
 
 
   async function onRevise(data: ReviseResponseData) {
@@ -169,7 +177,7 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
   )
 }
 
-function GeneratedResponse({ initialValue, onValueChange, isSaving }: { initialValue: string, onValueChange: (value: string) => void, isSaving: boolean }) {
+function GeneratedResponse({ initialValue, onValueChange, isSaving, isSwitching }: { initialValue: string, onValueChange: (value: string) => void, isSaving: boolean, isSwitching: boolean }) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(initialValue);
 
@@ -181,6 +189,10 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving }: { initialV
     onValueChange(localValue);
     setIsEditing(false);
   };
+  
+  if (isSwitching) {
+    return <Skeleton className="h-64 w-full" />
+  }
 
   return (
     <div className="relative">
@@ -210,114 +222,68 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving }: { initialV
   );
 }
 
-function DeepAnalysisView({ deepAnalysis, simpleAnalysis }: { deepAnalysis: DeepAnalysisOutput, simpleAnalysis: AnalyzeJobDescriptionOutput }) {
-  
-  const renderMarkdownList = (items: any[]) => {
-    return items.map((item, index) => {
-        const content = typeof item === 'string' ? item : item.requirement || item.suggestion || item.evidence;
-        const subContent = typeof item === 'object' ? item.suggestion || item.evidence : null;
-      return (
-        <li key={index}>
-            <Markdown components={{ p: Fragment }}>{content}</Markdown>
-            {subContent && (
-                <div className="pl-4 text-muted-foreground/80">
-                    <Markdown components={{ p: Fragment }}>{subContent}</Markdown>
-                </div>
-            )}
-        </li>
-      )
-    });
+function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }) {
+  const renderDetails = (details: string[]) => {
+    return details.map((item, index) => (
+      <li key={index} className="ml-5">
+          <Markdown components={{ p: Fragment }}>{item}</Markdown>
+      </li>
+    ));
   };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-2xl">
             <Target className="h-6 w-6 text-primary" />
             Overall Alignment: {deepAnalysis.overallAlignment.score}
           </CardTitle>
           <CardDescription>{deepAnalysis.overallAlignment.justification}</CardDescription>
         </CardHeader>
       </Card>
-
-      <Accordion type="multiple" defaultValue={['strengths', 'gaps', 'improvements']} className="w-full space-y-4">
-        <Card>
-          <AccordionItem value="strengths" className="border-b-0">
-            <AccordionTrigger className="p-6">
-              <CardHeader className="p-0 text-left">
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="h-6 w-6 text-green-500" />
-                    Key Strengths
-                  </CardTitle>
-                  <CardDescription>How your bio aligns with the key requirements.</CardDescription>
-              </CardHeader>
-            </AccordionTrigger>
-            <AccordionContent className="px-6 pb-6">
-                <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
-                  {renderMarkdownList(simpleAnalysis.matches)}
-                </ul>
-            </AccordionContent>
-          </AccordionItem>
-        </Card>
       
-        <Card>
-          <AccordionItem value="gaps" className="border-b-0">
-            <AccordionTrigger className="p-6">
-              <CardHeader className="p-0 text-left">
-                <CardTitle className="flex items-center gap-2">
-                  <XCircle className="h-6 w-6 text-red-500" />
-                  Identified Gaps
-                </CardTitle>
-                <CardDescription>Where your bio could be stronger for this role.</CardDescription>
-              </CardHeader>
-            </AccordionTrigger>
-            <AccordionContent className="px-6 pb-6">
-              <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
-                {renderMarkdownList(simpleAnalysis.gaps)}
-              </ul>
-            </AccordionContent>
-          </AccordionItem>
-        </Card>
-
-        <Card>
-          <AccordionItem value="improvements" className="border-b-0">
-             <AccordionTrigger className="p-6">
-                <CardHeader className="p-0 text-left">
-                    <CardTitle className="flex items-center gap-2">
-                        <Wand2 className="h-6 w-6 text-yellow-500" />
-                        Improvement Areas
-                    </CardTitle>
-                    <CardDescription>Concrete suggestions to address gaps.</CardDescription>
-                </CardHeader>
-            </AccordionTrigger>
-            <AccordionContent className="px-6 pb-6 space-y-4">
-                <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
-                    {deepAnalysis.improvementAreas.map((item, index) => (
-                        <li key={index}>
-                          <p className="font-semibold text-foreground/80">{item.requirement}</p>
-                          <div className="pl-4 text-muted-foreground/80">
-                            <Markdown components={{ p: Fragment }}>{item.suggestion}</Markdown>
-                          </div>
-                        </li>
-                    ))}
-                </ul>
-            </AccordionContent>
-          </AccordionItem>
-        </Card>
-      </Accordion>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-2xl">
+            <CheckCircle2 className="h-6 w-6 text-green-500" />
+            Key Strengths
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+            <p className="text-muted-foreground mb-3">{deepAnalysis.keyStrengths.summary}</p>
+            <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
+              {renderDetails(deepAnalysis.keyStrengths.details)}
+            </ul>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-2xl">
+            <Wand2 className="h-6 w-6 text-yellow-500" />
+            Improvement Areas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground mb-3">{deepAnalysis.improvementAreas.summary}</p>
+          <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
+            {renderDetails(deepAnalysis.improvementAreas.details)}
+          </ul>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-2xl">
             <BotMessageSquare className="h-6 w-6 text-blue-500" />
             Language & Tone
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p className="font-semibold text-blue-800">Analysis:</p>
+          <p className="font-semibold">Analysis:</p>
           <Markdown className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">{deepAnalysis.languageAndTone.analysis}</Markdown>
-          <p className="font-semibold mt-2 text-blue-800">Suggestion:</p>
+          <p className="font-semibold mt-2">Suggestion:</p>
           <Markdown className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">{deepAnalysis.languageAndTone.suggestion}</Markdown>
         </CardContent>
       </Card>
@@ -325,11 +291,22 @@ function DeepAnalysisView({ deepAnalysis, simpleAnalysis }: { deepAnalysis: Deep
   )
 }
 
-function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
+function QAndAView({ qAndA, isSwitching }: { qAndA: QAndAOutput, isSwitching: boolean }) {
+  if (isSwitching) {
+    return <OutputSkeletons />
+  }
+
   if (!qAndA.questionsFound) {
     return (
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-2xl">
+            <MessageSquareMore className="h-6 w-6 text-primary" />
+            Q&A
+          </CardTitle>
+          <CardDescription>Answers to questions found in the job description.</CardDescription>
+        </CardHeader>
+        <CardContent>
           <p className="text-muted-foreground">No explicit questions were found in the job description.</p>
         </CardContent>
       </Card>
@@ -342,7 +319,10 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Generated Answers</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-2xl">
+            <MessageSquareMore className="h-6 w-6 text-primary" />
+            Generated Answers
+          </CardTitle>
           <CardDescription>Answers for questions found in the job description.</CardDescription>
         </div>
         <CopyButton textToCopy={allAnswers} />
@@ -357,49 +337,6 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
         ))}
       </CardContent>
     </Card>
-  )
-}
-
-function AnalysisAndInsights({ analysis }: { analysis: AnalyzeJobDescriptionOutput }) {
-  const renderMarkdownList = (items: string[]) => {
-    return items.map((item, index) => (
-      <li key={index}>
-        <Markdown components={{ p: Fragment }}>{item}</Markdown>
-      </li>
-    ));
-  };
-
-  return (
-     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <CheckCircle2 className="h-6 w-6 text-green-500" />
-            Key Strengths
-          </CardTitle>
-          <CardDescription>How your bio aligns with the key requirements.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
-              {renderMarkdownList(analysis.matches)}
-            </ul>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <XCircle className="h-6 w-6 text-red-500" />
-            Identified Gaps
-          </CardTitle>
-           <CardDescription>Where your bio could be stronger for this role.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
-            {renderMarkdownList(analysis.gaps)}
-          </ul>
-        </CardContent>
-      </Card>
-    </div>
   )
 }
 
@@ -466,9 +403,11 @@ export function JobSparkApp() {
       const response = await generateInitialAction({ ...data, generationType });
       if (response.success) {
         setAllResults(response.data);
-        const resultForTab = response.data[generationType];
-        if (resultForTab && 'responses' in resultForTab) {
-          setCurrentResponse(resultForTab.responses || "");
+        if (generationType === 'coverLetter' || generationType === 'cv') {
+            const resultForTab = response.data[generationType];
+            if (resultForTab && 'responses' in resultForTab) {
+              setCurrentResponse(resultForTab.responses || "");
+            }
         }
       } else {
         setError(response.error);
@@ -484,22 +423,7 @@ export function JobSparkApp() {
     
     const existingResult = allResults?.[newGenType];
     if (existingResult) {
-       if (newGenType === 'deepAnalysis') {
-           if (!allResults?.analysis) {
-             // If we switched to deep analysis but the simple analysis is missing, fetch it.
-              startSwitchingTab(async () => {
-                const result = await generateSingleAction({ ...lastSubmittedData, generationType: 'deepAnalysis' });
-                 if (result.success) {
-                    const { deepAnalysis, simpleAnalysis } = result.data as any;
-                    setAllResults(prev => ({ ...prev!, deepAnalysis, analysis: simpleAnalysis }));
-                 } else {
-                    toast({ variant: "destructive", title: "Failed to switch", description: result.error });
-                 }
-              });
-           }
-       } else if (newGenType === 'qAndA') {
-          // This view doesn't use setCurrentResponse
-       } else if ('responses' in existingResult) {
+       if (newGenType === 'coverLetter' || newGenType === 'cv') {
          setCurrentResponse((existingResult as any).responses || "");
        }
        return;
@@ -508,16 +432,10 @@ export function JobSparkApp() {
     startSwitchingTab(async () => {
       const result = await generateSingleAction({ ...lastSubmittedData, generationType: newGenType });
       if (result.success) {
-        if (newGenType === 'deepAnalysis') {
-          // Special handling for deep analysis which returns two parts
-          const { deepAnalysis, simpleAnalysis } = result.data as any;
-          setAllResults(prev => ({ ...prev!, deepAnalysis, analysis: simpleAnalysis }));
-        } else {
           setAllResults(prev => ({ ...prev!, [newGenType]: result.data }));
-          if ('responses' in result.data) {
-            setCurrentResponse(result.data.responses);
+          if (newGenType === 'coverLetter' || newGenType === 'cv') {
+            setCurrentResponse((result.data as any).responses);
           }
-        }
       } else {
         toast({ variant: "destructive", title: "Failed to switch", description: result.error });
         setActiveTab(activeTab); // Revert on failure
@@ -541,7 +459,6 @@ export function JobSparkApp() {
 
   const handleManualEdit = (newValue: string) => {
       setCurrentResponse(newValue);
-      // We only update the response text, not the entire object structure.
       if (allResults && (activeTab === 'cv' || activeTab === 'coverLetter')) {
           setAllResults(prev => ({
               ...prev!, 
@@ -582,7 +499,7 @@ export function JobSparkApp() {
   const isPending = isGenerating || isSwitching;
 
   const renderContent = () => {
-    if (isPending && !allResults) return <OutputSkeletons />;
+    if (isGenerating && !allResults) return <OutputSkeletons />;
   
     switch (activeTab) {
       case 'coverLetter':
@@ -592,13 +509,16 @@ export function JobSparkApp() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Your Tailored {activeTab === 'cv' ? 'CV' : 'Letter'}</CardTitle>
-                  <CardDescription>A draft {activeTab === 'cv' ? 'CV' : 'letter'} generated by AI.</CardDescription>
+                  <CardTitle className="flex items-center gap-2 text-2xl">
+                    {activeTab === 'cv' ? <Briefcase className="h-6 w-6 text-primary" /> : <FileText className="h-6 w-6 text-primary" />}
+                    Your Tailored {activeTab === 'cv' ? 'CV' : 'Letter'}
+                  </CardTitle>
+                  <CardDescription>An AI-generated draft for your review.</CardDescription>
                 </div>
                 <CopyButton textToCopy={currentResponse} />
               </CardHeader>
               <CardContent>
-                {isSwitching ? <Skeleton className="h-48 w-full" /> : <GeneratedResponse initialValue={currentResponse} onValueChange={handleManualEdit} isSaving={isRevising}/>}
+                <GeneratedResponse initialValue={currentResponse} onValueChange={handleManualEdit} isSaving={isRevising} isSwitching={isSwitching}/>
               </CardContent>
             </Card>
             {lastSubmittedData && (
@@ -613,9 +533,9 @@ export function JobSparkApp() {
           </>
         );
       case 'deepAnalysis':
-        return allResults?.deepAnalysis && allResults?.analysis ? <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} simpleAnalysis={allResults.analysis} /> : <OutputSkeletons />;
+        return allResults?.deepAnalysis ? <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} /> : <OutputSkeletons />;
       case 'qAndA':
-        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} /> : <OutputSkeletons />;
+        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} isSwitching={isSwitching} /> : <OutputSkeletons />;
       default:
         return null;
     }
@@ -719,7 +639,7 @@ export function JobSparkApp() {
 
       {/* Output Column */}
       <div className="flex flex-col gap-8">
-        {isPending && !allResults && <OutputSkeletons />}
+        {isGenerating && !allResults && <OutputSkeletons />}
         {error && !isGenerating && !allResults &&(
           <Alert variant="destructive">
             <Info className="h-4 w-4" />
@@ -747,5 +667,3 @@ export function JobSparkApp() {
     </div>
   );
 }
-
-    

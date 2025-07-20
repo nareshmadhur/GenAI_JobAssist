@@ -16,22 +16,21 @@ const DeepAnalysisInputSchema = z.object({
 });
 export type DeepAnalysisInput = z.infer<typeof DeepAnalysisInputSchema>;
 
+const AnalysisDetailSchema = z.object({
+  summary: z.string().describe("A high-level summary of the point."),
+  details: z.array(z.string()).describe("A list of specific bullet points providing evidence or suggestions. Use markdown bolding for key phrases."),
+});
+
 const DeepAnalysisOutputSchema = z.object({
   overallAlignment: z.object({
       score: z.string().describe('A percentage score (e.g., "85% Match").'),
       justification: z.string().describe("A brief justification for the score."),
   }),
-  keyStrengths: z.array(z.object({
-    requirement: z.string().describe("The requirement from the job description."),
-    evidence: z.string().describe("The corresponding evidence from the user's bio.")
-  })).describe("A list of the top 3-5 strongest alignments."),
-  improvementAreas: z.array(z.object({
-    requirement: z.string().describe("The requirement or gap from the job description."),
-    suggestion: z.string().describe("A concrete, actionable suggestion for how the user could address this gap.")
-  })).describe("A list of the most significant gaps or areas for improvement."),
+  keyStrengths: AnalysisDetailSchema.describe("An analysis of the user's key strengths against the job description."),
+  improvementAreas: AnalysisDetailSchema.describe("An analysis of areas where the user's bio could be improved for this role."),
   languageAndTone: z.object({
     analysis: z.string().describe("An analysis of the job description's tone."),
-    suggestion: z.string().describe("A suggestion for adjusting the user's bio to match the tone.")
+    suggestion: z.string().describe("A suggestion for adjusting the user's application to match the tone.")
   }).describe("An assessment of language and tone.")
 });
 
@@ -45,12 +44,11 @@ const prompt = ai.definePrompt({
   name: 'generateDeepAnalysisPrompt',
   input: {schema: DeepAnalysisInputSchema},
   output: {schema: DeepAnalysisOutputSchema},
-  prompt: `You are an expert career coach and talent acquisition specialist. Your task is to perform a deep, insightful analysis comparing a user's bio against a job description. Provide actionable feedback and output in a structured JSON format.
+  prompt: `You are an expert career coach and talent acquisition specialist. Your task is to perform a deep, insightful analysis comparing a user's bio against a job description. Provide actionable feedback in a structured format.
 
 **Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** All analysis must be grounded in the provided texts.
 
-For each strength, quote the specific requirement from the job description and the corresponding evidence from the user's bio. **Bold** the key phrases.
-For each improvement area, state the requirement clearly and provide concrete, actionable suggestions for how the user could address this gap. For example, suggest specific phrasings, projects to highlight, or skills to acquire.
+For each section (Key Strengths, Improvement Areas), first provide a concise one-sentence summary. Then, provide a list of detailed bullet points. For strengths, the bullet points should cite evidence from the bio. For improvements, the bullet points should offer concrete, actionable suggestions.
 
 Job Description:
 {{{jobDescription}}}
