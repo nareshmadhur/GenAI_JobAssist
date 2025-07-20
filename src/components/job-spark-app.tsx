@@ -348,8 +348,7 @@ export function JobSparkApp() {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        // Don't set generationType from storage, always default to coverLetter
-        form.reset({ jobDescription: parsedData.jobDescription || "", bio: parsedData.bio || "" }, { keepDefaultValues: true });
+        form.reset({ jobDescription: parsedData.jobDescription || "", bio: parsedData.bio || "" });
       }
     } catch (e) {
       console.error("Failed to load or parse data from localStorage", e);
@@ -372,14 +371,16 @@ export function JobSparkApp() {
     setError(null);
     setAllResults(null);
     setCurrentResponse("");
-    setActiveTab(data.generationType);
-    setLastSubmittedData(data);
+    // Default to cover letter on new generation
+    const generationType = 'coverLetter';
+    setActiveTab(generationType);
+    setLastSubmittedData({ ...data, generationType });
 
     startInitialGeneration(async () => {
-      const response = await generateInitialAction(data);
+      const response = await generateInitialAction({ ...data, generationType });
       if (response.success) {
         setAllResults(response.data);
-        const resultForTab = response.data[data.generationType];
+        const resultForTab = response.data[generationType];
         if (resultForTab && 'responses' in resultForTab) {
           setCurrentResponse(resultForTab.responses || "");
         }
@@ -453,7 +454,7 @@ export function JobSparkApp() {
   };
 
   const handleClear = () => {
-    form.reset({ jobDescription: "", bio: "", generationType: 'coverLetter' });
+    form.reset({ jobDescription: "", bio: "" });
     setAllResults(null);
     setCurrentResponse("");
     setLastSubmittedData(null);
@@ -529,30 +530,6 @@ export function JobSparkApp() {
           <CardContent>
             <FormProvider {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="generationType"
-                  render={({ field }) => (
-                    <FormItem>
-                       <FormLabel>Select Output</FormLabel>
-                      <FormControl>
-                          <Tabs
-                            value={field.value}
-                            onValueChange={field.onChange}
-                            className="w-full"
-                          >
-                            <TabsList className="grid w-full grid-cols-4">
-                              <TabsTrigger value="coverLetter" className="flex-1"><FileText className="mr-2 h-4 w-4" />Cover Letter</TabsTrigger>
-                              <TabsTrigger value="cv" className="flex-1"><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
-                              <TabsTrigger value="qAndA" className="flex-1"><MessageSquareMore className="mr-2 h-4 w-4" />Q&A</TabsTrigger>
-                              <TabsTrigger value="deepAnalysis" className="flex-1"><FileJson className="mr-2 h-4 w-4" />Deep Analysis</TabsTrigger>
-                            </TabsList>
-                          </Tabs>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={form.control}
                   name="jobDescription"
@@ -640,3 +617,5 @@ export function JobSparkApp() {
     </div>
   );
 }
+
+    
