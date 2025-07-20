@@ -151,17 +151,15 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete }: { o
   )
 }
 
-function GeneratedResponse({ control, initialValue }: { control: any, initialValue: string }) {
-  const [response, setResponse] = useState(initialValue);
-  
+function GeneratedResponse({ initialValue, onValueChange }: { initialValue: string, onValueChange: (value: string) => void }) {
   useEffect(() => {
-    setResponse(initialValue);
-  }, [initialValue]);
+    onValueChange(initialValue);
+  }, [initialValue, onValueChange]);
 
   return (
      <Textarea
-        value={response}
-        onChange={(e) => setResponse(e.target.value)}
+        value={initialValue}
+        onChange={(e) => onValueChange(e.target.value)}
         className="min-h-[250px] font-code bg-background"
         aria-label="Generated Response"
       />
@@ -286,7 +284,7 @@ export function JobSparkApp() {
                 <CopyButton textToCopy={currentResponse} />
               </CardHeader>
               <CardContent>
-                  <GeneratedResponse control={form.control} initialValue={currentResponse} />
+                <GeneratedResponse initialValue={currentResponse} onValueChange={setCurrentResponse} />
               </CardContent>
             </Card>
 
@@ -308,7 +306,7 @@ export function JobSparkApp() {
                     <CheckCircle2 className="h-5 w-5 mr-2 text-green-500" />
                     Your Strengths
                   </h3>
-                  <div className="space-y-2 text-muted-foreground">
+                  <div className="prose prose-sm text-muted-foreground max-w-none">
                     {result.analysis.matches.map((item, index) => <Markdown key={`match-${index}`} components={{p: ({children}) => <p className="list-item ml-5">{children}</p>}}>{item}</Markdown>)}
                   </div>
                 </div>
@@ -317,7 +315,7 @@ export function JobSparkApp() {
                     <XCircle className="h-5 w-5 mr-2 text-red-500" />
                     Potential Gaps
                   </h3>
-                   <div className="space-y-2 text-muted-foreground">
+                   <div className="prose prose-sm text-muted-foreground max-w-none">
                     {result.analysis.gaps.map((item, index) => <Markdown key={`gap-${index}`} components={{p: ({children}) => <p className="list-item ml-5">{children}</p>}}>{item}</Markdown>)}
                   </div>
                 </div>
