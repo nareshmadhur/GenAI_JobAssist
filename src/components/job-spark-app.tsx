@@ -94,20 +94,26 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
   const { toast } = useToast();
 
   const copy = async () => {
-    // For plain text, remove the markdown bold characters.
     const plainText = textToCopy.replace(/\*\*/g, '');
 
     try {
-      // For rich text, convert markdown to a React element, then to an HTML string.
-      // This is a simplified approach. It won't work in a server component without a library like 'react-dom/server'.
-      // In a client component, we can mount it to a hidden div to get the HTML.
       const reactElement = compiler(textToCopy, { forceBlock: true });
       const tempDiv = document.createElement('div');
-      // Temporarily render to a hidden div to get HTML. This is a client-side trick.
-      // Note: This relies on browser APIs.
-      const ReactDOM = (await import('react-dom')).default;
-      const root = ReactDOM.createRoot(tempDiv);
-      root.render(reactElement);
+      
+      const ReactDOMClient = (await import('react-dom/client'));
+      const root = ReactDOMClient.createRoot(tempDiv);
+      
+      // We need a way to know when rendering is complete.
+      // `render` is async, so we wrap it to await its completion.
+      await new Promise<void>(resolve => {
+        root.render(
+          <React.Fragment>
+            {reactElement}
+            <script onLoad={() => resolve()}></script>
+          </React.Fragment>
+        );
+      });
+
       const html = tempDiv.innerHTML;
       
       const blobHtml = new Blob([html], { type: 'text/html' });
@@ -124,7 +130,6 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy rich text, falling back to plain text:", err);
-      // Fallback to plain text if rich text copy fails.
       navigator.clipboard.writeText(plainText).then(() => {
         setIsCopied(true);
         toast({ title: "Copied as plain text!" });
