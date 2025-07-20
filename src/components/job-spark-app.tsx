@@ -414,12 +414,11 @@ export function JobSparkApp() {
 
   const { toast } = useToast();
   
-  const form = useForm<JobApplicationData>({
-    resolver: zodResolver(JobApplicationSchema),
+  const form = useForm<Omit<JobApplicationData, 'generationType'>>({
+    resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
     defaultValues: {
       jobDescription: "",
       bio: "",
-      generationType: 'coverLetter',
     },
   });
 
@@ -428,7 +427,7 @@ export function JobSparkApp() {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        form.reset({ jobDescription: parsedData.jobDescription || "", bio: parsedData.bio || "", generationType: 'coverLetter' });
+        form.reset({ jobDescription: parsedData.jobDescription || "", bio: parsedData.bio || "" });
       }
     } catch (e) {
       console.error("Failed to load or parse data from localStorage", e);
@@ -436,33 +435,31 @@ export function JobSparkApp() {
   }, [form]);
 
   useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-       if (name !== 'generationType') {
-          try {
-            const dataToSave = { jobDescription: value.jobDescription, bio: value.bio };
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
-          } catch (e) {
-            console.error("Failed to save data to localStorage", e);
-          }
+    const subscription = form.watch((value) => {
+       try {
+         const dataToSave = { jobDescription: value.jobDescription, bio: value.bio };
+         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
+       } catch (e) {
+         console.error("Failed to save data to localStorage", e);
        }
     });
     return () => subscription.unsubscribe();
   }, [form.watch]);
 
-  const onSubmit = (data: JobApplicationData) => {
+  const onSubmit = (data: Omit<JobApplicationData, 'generationType'>) => {
     setError(null);
     setAllResults(null);
     setCurrentResponse("");
-    const generationType = data.generationType || 'coverLetter';
-    setActiveTab(generationType);
-    setLastSubmittedData({ ...data, generationType });
+    
+    const submittedData = { ...data, generationType: activeTab };
+    setLastSubmittedData(submittedData);
 
     startInitialGeneration(async () => {
-      const response = await generateInitialAction({ ...data, generationType });
+      const response = await generateInitialAction(submittedData);
       if (response.success) {
         setAllResults(response.data);
-        if (generationType === 'coverLetter' || generationType === 'cv') {
-            const resultForTab = response.data[generationType];
+        if (activeTab === 'coverLetter' || activeTab === 'cv') {
+            const resultForTab = response.data[activeTab];
             if (resultForTab && 'responses' in resultForTab) {
               setCurrentResponse(resultForTab.responses || "");
             }
@@ -475,18 +472,17 @@ export function JobSparkApp() {
   }
   
   const onTabChange = (newTab: string) => {
-    if (!lastSubmittedData || isSwitching) return;
     const newGenType = newTab as GenerationType;
     setActiveTab(newGenType);
+    
+    // If we haven't generated anything yet, just switch tabs locally.
+    if (!lastSubmittedData || isSwitching) return;
     
     const existingResult = allResults?.[newGenType];
     if (existingResult) {
        if (newGenType === 'coverLetter' || newGenType === 'cv') {
          setCurrentResponse((existingResult as any).responses || "");
        }
-       // This was returning early and causing blank views for Analysis/Q&A. 
-       // The view now re-renders correctly based on activeTab, so we don't need to do anything special here.
-       // The `renderContent` function will handle displaying the existing data.
        return;
     }
 
@@ -499,7 +495,7 @@ export function JobSparkApp() {
           }
       } else {
         toast({ variant: "destructive", title: "Failed to switch", description: result.error });
-        setActiveTab(activeTab); // Revert on failure
+        // Don't revert on failure, let user see the error and stay on the tab they clicked.
       }
     });
   }
@@ -535,6 +531,7 @@ export function JobSparkApp() {
     setAllResults(null);
     setCurrentResponse("");
     setLastSubmittedData(null);
+    setError(null);
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     } catch (e) {
@@ -562,7 +559,7 @@ export function JobSparkApp() {
   const isPending = isGenerating || isSwitching;
 
   const renderContent = () => {
-    if (isPending) return <OutputSkeletons />;
+    if (isPending && !allResults) return <OutputSkeletons />;
   
     switch (activeTab) {
       case 'coverLetter':
@@ -586,7 +583,7 @@ export function JobSparkApp() {
             </Card>
             {lastSubmittedData && (
               <RevisionForm 
-                originalData={lastSubmittedData}
+                originalData={{...lastSubmittedData, generationType: activeTab}}
                 currentResponse={debouncedEditableResponse} 
                 onRevisionComplete={handleRevisionComplete}
                 generationType={activeTab}
@@ -596,9 +593,9 @@ export function JobSparkApp() {
           </>
         );
       case 'deepAnalysis':
-        return allResults?.deepAnalysis ? <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} /> : <OutputSkeletons />;
+        return allResults?.deepAnalysis ? <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} /> : (isSwitching ? <OutputSkeletons /> : null);
       case 'qAndA':
-        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} isSwitching={isSwitching} /> : <OutputSkeletons />;
+        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} isSwitching={isSwitching} /> : (isSwitching ? <OutputSkeletons /> : null);
       default:
         return null;
     }
@@ -612,37 +609,12 @@ export function JobSparkApp() {
           <CardHeader>
             <CardTitle>Your Information</CardTitle>
             <CardDescription className="prose-sm">
-              Select an output, provide your info, and let the AI work its magic.
+              Provide your info below and let the AI work its magic.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <FormProvider {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="generationType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Select Output</FormLabel>
-                      <FormControl>
-                        <Tabs
-                          defaultValue={field.value}
-                          onValueChange={(value) => field.onChange(value as GenerationType)}
-                          className="w-full"
-                        >
-                          <TabsList className="grid w-full grid-cols-4">
-                            <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4 shrink-0" />Letter</TabsTrigger>
-                            <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4 shrink-0" />CV</TabsTrigger>
-                            <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4 shrink-0" />Q&A</TabsTrigger>
-                            <TabsTrigger value="deepAnalysis" disabled={isPending}><Lightbulb className="mr-2 h-4 w-4 shrink-0" />Analysis</TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
                 <FormField
                   control={form.control}
                   name="jobDescription"
@@ -702,33 +674,31 @@ export function JobSparkApp() {
 
       {/* Output Column */}
       <div className="flex flex-col gap-8">
+        <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4 shrink-0" />Letter</TabsTrigger>
+            <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4 shrink-0" />CV</TabsTrigger>
+            <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4 shrink-0" />Q&A</TabsTrigger>
+            <TabsTrigger value="deepAnalysis" disabled={isPending}><Lightbulb className="mr-2 h-4 w-4 shrink-0" />Analysis</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         {isGenerating && !allResults && <OutputSkeletons />}
-        {error && !isPending && !allResults &&(
+        
+        {error && !isPending && !allResults && (
           <Alert variant="destructive">
             <Info className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription className="prose-sm">{error}</AlertDescription>
           </Alert>
         )}
+
         {allResults && (
-          <div className="space-y-4">
-             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4 shrink-0" />Letter</TabsTrigger>
-                <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4 shrink-0" />CV</TabsTrigger>
-                <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4 shrink-0" />Q&A</TabsTrigger>
-                <TabsTrigger value="deepAnalysis" disabled={isPending}><Lightbulb className="mr-2 h-4 w-4 shrink-0" />Analysis</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            
-            <div className="space-y-8">
-              {renderContent()}
-            </div>
+          <div className="space-y-8">
+            {renderContent()}
           </div>
         )}
       </div>
     </div>
   );
 }
-
-    
