@@ -19,9 +19,9 @@ export type DeepAnalysisInput = z.infer<typeof DeepAnalysisInputSchema>;
 
 const DeepAnalysisOutputSchema = z.object({
   jobSummary: z.string().describe("A professional summary of the job description, abstracting jargon and focusing on key takeaways, with important elements bolded. If relevant, it may also include comments on the job description's structure, language, and tone."),
-  keyStrengths: z.array(z.string()).describe("A list of specific bullet points providing evidence for user's key strengths against the job description. Each bullet point MUST start with a bolded category (e.g., '**Experience Match (Project Management):** ...')."),
-  gaps: z.array(z.string()).describe("A list of specific bullet points providing evidence for user's gaps against the job description. Each bullet point MUST start with a bolded category (e.g., '**Missing Skill (Python):** ...')."),
-  improvementAreas: z.array(z.string()).describe("A list of specific bullet points providing areas where the user's bio could be improved for this role. Each bullet point MUST start with a bolded category (e.g., '**Actionable Advice (Quantify Achievements):** ...')."),
+  keyStrengths: z.array(z.string()).describe("A list of specific bullet points providing evidence for user's key strengths against the job description. Each bullet point MUST start with a bolded category and sub-category (e.g., '**Experience Match - Project Management:** ...')."),
+  gaps: z.array(z.string()).describe("A list of specific bullet points providing evidence for user's gaps against the job description. Each bullet point MUST start with a bolded category and sub-category (e.g., '**Missing Skill - Python:** ...')."),
+  improvementAreas: z.array(z.string()).describe("A list of specific bullet points providing areas where the user's bio could be improved for this role. Each bullet point MUST start with a bolded category and sub-category (e.g., '**Actionable Advice - Quantify Achievements:** ...')."),
 });
 
 export type DeepAnalysisOutput = z.infer<typeof DeepAnalysisOutputSchema>;
@@ -42,14 +42,14 @@ First, act as a professional in the field of the job description and write a con
 
 Then, generate three distinct sections: Key Strengths, Gaps, and Improvement Areas.
 
-**IMPORTANT FORMATTING RULE**: Every single bullet point you generate for Key Strengths, Gaps, and Improvement Areas MUST begin with a concise, bolded category followed by a colon. After the category, you MUST include a 2-4 word sub-category in parentheses that specifies the detail being discussed.
+**IMPORTANT FORMATTING RULE**: Every single bullet point you generate for Key Strengths, Gaps, and Improvement Areas MUST begin with a concise, bolded category followed by a hyphen, a 2-4 word sub-category, and then a colon.
 
 1.  **Key Strengths**: Identify direct matches between the user's bio and the job description. Cite specific evidence from the bio.
-    *   Example: **Experience Match (Agile Methodologies):** Your background in Agile aligns well with the stated requirement for Scrum expertise.
+    *   Example: **Experience Match - Agile Methodologies:** Your background in Agile aligns well with the stated requirement for Scrum expertise.
 2.  **Gaps**: Identify specific requirements from the job description that are clearly **missing** from the user's bio. This is about factual omissions, not style.
-    *   Example: **Missing Skill (Python):** The job description asks for Python experience, which is not mentioned in your bio.
+    *   Example: **Missing Skill - Python:** The job description asks for Python experience, which is not mentioned in your bio.
 3.  **Improvement Areas**: Provide actionable advice on how to **better present** the information that is already in the bio. This is about enhancing the existing content, not pointing out what's missing.
-    *   Example: **Actionable Advice (Quantify Achievements):** Consider adding metrics to your project management experience, such as 'managed a team of 5 and delivered the project 10% under budget'.
+    *   Example: **Actionable Advice - Quantify Achievements:** Consider adding metrics to your project management experience, such as 'managed a team of 5 and delivered the project 10% under budget'.
 
 Job Description:
 {{{jobDescription}}}
