@@ -1,10 +1,10 @@
 
 "use client";
 
-import React, { useState, useTransition, useEffect, useCallback } from "react";
+import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, FileJson, Briefcase } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, FileJson, Briefcase, BotMessageSquare, Lightbulb, Target } from "lucide-react";
 import Markdown from 'react-markdown';
 
 import { Button } from "@/components/ui/button";
@@ -26,9 +26,9 @@ import {
   ReviseResponseSchema,
   type JobApplicationData, 
   type ReviseResponseData,
-  type GenerationResult 
 } from "@/lib/schemas";
-import { generateAction, reviseAction } from "@/app/actions";
+import { generateInitialAction, generateSingleAction, reviseAction, AllGenerationResults } from "@/app/actions";
+import { DeepAnalysisOutput, GenerateCvOutput, GenerateCoverLetterOutput } from "@/ai/flows"; // Assuming barrel export
 import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -51,7 +51,6 @@ function useDebounce<T>(value: T, delay: number): T {
 
   return debouncedValue;
 }
-
 
 function OutputSkeletons() {
   return (
@@ -95,8 +94,7 @@ function CopyButton({ textToCopy }: { textToCopy: string }) {
   );
 }
 
-function RevisionForm({ originalData, currentResponse, onRevisionComplete, generationType }: { originalData: JobApplicationData, currentResponse: string, onRevisionComplete: (newResponse: string) => void, generationType: GenerationType }) {
-  const [isPending, startTransition] = useTransition();
+function RevisionForm({ originalData, currentResponse, onRevisionComplete, generationType, isRevising }: { originalData: JobApplicationData, currentResponse: string, onRevisionComplete: (newResponse: string) => void, generationType: GenerationType, isRevising: boolean }) {
   const { toast } = useToast();
   
   const revisionForm = useForm<ReviseResponseData>({
@@ -117,25 +115,11 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
       revisionComments: "",
       generationType,
     });
-  // The `reset` function from react-hook-form is stable and doesn't need to be a dependency.
-  // We only want this effect to run when the AI-generated response (`currentResponse`) or the initial form data changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentResponse, originalData.jobDescription, originalData.bio, generationType]);
+  }, [currentResponse, originalData.jobDescription, originalData.bio, generationType, revisionForm.reset]);
 
 
   async function onRevise(data: ReviseResponseData) {
-    startTransition(async () => {
-      const result = await reviseAction(data);
-      if (result.success) {
-        onRevisionComplete(result.data.responses);
-      } else {
-         toast({
-          variant: "destructive",
-          title: "Revision Failed",
-          description: result.error,
-        });
-      }
-    });
+    onRevisionComplete(await reviseAction(data));
   }
   
   return (
@@ -164,8 +148,8 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
-              {isPending ? (
+            <Button type="submit" disabled={isRevising} className="w-full sm:w-auto">
+              {isRevising ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Wand2 className="mr-2 h-4 w-4" />
@@ -179,12 +163,10 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
   )
 }
 
-function GeneratedResponse({ initialValue, onValueChange }: { initialValue: string, onValueChange: (value: string) => void }) {
+function GeneratedResponse({ initialValue, onValueChange, isSaving }: { initialValue: string, onValueChange: (value: string) => void, isSaving: boolean }) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(initialValue);
 
-  // When the initial value changes (i.e. a new response is generated),
-  // update our local state and exit edit mode.
   useEffect(() => {
     setLocalValue(initialValue);
     setIsEditing(false);
@@ -193,10 +175,6 @@ function GeneratedResponse({ initialValue, onValueChange }: { initialValue: stri
   const handleSave = () => {
     onValueChange(localValue);
     setIsEditing(false);
-  };
-
-  const handleEdit = () => {
-    setIsEditing(true);
   };
 
   return (
@@ -209,8 +187,8 @@ function GeneratedResponse({ initialValue, onValueChange }: { initialValue: stri
             className="min-h-[250px] font-code bg-background"
             aria-label="Generated Response"
           />
-          <Button variant="ghost" size="icon" onClick={handleSave} className="absolute top-2 right-2">
-            <Save className="h-4 w-4" />
+           <Button variant="ghost" size="icon" onClick={handleSave} className="absolute top-2 right-2" disabled={isSaving}>
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4" />}
           </Button>
         </>
       ) : (
@@ -218,7 +196,7 @@ function GeneratedResponse({ initialValue, onValueChange }: { initialValue: stri
           <div className="prose prose-sm max-w-none p-4 min-h-[250px] rounded-md border bg-background font-code whitespace-pre-wrap">
              <Markdown>{localValue}</Markdown>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleEdit} className="absolute top-2 right-2">
+          <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="absolute top-2 right-2">
             <Edit className="h-4 w-4" />
           </Button>
         </>
@@ -227,19 +205,88 @@ function GeneratedResponse({ initialValue, onValueChange }: { initialValue: stri
   );
 }
 
+function DeepAnalysisView({ analysis }: { analysis: DeepAnalysisOutput }) {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="h-6 w-6 text-primary" />
+            Overall Alignment: {analysis.overallAlignment.score}
+          </CardTitle>
+          <CardDescription>{analysis.overallAlignment.justification}</CardDescription>
+        </CardHeader>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle2 className="h-6 w-6 text-green-500" />
+            Key Strengths
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {analysis.keyStrengths.map((item, index) => (
+            <div key={index} className="p-3 rounded-md border bg-green-500/10">
+              <p className="font-semibold text-green-800">Requirement:</p>
+              <Markdown className="prose prose-sm max-w-none text-muted-foreground">{item.requirement}</Markdown>
+              <p className="font-semibold mt-2 text-green-800">Evidence:</p>
+              <Markdown className="prose prose-sm max-w-none text-muted-foreground">{item.evidence}</Markdown>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+       <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lightbulb className="h-6 w-6 text-yellow-500" />
+            Improvement Areas
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+           {analysis.improvementAreas.map((item, index) => (
+            <div key={index} className="p-3 rounded-md border bg-yellow-500/10">
+              <p className="font-semibold text-yellow-800">Gap:</p>
+              <Markdown className="prose prose-sm max-w-none text-muted-foreground">{item.requirement}</Markdown>
+              <p className="font-semibold mt-2 text-yellow-800">Suggestion:</p>
+              <Markdown className="prose prose-sm max-w-none text-muted-foreground">{item.suggestion}</Markdown>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BotMessageSquare className="h-6 w-6 text-blue-500" />
+            Language & Tone Assessment
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <p className="font-semibold text-blue-800">Analysis:</p>
+          <Markdown className="prose prose-sm max-w-none text-muted-foreground">{analysis.languageAndTone.analysis}</Markdown>
+          <p className="font-semibold mt-2 text-blue-800">Suggestion:</p>
+          <Markdown className="prose prose-sm max-w-none text-muted-foreground">{analysis.languageAndTone.suggestion}</Markdown>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 export function JobSparkApp() {
-  const [isPending, startTransition] = useTransition();
-  const [result, setResult] = useState<GenerationResult | null>(null);
+  const [isGenerating, startInitialGeneration] = useTransition();
+  const [isSwitching, startSwitchingTab] = useTransition();
+  const [isRevising, startRevising] = useTransition();
+
+  const [allResults, setAllResults] = useState<AllGenerationResults | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastSubmittedData, setLastSubmittedData] = useState<JobApplicationData | null>(null);
-  // This is the "canonical" response from the AI
-  const [aiResponse, setAiResponse] = useState<string>("");
-  // This is the user-editable version of the response
-  const [editableResponse, setEditableResponse] = useState<string>("");
+  const [lastSubmittedData, setLastSubmittedData] = useState<Omit<JobApplicationData, 'generationType'> | null>(null);
 
-  const debouncedEditableResponse = useDebounce(editableResponse, 500);
-
+  const [currentResponse, setCurrentResponse] = useState<string>("");
   const [generationType, setGenerationType] = useState<GenerationType>('coverLetter');
+
+  const debouncedEditableResponse = useDebounce(currentResponse, 500);
 
   const { toast } = useToast();
   
@@ -253,26 +300,18 @@ export function JobSparkApp() {
     },
   });
 
-  // Load from localStorage on mount
   useEffect(() => {
     try {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        const validationResult = formSchema.partial().safeParse(parsedData);
-        if (validationResult.success) {
-          form.reset(validationResult.data);
-        }
+        form.reset(parsedData);
       }
     } catch (e) {
       console.error("Failed to load or parse data from localStorage", e);
     }
-    // Eslint-disable is required here to prevent re-renders on form changes
-    // which would cause an infinite loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [form.reset]);
 
-  // Save to localStorage on change
   useEffect(() => {
     const subscription = form.watch((value) => {
       try {
@@ -284,47 +323,81 @@ export function JobSparkApp() {
     return () => subscription.unsubscribe();
   }, [form.watch]);
 
-
   const onSubmit = (data: Omit<JobApplicationData, 'generationType'>) => {
     setError(null);
-    setResult(null);
-    setAiResponse("");
-    setEditableResponse("");
+    setAllResults(null);
+    setCurrentResponse("");
 
-    const fullData: JobApplicationData = { ...data, generationType };
-    setLastSubmittedData(fullData);
+    const fullData: JobApplicationData = { ...data, generationType: 'coverLetter' };
+    setLastSubmittedData(data);
+    setGenerationType('coverLetter');
 
-    startTransition(async () => {
-      const response = await generateAction(fullData);
+    startInitialGeneration(async () => {
+      const response = await generateInitialAction(fullData);
       if (response.success) {
-        setResult(response.data);
-        setAiResponse(response.data.response.responses);
-        setEditableResponse(response.data.response.responses);
+        setAllResults(response.data);
+        setCurrentResponse(response.data.coverLetter?.responses || "");
       } else {
         setError(response.error);
-        toast({
-          variant: "destructive",
-          title: "Generation Failed",
-          description: response.error,
-        });
+        toast({ variant: "destructive", title: "Generation Failed", description: response.error });
+      }
+    });
+  }
+  
+  const onTabChange = (newTab: GenerationType) => {
+    if (!lastSubmittedData || isSwitching || newTab === generationType) return;
+    setGenerationType(newTab);
+    
+    const existingResult = allResults?.[newTab];
+    if (existingResult && 'responses' in existingResult) {
+       setCurrentResponse(existingResult.responses);
+       return;
+    }
+
+    startSwitchingTab(async () => {
+      const result = await generateSingleAction({ ...lastSubmittedData, generationType: newTab });
+      if (result.success) {
+        setAllResults(prev => ({ ...prev!, [newTab]: result.data }));
+        if ('responses' in result.data) {
+          setCurrentResponse(result.data.responses);
+        }
+      } else {
+        toast({ variant: "destructive", title: "Failed to switch", description: result.error });
       }
     });
   }
 
-  const handleRevisionComplete = (newResponse: string) => {
-    setAiResponse(newResponse);
-    setEditableResponse(newResponse);
+  const handleRevisionComplete = (result: any) => {
+      if (result.success) {
+        const newResponseText = result.data.responses;
+        setCurrentResponse(newResponseText);
+        setAllResults(prev => ({...prev!, [generationType]: { responses: newResponseText }}));
+      } else {
+         toast({
+          variant: "destructive",
+          title: "Revision Failed",
+          description: result.error,
+        });
+      }
+  };
+
+  const handleManualEdit = (newValue: string) => {
+      setCurrentResponse(newValue);
+      setAllResults(prev => ({...prev!, [generationType]: { responses: newValue }}));
   };
 
   const handleClear = () => {
     form.reset({ jobDescription: "", bio: "" });
+    setAllResults(null);
+    setCurrentResponse("");
+    setLastSubmittedData(null);
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     } catch (e) {
       console.error("Failed to clear data from localStorage", e);
     }
   };
-
+  
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if ((event.altKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault();
@@ -340,19 +413,14 @@ export function JobSparkApp() {
   }, [handleKeyDown]);
 
   const renderMarkdownList = (items: string[]) => {
-    return items.map((item, index) => {
-      return <Markdown key={index} components={{p: ({children}) => <li className="list-item ml-5">{children}</li>}}>{item}</Markdown>
-    })
-  }
+    return items.map((item, index) => (
+      <li key={index}>
+        <Markdown components={{ p: Fragment }}>{item}</Markdown>
+      </li>
+    ));
+  };
   
-  const getTabTitle = () => {
-    switch(generationType) {
-      case 'coverLetter': return 'Your Tailored Cover Letter';
-      case 'cv': return 'Your Generated CV';
-      case 'deepAnalysis': return 'Deep Analysis & Feedback';
-      default: return 'Your Tailored Response';
-    }
-  }
+  const isPending = isGenerating || isSwitching;
 
   return (
     <div className="grid md:grid-cols-2 gap-8 w-full p-4 sm:p-6 md:p-8">
@@ -365,14 +433,6 @@ export function JobSparkApp() {
           <CardContent>
             <FormProvider {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                 <Tabs value={generationType} onValueChange={(value) => setGenerationType(value as GenerationType)} className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="coverLetter"><FileText className="mr-2 h-4 w-4" />Cover Letter</TabsTrigger>
-                    <TabsTrigger value="cv"><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
-                    <TabsTrigger value="deepAnalysis"><FileJson className="mr-2 h-4 w-4" />Deep Analysis</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-
                 <FormField
                   control={form.control}
                   name="jobDescription"
@@ -411,8 +471,8 @@ export function JobSparkApp() {
                   )}
                 />
                 <div className="flex flex-wrap gap-2">
-                  <Button type="submit" disabled={isPending} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
-                    {isPending ? (
+                  <Button type="submit" disabled={isGenerating} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
+                    {isGenerating ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Sparkles className="mr-2 h-4 w-4" />
@@ -432,67 +492,84 @@ export function JobSparkApp() {
 
       {/* Output Column */}
       <div className="flex flex-col gap-8">
-        {isPending && !result && <OutputSkeletons />}
-        {error && !result &&(
+        {isGenerating && !allResults && <OutputSkeletons />}
+        {error && !allResults &&(
           <Alert variant="destructive">
             <Info className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-        {result && (
-          <div className="space-y-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>{getTabTitle()}</CardTitle>
-                <CopyButton textToCopy={editableResponse} />
-              </CardHeader>
-              <CardContent>
-                <GeneratedResponse initialValue={aiResponse} onValueChange={setEditableResponse} />
-              </CardContent>
-            </Card>
+        {allResults && (
+          <>
+             <Tabs value={generationType} onValueChange={(v) => onTabChange(v as GenerationType)} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="coverLetter"><FileText className="mr-2 h-4 w-4" />Cover Letter</TabsTrigger>
+                <TabsTrigger value="cv"><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
+                <TabsTrigger value="deepAnalysis"><FileJson className="mr-2 h-4 w-4" />Deep Analysis</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
+            <div className="space-y-8">
+              {isSwitching ? <OutputSkeletons /> : (
+                <>
+                  {generationType === 'deepAnalysis' ? (
+                     allResults.deepAnalysis ? <DeepAnalysisView analysis={allResults.deepAnalysis} /> : <p>No analysis generated.</p>
+                  ) : (
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>Your Tailored {generationType === 'cv' ? 'CV' : 'Cover Letter'}</CardTitle>
+                        <CopyButton textToCopy={currentResponse} />
+                      </CardHeader>
+                      <CardContent>
+                        <GeneratedResponse initialValue={currentResponse} onValueChange={handleManualEdit} isSaving={isRevising}/>
+                      </CardContent>
+                    </Card>
+                  )}
 
-            {lastSubmittedData && (
-              <RevisionForm 
-                originalData={lastSubmittedData} 
-                currentResponse={debouncedEditableResponse} 
-                onRevisionComplete={handleRevisionComplete}
-                generationType={generationType}
-              />
-            )}
-
-            {generationType !== 'deepAnalysis' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Analysis & Insights</CardTitle>
-                </CardHeader>
-                <CardContent className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h3 className="flex items-center font-semibold text-lg">
-                      <CheckCircle2 className="h-5 w-5 mr-2 text-green-500" />
-                      Your Strengths
-                    </h3>
-                    <div className="prose prose-sm text-muted-foreground max-w-none">
-                      <ul>{renderMarkdownList(result.analysis.matches)}</ul>
-                    </div>
-                  </div>
-                   <div className="space-y-4">
-                    <h3 className="flex items-center font-semibold text-lg">
-                      <XCircle className="h-5 w-5 mr-2 text-red-500" />
-                      Potential Gaps
-                    </h3>
-                     <div className="prose prose-sm text-muted-foreground max-w-none">
-                       <ul>{renderMarkdownList(result.analysis.gaps)}</ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                  {lastSubmittedData && generationType !== 'deepAnalysis' && (
+                    <RevisionForm 
+                      originalData={{...lastSubmittedData, generationType}}
+                      currentResponse={debouncedEditableResponse} 
+                      onRevisionComplete={(res) => startRevising(async () => handleRevisionComplete(res))}
+                      generationType={generationType}
+                      isRevising={isRevising}
+                    />
+                  )}
+                  
+                  {generationType !== 'deepAnalysis' && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Analysis & Insights</CardTitle>
+                      </CardHeader>
+                      <CardContent className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <h3 className="flex items-center font-semibold text-lg">
+                            <CheckCircle2 className="h-5 w-5 mr-2 text-green-500" />
+                            Your Strengths
+                          </h3>
+                          <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
+                            {renderMarkdownList(allResults.analysis.matches)}
+                          </ul>
+                        </div>
+                         <div className="space-y-4">
+                          <h3 className="flex items-center font-semibold text-lg">
+                            <XCircle className="h-5 w-5 mr-2 text-red-500" />
+                            Potential Gaps
+                          </h3>
+                           <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
+                             {renderMarkdownList(allResults.analysis.gaps)}
+                          </ul>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
+            </div>
+          </>
         )}
       </div>
     </div>
   );
 }
-
-    
