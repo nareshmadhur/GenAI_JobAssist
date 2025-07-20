@@ -114,12 +114,13 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
     revisionForm.reset({
       ...originalData,
       originalResponse: currentResponse,
-      revisionComments: ""
+      revisionComments: "",
+      generationType,
     });
   // The `reset` function from react-hook-form is stable and doesn't need to be a dependency.
   // We only want this effect to run when the AI-generated response (`currentResponse`) or the initial form data changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentResponse, originalData.jobDescription, originalData.bio]);
+  }, [currentResponse, originalData.jobDescription, originalData.bio, generationType]);
 
 
   async function onRevise(data: ReviseResponseData) {
@@ -266,7 +267,10 @@ export function JobSparkApp() {
     } catch (e) {
       console.error("Failed to load or parse data from localStorage", e);
     }
-  }, [form, formSchema]);
+    // Eslint-disable is required here to prevent re-renders on form changes
+    // which would cause an infinite loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Save to localStorage on change
   useEffect(() => {
@@ -490,3 +494,5 @@ export function JobSparkApp() {
     </div>
   );
 }
+
+    
