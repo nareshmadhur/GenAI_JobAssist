@@ -224,65 +224,77 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving, isSwitching 
 
 function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }) {
   const renderDetails = (details: string[]) => {
-    return details.map((item, index) => (
-      <li key={index} className="ml-5">
-          <Markdown components={{ p: Fragment }}>{item}</Markdown>
-      </li>
-    ));
+    return (
+        <ul className="prose prose-sm max-w-none list-disc pl-5 space-y-2">
+          {details.map((item, index) => (
+            <li key={index} className="ml-5">
+                <Markdown components={{ p: Fragment }}>{item}</Markdown>
+            </li>
+          ))}
+        </ul>
+    );
   };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
+          <CardTitle className="flex items-center gap-2">
             <Target className="h-6 w-6 text-primary" />
             Overall Alignment: {deepAnalysis.overallAlignment.score}
           </CardTitle>
-          <CardDescription>{deepAnalysis.overallAlignment.justification}</CardDescription>
+          <CardDescription className="prose-sm">{deepAnalysis.overallAlignment.justification}</CardDescription>
         </CardHeader>
       </Card>
       
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
+          <CardTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-6 w-6 text-green-500" />
             Key Strengths
           </CardTitle>
         </CardHeader>
         <CardContent>
-            <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
-              {renderDetails(deepAnalysis.keyStrengths.details)}
-            </ul>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <Wand2 className="h-6 w-6 text-yellow-500" />
-            Improvement Areas
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
-            {renderDetails(deepAnalysis.improvementAreas.details)}
-          </ul>
+            {renderDetails(deepAnalysis.keyStrengths.details)}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
+          <CardTitle className="flex items-center gap-2">
+            <XCircle className="h-6 w-6 text-red-500" />
+            Gaps
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {renderDetails(deepAnalysis.gaps.details)}
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Wand2 className="h-6 w-6 text-yellow-500" />
+            Improvement Areas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {renderDetails(deepAnalysis.improvementAreas.details)}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
             <BotMessageSquare className="h-6 w-6 text-blue-500" />
             Language & Tone
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p className="font-semibold">Analysis:</p>
-          <Markdown className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">{deepAnalysis.languageAndTone.analysis}</Markdown>
-          <p className="font-semibold mt-2">Suggestion:</p>
-          <Markdown className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">{deepAnalysis.languageAndTone.suggestion}</Markdown>
+          <p className="font-semibold prose-sm">Analysis:</p>
+          <Markdown className="prose prose-sm max-w-none whitespace-pre-wrap">{deepAnalysis.languageAndTone.analysis}</Markdown>
+          <p className="font-semibold mt-2 prose-sm">Suggestion:</p>
+          <Markdown className="prose prose-sm max-w-none whitespace-pre-wrap">{deepAnalysis.languageAndTone.suggestion}</Markdown>
         </CardContent>
       </Card>
     </div>
@@ -294,14 +306,14 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
+          <CardTitle className="flex items-center gap-2">
             <MessageSquareMore className="h-6 w-6 text-primary" />
             Q&A
           </CardTitle>
-          <CardDescription>Answers to questions found in the job description.</CardDescription>
+          <CardDescription className="prose-sm">Answers to questions found in the job description.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No explicit questions were found in the job description.</p>
+          <p className="prose-sm">No explicit questions were found in the job description.</p>
         </CardContent>
       </Card>
     )
@@ -313,19 +325,19 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="flex items-center gap-2 text-2xl">
+          <CardTitle className="flex items-center gap-2">
             <MessageSquareMore className="h-6 w-6 text-primary" />
             Generated Answers
           </CardTitle>
-          <CardDescription>Answers for questions found in the job description.</CardDescription>
+          <CardDescription className="prose-sm">Answers for questions found in the job description.</CardDescription>
         </div>
         <CopyButton textToCopy={allAnswers} />
       </CardHeader>
       <CardContent className="space-y-6">
         {qAndA.qaPairs.map((pair, index) => (
           <div key={index} className="p-4 rounded-md border bg-muted/50 relative">
-            <p className="font-semibold text-primary mb-2 pr-10">{pair.question}</p>
-            <Markdown className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">{pair.answer}</Markdown>
+            <p className="font-semibold text-primary mb-2 pr-10 prose-sm">{pair.question}</p>
+            <Markdown className="prose prose-sm max-w-none whitespace-pre-wrap">{pair.answer}</Markdown>
             <CopyButton textToCopy={pair.answer} className="absolute top-2 right-2" />
           </div>
         ))}
@@ -504,11 +516,11 @@ export function JobSparkApp() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2 text-2xl">
+                  <CardTitle className="flex items-center gap-2">
                     {activeTab === 'cv' ? <Briefcase className="h-6 w-6 text-primary" /> : <FileText className="h-6 w-6 text-primary" />}
                     Your Tailored {activeTab === 'cv' ? 'CV' : 'Letter'}
                   </CardTitle>
-                  <CardDescription>An AI-generated draft for your review.</CardDescription>
+                  <CardDescription className="prose-sm">An AI-generated draft for your review.</CardDescription>
                 </div>
                 <CopyButton textToCopy={currentResponse} />
               </CardHeader>
@@ -543,7 +555,7 @@ export function JobSparkApp() {
         <Card className="bg-card/80 backdrop-blur-sm sticky top-24">
           <CardHeader>
             <CardTitle>Your Information</CardTitle>
-            <CardDescription>
+            <CardDescription className="prose-sm">
               Select an output, provide your info, and let the AI work its magic.
             </CardDescription>
           </CardHeader>
@@ -605,7 +617,7 @@ export function JobSparkApp() {
                           {...field}
                         />
                       </FormControl>
-                       <FormDescription>
+                       <FormDescription className="prose-sm">
                         This will be compared against the job description to find matches and gaps.
                       </FormDescription>
                       <FormMessage />

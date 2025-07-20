@@ -27,6 +27,7 @@ const DeepAnalysisOutputSchema = z.object({
       justification: z.string().describe("A brief justification for the score."),
   }),
   keyStrengths: AnalysisDetailSchema.describe("An analysis of the user's key strengths against the job description."),
+  gaps: AnalysisDetailSchema.describe("An analysis of the gaps between the user's bio and the job description."),
   improvementAreas: AnalysisDetailSchema.describe("An analysis of areas where the user's bio could be improved for this role."),
   languageAndTone: z.object({
     analysis: z.string().describe("An analysis of the job description's tone."),
@@ -48,9 +49,9 @@ const prompt = ai.definePrompt({
 
 **Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** All analysis must be grounded in the provided texts.
 
-For each section (Key Strengths, Improvement Areas), provide a list of detailed bullet points. For strengths, the bullet points should cite evidence from the bio. For improvements, the bullet points should offer concrete, actionable suggestions.
+For each section (Key Strengths, Gaps, Improvement Areas), provide a list of detailed bullet points. For strengths, the bullet points should cite evidence from the bio. For gaps, identify missing requirements. For improvements, the bullet points should offer concrete, actionable suggestions.
 
-**IMPORTANT FORMATTING RULE**: Every single bullet point you generate for Key Strengths and Improvement Areas MUST begin with a concise, bolded category followed by a colon. For example:
+**IMPORTANT FORMATTING RULE**: Every single bullet point you generate for Key Strengths, Gaps, and Improvement Areas MUST begin with a concise, bolded category followed by a colon. For example:
 - **Experience Match:** Your background in project management aligns well with the stated requirement.
 - **Missing Skill:** The job description asks for Python experience, which is not mentioned in your bio.
 - **Actionable Advice:** Consider adding a section to your bio highlighting your data analysis projects.
