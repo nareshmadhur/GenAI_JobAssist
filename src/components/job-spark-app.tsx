@@ -191,7 +191,7 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving, isSwitching 
   };
   
   if (isSwitching) {
-    return <Skeleton className="h-64 w-full" />
+    return <OutputSkeletons />
   }
 
   return (
@@ -251,7 +251,6 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
           </CardTitle>
         </CardHeader>
         <CardContent>
-            <p className="text-muted-foreground mb-3">{deepAnalysis.keyStrengths.summary}</p>
             <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
               {renderDetails(deepAnalysis.keyStrengths.details)}
             </ul>
@@ -266,7 +265,6 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground mb-3">{deepAnalysis.improvementAreas.summary}</p>
           <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
             {renderDetails(deepAnalysis.improvementAreas.details)}
           </ul>
@@ -291,11 +289,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
   )
 }
 
-function QAndAView({ qAndA, isSwitching }: { qAndA: QAndAOutput, isSwitching: boolean }) {
-  if (isSwitching) {
-    return <OutputSkeletons />
-  }
-
+function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
   if (!qAndA.questionsFound) {
     return (
       <Card>
@@ -499,6 +493,7 @@ export function JobSparkApp() {
   const isPending = isGenerating || isSwitching;
 
   const renderContent = () => {
+    if (isSwitching) return <OutputSkeletons />;
     if (isGenerating && !allResults) return <OutputSkeletons />;
   
     switch (activeTab) {
@@ -535,7 +530,7 @@ export function JobSparkApp() {
       case 'deepAnalysis':
         return allResults?.deepAnalysis ? <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} /> : <OutputSkeletons />;
       case 'qAndA':
-        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} isSwitching={isSwitching} /> : <OutputSkeletons />;
+        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} /> : <OutputSkeletons />;
       default:
         return null;
     }
