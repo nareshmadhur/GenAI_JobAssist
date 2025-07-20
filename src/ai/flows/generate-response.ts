@@ -37,14 +37,14 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateResponseOutputSchema},
   prompt: `You are a professional resume and cover letter writer.
 
-  Based on the job description, user bio, and additional comments, you will generate
-  a structured, professional, and copy-paste-ready response. This response should highlight the user's strengths
-  as they relate to the job description.
+  Based on the job description and user bio, you will generate a structured, professional, and copy-paste-ready response. This response should highlight the user's strengths as they relate to the job description.
   Make sure to tailor the responses to match the tone and style of the job description.
 
-  Job Description: {{{jobDescription}}}
-  User Bio: {{{userBio}}}
-  Additional Comments: {{{additionalComments}}}
+  Job Description:
+{{{jobDescription}}}
+
+  User Bio:
+{{{userBio}}}
 
   Response:`,
 });
