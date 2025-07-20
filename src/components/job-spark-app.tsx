@@ -574,10 +574,10 @@ export function JobSparkApp() {
                           className="w-full"
                         >
                           <TabsList className="grid w-full grid-cols-4">
-                            <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4" />Letter</TabsTrigger>
-                            <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
-                            <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4" />Q&A</TabsTrigger>
-                            <TabsTrigger value="deepAnalysis" disabled={isPending}><Lightbulb className="mr-2 h-4 w-4" />Analysis</TabsTrigger>
+                            <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4 shrink-0" />Letter</TabsTrigger>
+                            <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4 shrink-0" />CV</TabsTrigger>
+                            <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4 shrink-0" />Q&A</TabsTrigger>
+                            <TabsTrigger value="deepAnalysis" disabled={isPending}><Lightbulb className="mr-2 h-4 w-4 shrink-0" />Analysis</TabsTrigger>
                           </TabsList>
                         </Tabs>
                       </FormControl>
@@ -657,10 +657,10 @@ export function JobSparkApp() {
           <div className="space-y-4">
              <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4" />Letter</TabsTrigger>
-                <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
-                <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4" />Q&A</TabsTrigger>
-                <TabsTrigger value="deepAnalysis" disabled={isPending}><Lightbulb className="mr-2 h-4 w-4" />Analysis</TabsTrigger>
+                <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4 shrink-0" />Letter</TabsTrigger>
+                <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4 shrink-0" />CV</TabsTrigger>
+                <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4 shrink-0" />Q&A</TabsTrigger>
+                <TabsTrigger value="deepAnalysis" disabled={isPending}><Lightbulb className="mr-2 h-4 w-4 shrink-0" />Analysis</TabsTrigger>
               </TabsList>
             </Tabs>
             
