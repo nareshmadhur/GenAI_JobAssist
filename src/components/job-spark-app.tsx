@@ -108,17 +108,15 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
     },
   });
   
-  const originalResponseFromProps = originalData.originalResponse;
-
   useEffect(() => {
       revisionForm.reset({
           jobDescription: originalData.jobDescription,
           bio: originalData.bio,
-          originalResponse: originalResponseFromProps,
+          originalResponse: currentResponse,
           revisionComments: "",
           generationType,
       });
-  }, [originalResponseFromProps, originalData.jobDescription, originalData.bio, generationType, revisionForm.reset]);
+  }, [currentResponse, originalData.jobDescription, originalData.bio, generationType, revisionForm.reset]);
 
 
   async function onRevise(data: ReviseResponseData) {
@@ -301,20 +299,36 @@ function AnalysisAndInsights({ analysis }: { analysis: AnalyzeJobDescriptionOutp
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CheckCircle2 className="h-6 w-6 text-green-500" />
-          Key Strengths
-        </CardTitle>
-        <CardDescription>How your bio aligns with the key requirements.</CardDescription>
-      </CardHeader>
-      <CardContent>
+     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle2 className="h-6 w-6 text-green-500" />
+            Key Strengths
+          </CardTitle>
+          <CardDescription>How your bio aligns with the key requirements.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
+              {renderMarkdownList(analysis.matches)}
+            </ul>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <XCircle className="h-6 w-6 text-red-500" />
+            Identified Gaps
+          </CardTitle>
+           <CardDescription>Where your bio could be stronger for this role.</CardDescription>
+        </CardHeader>
+        <CardContent>
           <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
-            {renderMarkdownList(analysis.matches)}
+            {renderMarkdownList(analysis.gaps)}
           </ul>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
@@ -348,7 +362,7 @@ export function JobSparkApp() {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        form.reset({ jobDescription: parsedData.jobDescription || "", bio: parsedData.bio || "" });
+        form.reset({ jobDescription: parsedData.jobDescription || "", bio: parsedData.bio || "", generationType: 'coverLetter' });
       }
     } catch (e) {
       console.error("Failed to load or parse data from localStorage", e);
@@ -356,13 +370,15 @@ export function JobSparkApp() {
   }, [form]);
 
   useEffect(() => {
-    const subscription = form.watch((value) => {
-      try {
-        const dataToSave = { jobDescription: value.jobDescription, bio: value.bio };
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
-      } catch (e) {
-        console.error("Failed to save data to localStorage", e);
-      }
+    const subscription = form.watch((value, { name }) => {
+       if (name !== 'generationType') {
+          try {
+            const dataToSave = { jobDescription: value.jobDescription, bio: value.bio };
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
+          } catch (e) {
+            console.error("Failed to save data to localStorage", e);
+          }
+       }
     });
     return () => subscription.unsubscribe();
   }, [form.watch]);
@@ -371,8 +387,7 @@ export function JobSparkApp() {
     setError(null);
     setAllResults(null);
     setCurrentResponse("");
-    // Default to cover letter on new generation
-    const generationType = 'coverLetter';
+    const generationType = data.generationType || 'coverLetter';
     setActiveTab(generationType);
     setLastSubmittedData({ ...data, generationType });
 
@@ -399,7 +414,18 @@ export function JobSparkApp() {
     const existingResult = allResults?.[newGenType];
     if (existingResult) {
        if (newGenType === 'deepAnalysis') {
-          // This view doesn't use setCurrentResponse
+           if (!allResults?.analysis) {
+             // If we switched to deep analysis but the simple analysis is missing, fetch it.
+              startSwitchingTab(async () => {
+                const result = await generateSingleAction({ ...lastSubmittedData, generationType: 'deepAnalysis' });
+                 if (result.success) {
+                    const { deepAnalysis, simpleAnalysis } = result.data as any;
+                    setAllResults(prev => ({ ...prev!, deepAnalysis, analysis: simpleAnalysis }));
+                 } else {
+                    toast({ variant: "destructive", title: "Failed to switch", description: result.error });
+                 }
+              });
+           }
        } else if (newGenType === 'qAndA') {
           // This view doesn't use setCurrentResponse
        } else if ('responses' in existingResult) {
@@ -499,13 +525,15 @@ export function JobSparkApp() {
                 <GeneratedResponse initialValue={currentResponse} onValueChange={handleManualEdit} isSaving={isRevising}/>
               </CardContent>
             </Card>
-            <RevisionForm 
-              originalData={{...lastSubmittedData!, originalResponse: currentResponse, revisionComments: ''}}
-              currentResponse={debouncedEditableResponse} 
-              onRevisionComplete={(res) => startRevising(async () => handleRevisionComplete(res))}
-              generationType={activeTab}
-              isRevising={isRevising}
-            />
+            {lastSubmittedData && (
+              <RevisionForm 
+                originalData={lastSubmittedData}
+                currentResponse={debouncedEditableResponse} 
+                onRevisionComplete={(res) => startRevising(async () => handleRevisionComplete(res))}
+                generationType={activeTab}
+                isRevising={isRevising}
+              />
+            )}
           </>
         );
       case 'deepAnalysis':
@@ -526,10 +554,38 @@ export function JobSparkApp() {
         <Card className="bg-card/80 backdrop-blur-sm sticky top-24">
           <CardHeader>
             <CardTitle>Your Information</CardTitle>
+            <CardDescription>
+              Select an output type, provide your info, and let the AI work its magic.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <FormProvider {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="generationType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Output</FormLabel>
+                      <FormControl>
+                        <Tabs
+                          defaultValue={field.value}
+                          onValueChange={field.onChange}
+                          className="w-full"
+                        >
+                          <TabsList className="grid w-full grid-cols-4">
+                            <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4" />Cover Letter</TabsTrigger>
+                            <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
+                            <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4" />Q&A</TabsTrigger>
+                            <TabsTrigger value="deepAnalysis" disabled={isPending}><FileJson className="mr-2 h-4 w-4" />Deep Analysis</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
                 <FormField
                   control={form.control}
                   name="jobDescription"
@@ -590,7 +646,7 @@ export function JobSparkApp() {
       {/* Output Column */}
       <div className="flex flex-col gap-8">
         {isGenerating && !allResults && <OutputSkeletons />}
-        {error && !allResults &&(
+        {error && !isGenerating && !allResults &&(
           <Alert variant="destructive">
             <Info className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
@@ -617,5 +673,3 @@ export function JobSparkApp() {
     </div>
   );
 }
-
-    
