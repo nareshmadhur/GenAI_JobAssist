@@ -17,15 +17,11 @@ const DeepAnalysisInputSchema = z.object({
 });
 export type DeepAnalysisInput = z.infer<typeof DeepAnalysisInputSchema>;
 
-const AnalysisDetailSchema = z.object({
-  details: z.array(z.string()).describe("A list of specific bullet points providing evidence or suggestions. Each bullet point MUST start with a bolded category (e.g., '**Experience Match:** ...' or '**Missing Skill:** ...')."),
-});
-
 const DeepAnalysisOutputSchema = z.object({
   jobSummary: z.string().describe("A professional summary of the job description, abstracting jargon and focusing on key takeaways."),
-  keyStrengths: AnalysisDetailSchema.describe("An analysis of the user's key strengths against the job description."),
-  gaps: AnalysisDetailSchema.describe("An analysis of the gaps between the user's bio and the job description."),
-  improvementAreas: AnalysisDetailSchema.describe("An analysis of areas where the user's bio could be improved for this role."),
+  keyStrengths: z.array(z.string()).describe("A list of specific bullet points providing evidence for user's key strengths against the job description. Each bullet point MUST start with a bolded category (e.g., '**Experience Match:** ...')."),
+  gaps: z.array(z.string()).describe("A list of specific bullet points providing evidence for user's gaps against the job description. Each bullet point MUST start with a bolded category (e.g., '**Missing Skill:** ...')."),
+  improvementAreas: z.array(z.string()).describe("A list of specific bullet points providing areas where the user's bio could be improved for this role. Each bullet point MUST start with a bolded category (e.g., '**Actionable Advice:** ...')."),
 });
 
 export type DeepAnalysisOutput = z.infer<typeof DeepAnalysisOutputSchema>;
@@ -75,4 +71,3 @@ const generateDeepAnalysisFlow = ai.defineFlow(
     return output!;
   }
 );
-

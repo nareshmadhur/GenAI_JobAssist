@@ -257,7 +257,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
           </CardTitle>
         </CardHeader>
         <CardContent>
-            {renderDetails(deepAnalysis.keyStrengths.details)}
+            {renderDetails(deepAnalysis.keyStrengths)}
         </CardContent>
       </Card>
 
@@ -269,7 +269,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {renderDetails(deepAnalysis.gaps.details)}
+          {renderDetails(deepAnalysis.gaps)}
         </CardContent>
       </Card>
       
@@ -281,7 +281,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {renderDetails(deepAnalysis.improvementAreas.details)}
+          {renderDetails(deepAnalysis.improvementAreas)}
         </CardContent>
       </Card>
     </div>
@@ -662,4 +662,3 @@ export function JobSparkApp() {
     </div>
   );
 }
-
