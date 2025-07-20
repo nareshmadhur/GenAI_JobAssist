@@ -110,18 +110,16 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
     },
   });
   
-  // This effect now correctly depends on the `currentResponse` which is the AI-generated or revised response.
-  // It no longer depends on the entire form object, which was causing the infinite loop.
   useEffect(() => {
     revisionForm.reset({
       ...originalData,
       originalResponse: currentResponse,
       revisionComments: ""
-    })
-  // We only want this to run when the AI generates a new response (changing currentResponse),
-  // or when the user submits new initial data. We explicitly DON'T want it to run when revisionForm object itself changes.
+    });
+  // The `reset` function from react-hook-form is stable and doesn't need to be a dependency.
+  // We only want this effect to run when the AI-generated response (`currentResponse`) or the initial form data changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentResponse, originalData.jobDescription, originalData.bio, revisionForm.reset])
+  }, [currentResponse, originalData.jobDescription, originalData.bio]);
 
 
   async function onRevise(data: ReviseResponseData) {
@@ -280,7 +278,7 @@ export function JobSparkApp() {
       }
     });
     return () => subscription.unsubscribe();
-  }, [form, form.watch]);
+  }, [form.watch]);
 
 
   const onSubmit = (data: Omit<JobApplicationData, 'generationType'>) => {
@@ -492,5 +490,3 @@ export function JobSparkApp() {
     </div>
   );
 }
-
-    
