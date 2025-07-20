@@ -223,7 +223,8 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving, isSwitching 
 }
 
 function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }) {
-  const renderDetails = (details: string[]) => {
+  const renderDetails = (details?: string[]) => {
+    if (!details) return null;
     return (
         <ul className="prose prose-sm max-w-none list-disc pl-5 space-y-2">
           {details.map((item, index) => (
