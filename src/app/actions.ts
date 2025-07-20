@@ -15,23 +15,22 @@ export async function generateAction(
 ): Promise<ActionResponse> {
   const validationResult = JobApplicationSchema.safeParse(rawData);
   if (!validationResult.success) {
-    return { success: false, error: "Invalid input." };
+    const errorMessage = validationResult.error.issues.map((issue) => issue.message).join(' ');
+    return { success: false, error: errorMessage || "Invalid input." };
   }
 
   const data = validationResult.data;
 
   try {
-    const [analysis, filteredInfo] = await Promise.all([
-      analyzeJobDescription({ jobDescription: data.jobDescription }),
+    const [analysis, filteredInfo, response] = await Promise.all([
+      analyzeJobDescription({ jobDescription: data.jobDescription, bio: data.bio }),
       filterBioInformation({ jobDescription: data.jobDescription, bio: data.bio }),
+      generateResponse({
+        jobDescription: data.jobDescription,
+        userBio: data.bio,
+        additionalComments: data.comments ?? '',
+      })
     ]);
-
-    const response = await generateResponse({
-      jobDescription: data.jobDescription,
-      userBio: data.bio,
-      jobRequirements: data.requirements,
-      additionalComments: data.comments ?? '',
-    });
 
     return {
       success: true,

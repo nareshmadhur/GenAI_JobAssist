@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, Info } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,12 +16,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -84,7 +78,6 @@ export function JobSparkApp() {
     defaultValues: {
       jobDescription: "",
       bio: "",
-      requirements: "",
       comments: "",
     },
   });
@@ -124,7 +117,7 @@ export function JobSparkApp() {
                     <FormLabel>Job Description</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Paste the full job description here."
+                        placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
                         className="min-h-[150px] font-code"
                         {...field}
                       />
@@ -146,25 +139,8 @@ export function JobSparkApp() {
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="requirements"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Job Requirements</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="List the specific requirements you need to address, e.g., '3-5 years of experience in React', 'Proven track record of leading projects'."
-                        className="min-h-[100px] font-code"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      The AI will generate responses specifically for these points.
+                     <FormDescription>
+                      This will be compared against the job description to find matches and gaps.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -210,7 +186,7 @@ export function JobSparkApp() {
           </Alert>
         )}
         {result && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Your Tailored Response</CardTitle>
@@ -229,39 +205,25 @@ export function JobSparkApp() {
               <CardHeader>
                 <CardTitle>Analysis & Insights</CardTitle>
               </CardHeader>
-              <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem value="item-1">
-                    <AccordionTrigger>Employer's Key Interests</AccordionTrigger>
-                    <AccordionContent className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap font-code">
-                      {result.filteredInfo.relevantInterests}
-                    </AccordionContent>
-                  </AccordionItem>
-                  <AccordionItem value="item-2">
-                    <AccordionTrigger>Relevant Information from Your Bio</AccordionTrigger>
-                    <AccordionContent className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">
-                      {result.filteredInfo.filteredBio}
-                    </AccordionContent>
-                  </AccordionItem>
-                  <AccordionItem value="item-3">
-                    <AccordionTrigger>Key Skills from Job Description</AccordionTrigger>
-                    <AccordionContent className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap font-code">
-                      {result.analysis.keySkills}
-                    </AccordionContent>
-                  </AccordionItem>
-                   <AccordionItem value="item-4">
-                    <AccordionTrigger>Key Responsibilities</AccordionTrigger>
-                    <AccordionContent className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap font-code">
-                      {result.analysis.responsibilities}
-                    </AccordionContent>
-                  </AccordionItem>
-                   <AccordionItem value="item-5">
-                    <AccordionTrigger>Company Values</AccordionTrigger>
-                    <AccordionContent className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap font-code">
-                      {result.analysis.companyValues}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
+              <CardContent className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="flex items-center font-semibold text-lg">
+                    <CheckCircle2 className="h-5 w-5 mr-2 text-green-500" />
+                    Your Strengths
+                  </h3>
+                  <ul className="space-y-2 list-disc pl-5 text-muted-foreground">
+                    {result.analysis.matches.map((item, index) => <li key={`match-${index}`}>{item}</li>)}
+                  </ul>
+                </div>
+                 <div className="space-y-4">
+                  <h3 className="flex items-center font-semibold text-lg">
+                    <XCircle className="h-5 w-5 mr-2 text-red-500" />
+                    Potential Gaps
+                  </h3>
+                  <ul className="space-y-2 list-disc pl-5 text-muted-foreground">
+                    {result.analysis.gaps.map((item, index) => <li key={`gap-${index}`}>{item}</li>)}
+                  </ul>
+                </div>
               </CardContent>
             </Card>
           </div>

@@ -1,9 +1,9 @@
 'use server';
 
 /**
- * @fileOverview Analyzes a job description to extract key skills, responsibilities, and company values.
+ * @fileOverview Analyzes a job description and user bio to find matches and gaps.
  *
- * - analyzeJobDescription - A function that handles the job description analysis process.
+ * - analyzeJobDescription - A function that handles the job description and bio analysis process.
  * - AnalyzeJobDescriptionInput - The input type for the analyzeJobDescription function.
  * - AnalyzeJobDescriptionOutput - The return type for the analyzeJobDescription function.
  */
@@ -13,13 +13,13 @@ import {z} from 'genkit';
 
 const AnalyzeJobDescriptionInputSchema = z.object({
   jobDescription: z.string().describe('The job description to analyze, either a URL or the text content.'),
+  bio: z.string().describe("The user's bio to compare against the job description."),
 });
 export type AnalyzeJobDescriptionInput = z.infer<typeof AnalyzeJobDescriptionInputSchema>;
 
 const AnalyzeJobDescriptionOutputSchema = z.object({
-  keySkills: z.string().describe('A summary of the key skills required for the job.'),
-  responsibilities: z.string().describe('A summary of the main responsibilities of the job.'),
-  companyValues: z.string().describe('A summary of the company values based on the job description.'),
+  matches: z.array(z.string()).describe("A list of bullet points where the user's bio matches the job requirements."),
+  gaps: z.array(z.string()).describe("A list of bullet points where the user's bio has gaps when compared to the job requirements."),
 });
 export type AnalyzeJobDescriptionOutput = z.infer<typeof AnalyzeJobDescriptionOutputSchema>;
 
@@ -31,7 +31,19 @@ const prompt = ai.definePrompt({
   name: 'analyzeJobDescriptionPrompt',
   input: {schema: AnalyzeJobDescriptionInputSchema},
   output: {schema: AnalyzeJobDescriptionOutputSchema},
-  prompt: `You are an expert recruiter. Analyze the following job description and extract the key skills, responsibilities, and company values.\n\nJob Description: {{{jobDescription}}}\n\nKey Skills: \nResponsibilities: \nCompany Values:`,
+  prompt: `You are an expert career advisor. Analyze the following job description and user's bio. Your task is to identify where the user's experience matches the job requirements and where there are gaps. Present your findings as two distinct lists of bullet points.
+
+Job Description:
+{{{jobDescription}}}
+
+User Bio:
+{{{bio}}}
+
+Analysis:
+1.  **Matches**: Create a bulleted list of specific skills, experiences, or qualifications from the user's bio that directly align with the requirements mentioned in the job description. Be precise and quote or refer to parts of the bio and job description.
+2.  **Gaps**: Create a bulleted list of key requirements from the job description that are not clearly addressed in the user's bio.
+
+Provide only the bulleted lists for matches and gaps.`,
 });
 
 const analyzeJobDescriptionFlow = ai.defineFlow(

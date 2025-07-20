@@ -16,7 +16,6 @@ const GenerateResponseInputSchema = z.object({
     .string()
     .describe('The job description, can be a URL or pasted text.'),
   userBio: z.string().describe('The user bio, rich in detail.'),
-  jobRequirements: z.string().describe('The job requirements.'),
   additionalComments: z
     .string()
     .describe('Additional comments to consider in the response.'),
@@ -38,16 +37,16 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateResponseOutputSchema},
   prompt: `You are a professional resume and cover letter writer.
 
-  Based on the job description, user bio, job requirements and additional comments, you will generate
-  structured, professional, and copy-paste-ready responses to the job requirements.
+  Based on the job description, user bio, and additional comments, you will generate
+  a structured, professional, and copy-paste-ready response. This response should highlight the user's strengths
+  as they relate to the job description.
   Make sure to tailor the responses to match the tone and style of the job description.
 
   Job Description: {{{jobDescription}}}
   User Bio: {{{userBio}}}
-  Job Requirements: {{{jobRequirements}}}
   Additional Comments: {{{additionalComments}}}
 
-  Responses:`,
+  Response:`,
 });
 
 const generateResponseFlow = ai.defineFlow(

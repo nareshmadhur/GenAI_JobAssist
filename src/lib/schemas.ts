@@ -3,16 +3,14 @@ import { z } from 'zod';
 export const JobApplicationSchema = z.object({
   jobDescription: z.string().min(50, { message: "Job description must be at least 50 characters long." }),
   bio: z.string().min(100, { message: "Your bio must be at least 100 characters long to provide enough detail." }),
-  requirements: z.string().min(20, { message: "Please list the key job requirements." }),
   comments: z.string().optional(),
 });
 
 export type JobApplicationData = z.infer<typeof JobApplicationSchema>;
 
 export const AnalysisSchema = z.object({
-  keySkills: z.string(),
-  responsibilities: z.string(),
-  companyValues: z.string(),
+  matches: z.array(z.string()).describe("A list of points where the user's bio matches the job requirements."),
+  gaps: z.array(z.string()).describe("A list of points where the user's bio has gaps when compared to the job requirements."),
 });
 
 export const FilteredInfoSchema = z.object({
