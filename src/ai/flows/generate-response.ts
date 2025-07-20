@@ -1,11 +1,6 @@
 'use server';
 /**
- * @fileOverview Generates structured, professional responses to job requirements using a user's bio,
- * additional comments, and AI reasoning, tailored to match the tone and style of the job description.
- *
- * - generateResponse - A function that generates the job responses.
- * - GenerateResponseInput - The input type for the generateResponse function.
- * - GenerateResponseOutput - The return type for the generateResponse function.
+ * @fileOverview This file is deprecated. Use generate-cover-letter.ts instead.
  */
 
 import {ai} from '@/ai/genkit';

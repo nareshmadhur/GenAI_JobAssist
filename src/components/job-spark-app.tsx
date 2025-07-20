@@ -4,7 +4,7 @@
 import React, { useState, useTransition, useEffect, useCallback } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2 } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, FileJson, Briefcase } from "lucide-react";
 import Markdown from 'react-markdown';
 
 import { Button } from "@/components/ui/button";
@@ -30,8 +30,11 @@ import {
 } from "@/lib/schemas";
 import { generateAction, reviseAction } from "@/app/actions";
 import { Skeleton } from "./ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const LOCAL_STORAGE_KEY = 'jobspark_form_data';
+
+type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis';
 
 function OutputSkeletons() {
   return (
@@ -75,7 +78,7 @@ function CopyButton({ textToCopy }: { textToCopy: string }) {
   );
 }
 
-function RevisionForm({ originalData, currentResponse, onRevisionComplete }: { originalData: JobApplicationData, currentResponse: string, onRevisionComplete: (newResponse: string) => void }) {
+function RevisionForm({ originalData, currentResponse, onRevisionComplete, generationType }: { originalData: JobApplicationData, currentResponse: string, onRevisionComplete: (newResponse: string) => void, generationType: GenerationType }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
@@ -85,6 +88,7 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete }: { o
       ...originalData,
       originalResponse: currentResponse,
       revisionComments: "",
+      generationType,
     },
   });
 
@@ -93,8 +97,9 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete }: { o
       ...originalData,
       originalResponse: currentResponse,
       revisionComments: "",
+      generationType,
     })
-  }, [currentResponse, originalData, revisionForm])
+  }, [currentResponse, originalData, revisionForm, generationType])
 
 
   async function onRevise(data: ReviseResponseData) {
@@ -204,6 +209,7 @@ export function JobSparkApp() {
   const [error, setError] = useState<string | null>(null);
   const [lastSubmittedData, setLastSubmittedData] = useState<JobApplicationData | null>(null);
   const [currentResponse, setCurrentResponse] = useState<string>("");
+  const [generationType, setGenerationType] = useState<GenerationType>('coverLetter');
 
   const { toast } = useToast();
 
@@ -250,7 +256,7 @@ export function JobSparkApp() {
     setCurrentResponse("");
     setLastSubmittedData(data);
     startTransition(async () => {
-      const response = await generateAction(data);
+      const response = await generateAction({ ...data, generationType });
       if (response.success) {
         setResult(response.data);
         setCurrentResponse(response.data.response.responses);
@@ -293,6 +299,15 @@ export function JobSparkApp() {
       return <Markdown key={index} components={{p: ({children}) => <li className="list-item ml-5">{children}</li>}}>{item}</Markdown>
     })
   }
+  
+  const getTabTitle = () => {
+    switch(generationType) {
+      case 'coverLetter': return 'Your Tailored Cover Letter';
+      case 'cv': return 'Your Generated CV';
+      case 'deepAnalysis': return 'Deep Analysis & Feedback';
+      default: return 'Your Tailored Response';
+    }
+  }
 
   return (
     <div className="grid md:grid-cols-2 gap-8 w-full p-4 sm:p-6 md:p-8">
@@ -304,7 +319,15 @@ export function JobSparkApp() {
           </CardHeader>
           <CardContent>
             <FormProvider {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                 <Tabs value={generationType} onValueChange={(value) => setGenerationType(value as GenerationType)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="coverLetter"><FileText className="mr-2 h-4 w-4" />Cover Letter</TabsTrigger>
+                    <TabsTrigger value="cv"><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
+                    <TabsTrigger value="deepAnalysis"><FileJson className="mr-2 h-4 w-4" />Deep Analysis</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
                 <FormField
                   control={form.control}
                   name="jobDescription"
@@ -349,7 +372,7 @@ export function JobSparkApp() {
                     ) : (
                       <Sparkles className="mr-2 h-4 w-4" />
                     )}
-                    Generate Responses
+                    Generate
                   </Button>
                   <Button type="button" variant="outline" onClick={handleClear} className="w-full sm:w-auto">
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -376,7 +399,7 @@ export function JobSparkApp() {
           <div className="space-y-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Your Tailored Response</CardTitle>
+                <CardTitle>{getTabTitle()}</CardTitle>
                 <CopyButton textToCopy={currentResponse} />
               </CardHeader>
               <CardContent>
@@ -389,34 +412,37 @@ export function JobSparkApp() {
                 originalData={lastSubmittedData} 
                 currentResponse={currentResponse} 
                 onRevisionComplete={setCurrentResponse}
+                generationType={generationType}
               />
             )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Analysis & Insights</CardTitle>
-              </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="flex items-center font-semibold text-lg">
-                    <CheckCircle2 className="h-5 w-5 mr-2 text-green-500" />
-                    Your Strengths
-                  </h3>
-                  <div className="prose prose-sm text-muted-foreground max-w-none">
-                    <ul>{renderMarkdownList(result.analysis.matches)}</ul>
+            {generationType !== 'deepAnalysis' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Analysis & Insights</CardTitle>
+                </CardHeader>
+                <CardContent className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <h3 className="flex items-center font-semibold text-lg">
+                      <CheckCircle2 className="h-5 w-5 mr-2 text-green-500" />
+                      Your Strengths
+                    </h3>
+                    <div className="prose prose-sm text-muted-foreground max-w-none">
+                      <ul>{renderMarkdownList(result.analysis.matches)}</ul>
+                    </div>
                   </div>
-                </div>
-                 <div className="space-y-4">
-                  <h3 className="flex items-center font-semibold text-lg">
-                    <XCircle className="h-5 w-5 mr-2 text-red-500" />
-                    Potential Gaps
-                  </h3>
-                   <div className="prose prose-sm text-muted-foreground max-w-none">
-                     <ul>{renderMarkdownList(result.analysis.gaps)}</ul>
+                   <div className="space-y-4">
+                    <h3 className="flex items-center font-semibold text-lg">
+                      <XCircle className="h-5 w-5 mr-2 text-red-500" />
+                      Potential Gaps
+                    </h3>
+                     <div className="prose prose-sm text-muted-foreground max-w-none">
+                       <ul>{renderMarkdownList(result.analysis.gaps)}</ul>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>

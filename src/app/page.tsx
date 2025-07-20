@@ -3,7 +3,7 @@ import { JobSparkApp } from '@/components/job-spark-app';
 
 export default function Home() {
   return (
-    <div className="flex flex-col w-full min-h-screen">
+    <div className="flex flex-col w-full min-h-screen bg-muted/20">
       <header className="sticky top-0 z-10 w-full px-4 py-4 bg-background/80 backdrop-blur-sm border-b sm:px-6 md:px-8">
         <div className="w-full max-w-7xl mx-auto">
           <div className="flex items-center gap-3">

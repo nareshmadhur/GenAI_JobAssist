@@ -1,11 +1,13 @@
+
 "use server";
 
 import { z } from 'zod';
 import { analyzeJobDescription } from '@/ai/flows/analyze-job-description';
-import { filterBioInformation } from '@/ai/flows/filter-bio-information';
-import { generateResponse } from '@/ai/flows/generate-response';
+import { generateCoverLetter } from '@/ai/flows/generate-cover-letter';
+import { generateCv } from '@/ai/flows/generate-cv';
+import { generateDeepAnalysis } from '@/ai/flows/generate-deep-analysis';
 import { reviseResponse } from '@/ai/flows/revise-response';
-import { JobApplicationSchema, ReviseResponseSchema, ResponseSchema, type GenerationResult, type ResponseData } from '@/lib/schemas';
+import { JobApplicationSchema, ReviseResponseSchema, type GenerationResult, type ResponseData } from '@/lib/schemas';
 
 type GenerateActionResponse = 
   | { success: true; data: GenerationResult }
@@ -25,29 +27,40 @@ export async function generateAction(
   }
 
   const data = validationResult.data;
-
+  
   try {
-    const [analysis, filteredInfo, response] = await Promise.all([
+    let responsePromise;
+    switch (data.generationType) {
+        case 'cv':
+            responsePromise = generateCv({ jobDescription: data.jobDescription, userBio: data.bio });
+            break;
+        case 'deepAnalysis':
+            responsePromise = generateDeepAnalysis({ jobDescription: data.jobDescription, userBio: data.bio });
+            break;
+        case 'coverLetter':
+        default:
+            responsePromise = generateCoverLetter({ jobDescription: data.jobDescription, userBio: data.bio });
+            break;
+    }
+
+    const [analysis, response] = await Promise.all([
       analyzeJobDescription({ jobDescription: data.jobDescription, bio: data.bio }),
-      filterBioInformation({ jobDescription: data.jobDescription, bio: data.bio }),
-      generateResponse({
-        jobDescription: data.jobDescription,
-        userBio: data.bio,
-        additionalComments: '', // Kept for schema compatibility, but not used in UI
-      })
+      responsePromise
     ]);
 
     return {
       success: true,
       data: {
         analysis,
-        filteredInfo,
         response,
+        // Deprecated, but kept for schema compatibility for now
+        filteredInfo: { filteredBio: '', relevantInterests: '' }
       },
     };
   } catch (error) {
     console.error("Error in generateAction:", error);
-    return { success: false, error: "Failed to generate content. Please try again." };
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { success: false, error: `Failed to generate content: ${errorMessage}. Please try again.` };
   }
 }
 

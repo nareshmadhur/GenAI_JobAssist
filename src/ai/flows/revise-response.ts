@@ -27,6 +27,8 @@ const prompt = ai.definePrompt({
 
 Your task is to revise the original response based on the user's comments, while still considering the original job description and user bio for context. The new response should incorporate the feedback seamlessly.
 
+The type of content to generate is: {{generationType}}
+
 It must be concise and impactful. Use Markdown for formatting, specifically **bolding** to highlight key skills and experiences.
 
 Job Description:
