@@ -10,6 +10,12 @@ import Markdown from 'react-markdown';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Form,
   FormControl,
   FormDescription,
@@ -55,20 +61,19 @@ function useDebounce<T>(value: T, delay: number): T {
 function OutputSkeletons() {
   return (
     <div className="space-y-6">
+       <div className="grid w-full grid-cols-4 gap-2">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
       <Card>
         <CardHeader>
           <Skeleton className="h-7 w-2/5" />
+          <Skeleton className="h-4 w-4/5 mt-2" />
         </CardHeader>
         <CardContent>
           <Skeleton className="h-48 w-full" />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-7 w-1/3" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-24 w-full" />
         </CardContent>
       </Card>
     </div>
@@ -126,7 +131,7 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
   return (
     <Card className="mt-4 bg-muted/50">
       <CardHeader>
-        <CardTitle>Revise Output</CardTitle>
+        <CardTitle className="text-xl">Revise Output</CardTitle>
         <CardDescription>Not quite right? Tell the AI how to improve the response.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -141,7 +146,7 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
                   <FormControl>
                     <Textarea
                       placeholder="e.g., 'Make it more formal.' or 'Mention my experience with project management tools.'"
-                      className="min-h-[100px] bg-background font-code"
+                      className="min-h-[100px] bg-background"
                       {...field}
                     />
                   </FormControl>
@@ -184,7 +189,7 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving }: { initialV
           <Textarea
             value={localValue}
             onChange={(e) => setLocalValue(e.target.value)}
-            className="min-h-[250px] font-code bg-background"
+            className="min-h-[250px] bg-background"
             aria-label="Generated Response"
           />
            <Button variant="ghost" size="icon" onClick={handleSave} className="absolute top-2 right-2" disabled={isSaving}>
@@ -193,7 +198,7 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving }: { initialV
         </>
       ) : (
         <>
-          <div className="prose prose-sm max-w-none p-4 min-h-[250px] rounded-md border bg-background font-code whitespace-pre-wrap">
+          <div className="prose prose-sm max-w-none p-4 min-h-[250px] rounded-md border bg-background whitespace-pre-wrap">
              <Markdown>{localValue}</Markdown>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="absolute top-2 right-2">
@@ -206,6 +211,24 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving }: { initialV
 }
 
 function DeepAnalysisView({ deepAnalysis, simpleAnalysis }: { deepAnalysis: DeepAnalysisOutput, simpleAnalysis: AnalyzeJobDescriptionOutput }) {
+  
+  const renderMarkdownList = (items: any[]) => {
+    return items.map((item, index) => {
+        const content = typeof item === 'string' ? item : item.requirement || item.suggestion || item.evidence;
+        const subContent = typeof item === 'object' ? item.suggestion || item.evidence : null;
+      return (
+        <li key={index}>
+            <Markdown components={{ p: Fragment }}>{content}</Markdown>
+            {subContent && (
+                <div className="pl-4 text-muted-foreground/80">
+                    <Markdown components={{ p: Fragment }}>{subContent}</Markdown>
+                </div>
+            )}
+        </li>
+      )
+    });
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -218,32 +241,77 @@ function DeepAnalysisView({ deepAnalysis, simpleAnalysis }: { deepAnalysis: Deep
         </CardHeader>
       </Card>
 
-      <AnalysisAndInsights analysis={simpleAnalysis} />
+      <Accordion type="multiple" defaultValue={['strengths', 'gaps', 'improvements']} className="w-full space-y-4">
+        <Card>
+          <AccordionItem value="strengths" className="border-b-0">
+            <AccordionTrigger className="p-6">
+              <CardHeader className="p-0 text-left">
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle2 className="h-6 w-6 text-green-500" />
+                    Key Strengths
+                  </CardTitle>
+                  <CardDescription>How your bio aligns with the key requirements.</CardDescription>
+              </CardHeader>
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-6">
+                <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
+                  {renderMarkdownList(simpleAnalysis.matches)}
+                </ul>
+            </AccordionContent>
+          </AccordionItem>
+        </Card>
       
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <XCircle className="h-6 w-6 text-red-500" />
-            Improvement Areas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-           {deepAnalysis.improvementAreas.map((item, index) => (
-            <div key={index} className="p-3 rounded-md border bg-yellow-500/10">
-              <p className="font-semibold text-yellow-800">Gap:</p>
-              <Markdown className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">{item.requirement}</Markdown>
-              <p className="font-semibold mt-2 text-yellow-800">Suggestion:</p>
-              <Markdown className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">{item.suggestion}</Markdown>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+        <Card>
+          <AccordionItem value="gaps" className="border-b-0">
+            <AccordionTrigger className="p-6">
+              <CardHeader className="p-0 text-left">
+                <CardTitle className="flex items-center gap-2">
+                  <XCircle className="h-6 w-6 text-red-500" />
+                  Identified Gaps
+                </CardTitle>
+                <CardDescription>Where your bio could be stronger for this role.</CardDescription>
+              </CardHeader>
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-6">
+              <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
+                {renderMarkdownList(simpleAnalysis.gaps)}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+        </Card>
+
+        <Card>
+          <AccordionItem value="improvements" className="border-b-0">
+             <AccordionTrigger className="p-6">
+                <CardHeader className="p-0 text-left">
+                    <CardTitle className="flex items-center gap-2">
+                        <Wand2 className="h-6 w-6 text-yellow-500" />
+                        Improvement Areas
+                    </CardTitle>
+                    <CardDescription>Concrete suggestions to address gaps.</CardDescription>
+                </CardHeader>
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-6 space-y-4">
+                <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
+                    {deepAnalysis.improvementAreas.map((item, index) => (
+                        <li key={index}>
+                          <p className="font-semibold text-foreground/80">{item.requirement}</p>
+                          <div className="pl-4 text-muted-foreground/80">
+                            <Markdown components={{ p: Fragment }}>{item.suggestion}</Markdown>
+                          </div>
+                        </li>
+                    ))}
+                </ul>
+            </AccordionContent>
+          </AccordionItem>
+        </Card>
+      </Accordion>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BotMessageSquare className="h-6 w-6 text-blue-500" />
-            Language & Tone Assessment
+            Language & Tone
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -273,7 +341,10 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Generated Answers</CardTitle>
+        <div>
+          <CardTitle>Generated Answers</CardTitle>
+          <CardDescription>Answers for questions found in the job description.</CardDescription>
+        </div>
         <CopyButton textToCopy={allAnswers} />
       </CardHeader>
       <CardContent className="space-y-6">
@@ -302,7 +373,7 @@ function AnalysisAndInsights({ analysis }: { analysis: AnalyzeJobDescriptionOutp
      <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-2xl">
             <CheckCircle2 className="h-6 w-6 text-green-500" />
             Key Strengths
           </CardTitle>
@@ -316,7 +387,7 @@ function AnalysisAndInsights({ analysis }: { analysis: AnalyzeJobDescriptionOutp
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-2xl">
             <XCircle className="h-6 w-6 text-red-500" />
             Identified Gaps
           </CardTitle>
@@ -507,9 +578,11 @@ export function JobSparkApp() {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleKeyDown]);
+  
+  const isPending = isGenerating || isSwitching;
 
   const renderContent = () => {
-    if (isSwitching) return <OutputSkeletons />;
+    if (isPending && !allResults) return <OutputSkeletons />;
   
     switch (activeTab) {
       case 'coverLetter':
@@ -518,11 +591,14 @@ export function JobSparkApp() {
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Your Tailored {activeTab === 'cv' ? 'CV' : 'Letter'}</CardTitle>
+                <div>
+                  <CardTitle>Your Tailored {activeTab === 'cv' ? 'CV' : 'Letter'}</CardTitle>
+                  <CardDescription>A draft {activeTab === 'cv' ? 'CV' : 'letter'} generated by AI.</CardDescription>
+                </div>
                 <CopyButton textToCopy={currentResponse} />
               </CardHeader>
               <CardContent>
-                <GeneratedResponse initialValue={currentResponse} onValueChange={handleManualEdit} isSaving={isRevising}/>
+                {isSwitching ? <Skeleton className="h-48 w-full" /> : <GeneratedResponse initialValue={currentResponse} onValueChange={handleManualEdit} isSaving={isRevising}/>}
               </CardContent>
             </Card>
             {lastSubmittedData && (
@@ -544,8 +620,6 @@ export function JobSparkApp() {
         return null;
     }
   };
-  
-  const isPending = isGenerating || isSwitching;
 
   return (
     <div className="grid md:grid-cols-2 gap-8 w-full p-4 sm:p-6 md:p-8">
@@ -595,7 +669,7 @@ export function JobSparkApp() {
                       <FormControl>
                         <Textarea
                           placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
-                          className="min-h-[150px] font-code"
+                          className="min-h-[150px]"
                           {...field}
                         />
                       </FormControl>
@@ -612,7 +686,7 @@ export function JobSparkApp() {
                       <FormControl>
                         <Textarea
                           placeholder="Provide your detailed bio. The more details, the better the result!"
-                          className="min-h-[200px] font-code"
+                          className="min-h-[200px]"
                           {...field}
                         />
                       </FormControl>
@@ -624,7 +698,7 @@ export function JobSparkApp() {
                   )}
                 />
                 <div className="flex flex-wrap gap-2">
-                  <Button type="submit" disabled={isGenerating} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
+                  <Button type="submit" disabled={isPending} className="w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
                     {isGenerating ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
@@ -645,7 +719,7 @@ export function JobSparkApp() {
 
       {/* Output Column */}
       <div className="flex flex-col gap-8">
-        {isGenerating && !allResults && <OutputSkeletons />}
+        {isPending && !allResults && <OutputSkeletons />}
         {error && !isGenerating && !allResults &&(
           <Alert variant="destructive">
             <Info className="h-4 w-4" />
@@ -673,3 +747,5 @@ export function JobSparkApp() {
     </div>
   );
 }
+
+    
