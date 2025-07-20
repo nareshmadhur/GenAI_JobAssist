@@ -38,7 +38,7 @@ const prompt = ai.definePrompt({
 
 **Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** All analysis must be grounded in the provided texts.
 
-First, act as a professional in the field of the job description and write a concise summary of the role. Abstract away any corporate jargon and focus on the core responsibilities and what the employer is truly looking for. **Bold** key phrases. If there is something noteworthy about the language, tone, or structure of the job description, add a paragraph about what that might imply about the company culture or the role itself.
+First, act as a professional in the field of the job description and write a concise summary of the role. Abstract away any corporate jargon and focus on the core responsibilities and what the employer is truly looking for. **Bold** key phrases. If there is something noteworthy about the language, tone, or structure of the job description, add a paragraph about what that might imply about the company culture or the role itself. Use a double newline character ('\\n\\n') to separate paragraphs.
 
 Then, generate three distinct sections: Key Strengths, Gaps, and Improvement Areas.
 

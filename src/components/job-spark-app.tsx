@@ -259,6 +259,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
             <CheckCircle2 className="h-6 w-6 text-green-500" />
             Key Strengths
           </CardTitle>
+          <CardDescription className="prose-sm">How your bio aligns with the job requirements.</CardDescription>
         </CardHeader>
         <CardContent>
             {renderDetails(deepAnalysis.keyStrengths)}
@@ -271,6 +272,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
             <XCircle className="h-6 w-6 text-red-500" />
             Gaps
           </CardTitle>
+          <CardDescription className="prose-sm">Areas where your bio is missing required experience.</CardDescription>
         </CardHeader>
         <CardContent>
           {renderDetails(deepAnalysis.gaps)}
@@ -283,6 +285,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
             <Wand2 className="h-6 w-6 text-yellow-500" />
             Improvement Areas
           </CardTitle>
+           <CardDescription className="prose-sm">Actionable advice to better present your experience.</CardDescription>
         </CardHeader>
         <CardContent>
           {renderDetails(deepAnalysis.improvementAreas)}
@@ -320,7 +323,7 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
         <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Missing Information</AlertTitle>
-            <AlertDescription>
+            <AlertDescription className="prose-sm">
                 {missingAnswersCount} question{missingAnswersCount > 1 ? 's' : ''} could not be answered based on your bio. These are highlighted in red below.
             </AlertDescription>
         </Alert>
@@ -517,7 +520,7 @@ export function JobSparkApp() {
   const isPending = isGenerating || isSwitching;
 
   const renderContent = () => {
-    if (isSwitching) return <OutputSkeletons />;
+    if (isPending) return <OutputSkeletons />;
   
     switch (activeTab) {
       case 'coverLetter':
@@ -662,7 +665,7 @@ export function JobSparkApp() {
           <Alert variant="destructive">
             <Info className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription className="prose-sm">{error}</AlertDescription>
           </Alert>
         )}
         {allResults && (
