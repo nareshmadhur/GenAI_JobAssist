@@ -103,13 +103,12 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
       const ReactDOMClient = (await import('react-dom/client'));
       const root = ReactDOMClient.createRoot(tempDiv);
       
-      // We need a way to know when rendering is complete.
-      // `render` is async, so we wrap it to await its completion.
       await new Promise<void>(resolve => {
         root.render(
           <React.Fragment>
             {reactElement}
-            <script onLoad={() => resolve()}></script>
+            {/* Using an img with onLoad is a trick to know when rendering is done */}
+            <img src="" style={{display: 'none'}} onLoad={() => resolve()} />
           </React.Fragment>
         );
       });
@@ -179,7 +178,7 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
     <Card className="mt-4 bg-muted/50">
       <CardHeader>
         <CardTitle className="text-xl">Revise Output</CardTitle>
-        <CardDescription>Not quite right? Tell the AI how to improve the response.</CardDescription>
+        <CardDescription className="prose-sm">Not quite right? Tell the AI how to improve the response.</CardDescription>
       </CardHeader>
       <CardContent>
         <FormProvider {...revisionForm}>
@@ -286,7 +285,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
           <CardDescription className="prose-sm">An expert summary of the role's core requirements.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="prose prose-sm max-w-none">
+          <div className="prose prose-sm max-w-none whitespace-pre-wrap">
             <Markdown>{deepAnalysis.jobSummary}</Markdown>
           </div>
         </CardContent>
@@ -485,6 +484,9 @@ export function JobSparkApp() {
        if (newGenType === 'coverLetter' || newGenType === 'cv') {
          setCurrentResponse((existingResult as any).responses || "");
        }
+       // This was returning early and causing blank views for Analysis/Q&A. 
+       // The view now re-renders correctly based on activeTab, so we don't need to do anything special here.
+       // The `renderContent` function will handle displaying the existing data.
        return;
     }
 
@@ -728,3 +730,5 @@ export function JobSparkApp() {
     </div>
   );
 }
+
+    
