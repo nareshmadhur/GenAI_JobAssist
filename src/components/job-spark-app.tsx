@@ -93,15 +93,17 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
     },
   });
 
+  const { jobDescription, bio } = originalData;
+
   useEffect(() => {
     revisionForm.reset({
-      jobDescription: originalData.jobDescription,
-      bio: originalData.bio,
+      jobDescription: jobDescription,
+      bio: bio,
       originalResponse: currentResponse,
       revisionComments: "",
       generationType,
     })
-  }, [currentResponse, originalData, generationType, revisionForm])
+  }, [currentResponse, jobDescription, bio, generationType, revisionForm])
 
 
   async function onRevise(data: ReviseResponseData) {
