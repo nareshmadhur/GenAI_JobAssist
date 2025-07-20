@@ -31,6 +31,8 @@ const prompt = ai.definePrompt({
   output: {schema: CvOutputSchema},
   prompt: `You are an expert CV writer. Your task is to convert a user's bio into a professional, well-structured CV (Curriculum Vitae). The CV should be tailored to the provided job description.
 
+**Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** The CV must be a truthful representation of the user's bio.
+
 Analyze the user's bio and extract information to create the following sections in Markdown format:
 1.  **Summary**: A brief, 2-3 sentence professional summary that highlights the candidate's key qualifications relevant to the job description.
 2.  **Work Experience**: List job titles, companies, and dates. For each role, create 2-3 bullet points describing achievements and responsibilities. **Bold** metrics and skills that directly match the job description.

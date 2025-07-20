@@ -47,6 +47,8 @@ const prompt = ai.definePrompt({
   output: {schema: DeepAnalysisOutputSchema},
   prompt: `You are an expert career coach and talent acquisition specialist. Your task is to perform a deep, insightful analysis comparing a user's bio against a job description. Provide actionable feedback and output in a structured JSON format.
 
+**Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** All analysis must be grounded in the provided texts.
+
 For each strength, quote the specific requirement from the job description and the corresponding evidence from the user's bio. **Bold** the key phrases.
 For each improvement area, state the requirement clearly and provide concrete, actionable suggestions for how the user could address this gap. For example, suggest specific phrasings, projects to highlight, or skills to acquire.
 

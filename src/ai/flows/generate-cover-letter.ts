@@ -31,6 +31,8 @@ const prompt = ai.definePrompt({
   output: {schema: CoverLetterOutputSchema},
   prompt: `You are a professional resume and cover letter writer. Your task is to write a compelling, professional, and copy-paste-ready cover letter based on a job description and a user's bio.
 
+**Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** The cover letter must be a truthful representation of the user's bio.
+
 The cover letter should be concise and impactful, focusing only on the most effective and strong points from the user's bio that align with the job description.
 
 Use Markdown for formatting, specifically **bolding** to highlight key skills, experiences, and qualifications that directly align with the most important requirements in the job description. Structure the response like a formal letter.

@@ -35,6 +35,8 @@ const prompt = ai.definePrompt({
 Your task is to identify where the user's experience matches the job requirements and where there are gaps.
 Present your findings as two distinct lists of simple, clear bullet points. **Bold** important keywords or phrases.
 
+**Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.**
+
 Job Description:
 {{{jobDescription}}}
 
@@ -42,7 +44,7 @@ User Bio:
 {{{bio}}}
 
 Analysis:
-1.  **Matches**: Create a bulleted list of specific skills, experiences, or qualifications from the user's bio that directly align with the requirements mentioned in the job description. Be precise.
+1.  **Matches**: Create a bulleted list of specific skills, experiences, or qualifications from the user's bio that directly align with the requirements mentioned in the job description. Be precise and ground every point in the provided bio.
 2.  **Gaps**: Create a bulleted list of key requirements from the job description that are not clearly addressed in the user's bio.
 
 Provide only the bulleted lists for matches and gaps.`,

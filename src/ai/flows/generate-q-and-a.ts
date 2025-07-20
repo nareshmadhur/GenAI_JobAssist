@@ -37,6 +37,8 @@ const prompt = ai.definePrompt({
   output: {schema: QAndAOutputSchema},
   prompt: `You are an expert at parsing job applications. Your task is to find any explicit questions asked in the job description and answer them based on the provided user bio.
 
+**Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned. All answers must be truthful to the provided bio.**
+
 If no questions are found, set 'questionsFound' to false and leave 'qaPairs' as an empty array.
 If questions are found, set 'questionsFound' to true. For each question, provide a clear and concise answer derived from the user's bio. The answer should be professional and ready to be copy-pasted.
 
