@@ -94,31 +94,45 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
   const { toast } = useToast();
 
   const copy = async () => {
+    // For plain text, remove the markdown bold characters.
+    const plainText = textToCopy.replace(/\*\*/g, '');
+
     try {
-      // Use a simple but effective regex to create a basic HTML representation
-      // This is a simplified approach. For complex markdown, a library would be better.
-      const html = compiler(textToCopy, { forceBlock: true }).props.children;
+      // For rich text, convert markdown to a React element, then to an HTML string.
+      // This is a simplified approach. It won't work in a server component without a library like 'react-dom/server'.
+      // In a client component, we can mount it to a hidden div to get the HTML.
+      const reactElement = compiler(textToCopy, { forceBlock: true });
+      const tempDiv = document.createElement('div');
+      // Temporarily render to a hidden div to get HTML. This is a client-side trick.
+      // Note: This relies on browser APIs.
+      const ReactDOM = (await import('react-dom')).default;
+      const root = ReactDOM.createRoot(tempDiv);
+      root.render(reactElement);
+      const html = tempDiv.innerHTML;
       
       const blobHtml = new Blob([html], { type: 'text/html' });
-      const blobText = new Blob([textToCopy], { type: 'text/plain' });
+      const blobText = new Blob([plainText], { type: 'text/plain' });
+      
       const clipboardItem = new ClipboardItem({
         'text/html': blobHtml,
         'text/plain': blobText,
       });
+
       await navigator.clipboard.write([clipboardItem]);
       setIsCopied(true);
       toast({ title: "Copied to clipboard!" });
       setTimeout(() => setIsCopied(false), 2000);
-    } catch(err) {
-      console.error("Failed to copy rich text: ", err);
-      // Fallback to plain text
-      navigator.clipboard.writeText(textToCopy).then(() => {
+    } catch (err) {
+      console.error("Failed to copy rich text, falling back to plain text:", err);
+      // Fallback to plain text if rich text copy fails.
+      navigator.clipboard.writeText(plainText).then(() => {
         setIsCopied(true);
-        toast({ title: "Copied to clipboard! (plain text)" });
+        toast({ title: "Copied as plain text!" });
         setTimeout(() => setIsCopied(false), 2000);
       });
     }
   };
+
 
   return (
     <Button variant="ghost" size="icon" onClick={copy} aria-label="Copy text" className={className}>
