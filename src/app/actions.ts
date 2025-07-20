@@ -60,6 +60,7 @@ export async function generateInitialAction(
             break;
     }
 
+    // The analysis can be run in parallel with the main content generation
     const [analysis, response] = await Promise.all([
       analyzeJobDescription({ jobDescription: data.jobDescription, bio: data.bio }),
       responsePromise
@@ -106,8 +107,14 @@ export async function generateSingleAction(
                 response = await generateCv({ jobDescription, userBio: bio });
                 break;
             case 'deepAnalysis':
-                response = await generateDeepAnalysis({ jobDescription, userBio: bio });
-                break;
+                 const [deepAnalysis, simpleAnalysis] = await Promise.all([
+                    generateDeepAnalysis({ jobDescription, userBio: bio }),
+                    // Also fetch the simple analysis if it doesn't exist yet
+                    // This is a bit redundant if generateInitialAction was called for deepAnalysis first,
+                    // but it ensures it's always present.
+                    analyzeJobDescription({ jobDescription, bio: bio }) 
+                ]);
+                return { success: true, data: { deepAnalysis, simpleAnalysis } as any }; // A bit of a hack to pass both
             case 'qAndA':
                 response = await generateQAndA({ jobDescription, userBio: bio });
                 break;

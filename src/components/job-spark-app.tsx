@@ -28,7 +28,7 @@ import {
   type ReviseResponseData,
 } from "@/lib/schemas";
 import { generateInitialAction, generateSingleAction, reviseAction, AllGenerationResults } from "@/app/actions";
-import { DeepAnalysisOutput, QAndAOutput } from "@/ai/flows";
+import { DeepAnalysisOutput, QAndAOutput, AnalyzeJobDescriptionOutput } from "@/ai/flows";
 import { Skeleton } from "./ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -75,7 +75,7 @@ function OutputSkeletons() {
   );
 }
 
-function CopyButton({ textToCopy }: { textToCopy: string }) {
+function CopyButton({ textToCopy, className }: { textToCopy: string, className?: string }) {
   const [isCopied, setIsCopied] = useState(false);
   const { toast } = useToast();
 
@@ -88,13 +88,13 @@ function CopyButton({ textToCopy }: { textToCopy: string }) {
   };
 
   return (
-    <Button variant="ghost" size="icon" onClick={copy} aria-label="Copy text">
+    <Button variant="ghost" size="icon" onClick={copy} aria-label="Copy text" className={className}>
       {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
     </Button>
   );
 }
 
-function RevisionForm({ originalData, currentResponse, onRevisionComplete, generationType, isRevising }: { originalData: JobApplicationData, currentResponse: string, onRevisionComplete: (newResponse: string) => void, generationType: GenerationType, isRevising: boolean }) {
+function RevisionForm({ originalData, currentResponse, onRevisionComplete, generationType, isRevising }: { originalData: JobApplicationData, currentResponse: string, onRevisionComplete: (newResponse: any) => void, generationType: GenerationType, isRevising: boolean }) {
   const { toast } = useToast();
   
   const revisionForm = useForm<ReviseResponseData>({
@@ -108,17 +108,17 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
     },
   });
   
+  const originalResponseFromProps = originalData.originalResponse;
+
   useEffect(() => {
-    if (originalData) {
-        revisionForm.reset({
-            jobDescription: originalData.jobDescription,
-            bio: originalData.bio,
-            originalResponse: currentResponse,
-            revisionComments: "",
-            generationType,
-        });
-    }
-}, [currentResponse, originalData, generationType, revisionForm]);
+      revisionForm.reset({
+          jobDescription: originalData.jobDescription,
+          bio: originalData.bio,
+          originalResponse: originalResponseFromProps,
+          revisionComments: "",
+          generationType,
+      });
+  }, [originalResponseFromProps, originalData.jobDescription, originalData.bio, generationType, revisionForm.reset]);
 
 
   async function onRevise(data: ReviseResponseData) {
@@ -172,8 +172,6 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving }: { initialV
 
   useEffect(() => {
     setLocalValue(initialValue);
-    // Don't exit editing mode when initialValue changes from upstream revision
-    // setIsEditing(false);
   }, [initialValue]);
 
   const handleSave = () => {
@@ -209,39 +207,22 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving }: { initialV
   );
 }
 
-function DeepAnalysisView({ analysis }: { analysis: DeepAnalysisOutput }) {
+function DeepAnalysisView({ deepAnalysis, simpleAnalysis }: { deepAnalysis: DeepAnalysisOutput, simpleAnalysis: AnalyzeJobDescriptionOutput }) {
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="h-6 w-6 text-primary" />
-            Overall Alignment: {analysis.overallAlignment.score}
+            Overall Alignment: {deepAnalysis.overallAlignment.score}
           </CardTitle>
-          <CardDescription>{analysis.overallAlignment.justification}</CardDescription>
+          <CardDescription>{deepAnalysis.overallAlignment.justification}</CardDescription>
         </CardHeader>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-green-500" />
-            Key Strengths
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-           {analysis.keyStrengths.map((item, index) => (
-            <div key={index} className="p-3 rounded-md border bg-green-500/10">
-              <p className="font-semibold text-green-800">Requirement:</p>
-              <Markdown className="prose prose-sm max-w-none text-muted-foreground">{item.requirement}</Markdown>
-              <p className="font-semibold mt-2 text-green-800">Evidence:</p>
-              <Markdown className="prose prose-sm max-w-none text-muted-foreground">{item.evidence}</Markdown>
-            </div>
-          ))}
-        </CardContent>
       </Card>
 
-       <Card>
+      <AnalysisAndInsights analysis={simpleAnalysis} />
+      
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <XCircle className="h-6 w-6 text-red-500" />
@@ -249,12 +230,12 @@ function DeepAnalysisView({ analysis }: { analysis: DeepAnalysisOutput }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-           {analysis.improvementAreas.map((item, index) => (
+           {deepAnalysis.improvementAreas.map((item, index) => (
             <div key={index} className="p-3 rounded-md border bg-yellow-500/10">
               <p className="font-semibold text-yellow-800">Gap:</p>
-              <Markdown className="prose prose-sm max-w-none text-muted-foreground">{item.requirement}</Markdown>
+              <Markdown className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">{item.requirement}</Markdown>
               <p className="font-semibold mt-2 text-yellow-800">Suggestion:</p>
-              <Markdown className="prose prose-sm max-w-none text-muted-foreground">{item.suggestion}</Markdown>
+              <Markdown className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">{item.suggestion}</Markdown>
             </div>
           ))}
         </CardContent>
@@ -269,9 +250,9 @@ function DeepAnalysisView({ analysis }: { analysis: DeepAnalysisOutput }) {
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="font-semibold text-blue-800">Analysis:</p>
-          <Markdown className="prose prose-sm max-w-none text-muted-foreground">{analysis.languageAndTone.analysis}</Markdown>
+          <Markdown className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">{deepAnalysis.languageAndTone.analysis}</Markdown>
           <p className="font-semibold mt-2 text-blue-800">Suggestion:</p>
-          <Markdown className="prose prose-sm max-w-none text-muted-foreground">{analysis.languageAndTone.suggestion}</Markdown>
+          <Markdown className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap">{deepAnalysis.languageAndTone.suggestion}</Markdown>
         </CardContent>
       </Card>
     </div>
@@ -299,9 +280,10 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
       </CardHeader>
       <CardContent className="space-y-6">
         {qAndA.qaPairs.map((pair, index) => (
-          <div key={index} className="p-4 rounded-md border bg-muted/50">
-            <p className="font-semibold text-primary mb-2">{pair.question}</p>
+          <div key={index} className="p-4 rounded-md border bg-muted/50 relative">
+            <p className="font-semibold text-primary mb-2 pr-10">{pair.question}</p>
             <Markdown className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">{pair.answer}</Markdown>
+            <CopyButton textToCopy={pair.answer} className="absolute top-2 right-2" />
           </div>
         ))}
       </CardContent>
@@ -309,7 +291,7 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
   )
 }
 
-function AnalysisAndInsights({ analysis }: { analysis: { matches: string[], gaps: string[] }}) {
+function AnalysisAndInsights({ analysis }: { analysis: AnalyzeJobDescriptionOutput }) {
   const renderMarkdownList = (items: string[]) => {
     return items.map((item, index) => (
       <li key={index}>
@@ -322,24 +304,15 @@ function AnalysisAndInsights({ analysis }: { analysis: { matches: string[], gaps
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Lightbulb className="h-6 w-6 text-primary" />
-          Analysis & Insights
+          <CheckCircle2 className="h-6 w-6 text-green-500" />
+          Key Strengths
         </CardTitle>
-        <CardDescription>A quick look at how your bio matches the job description.</CardDescription>
+        <CardDescription>How your bio aligns with the key requirements.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h3 className="font-semibold flex items-center gap-2 mb-2"><CheckCircle2 className="h-5 w-5 text-green-500" />Strengths</h3>
+      <CardContent>
           <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
             {renderMarkdownList(analysis.matches)}
           </ul>
-        </div>
-        <div>
-          <h3 className="font-semibold flex items-center gap-2 mb-2"><XCircle className="h-5 w-5 text-red-500" />Gaps</h3>
-          <ul className="prose prose-sm text-muted-foreground max-w-none list-disc pl-5 space-y-2">
-             {renderMarkdownList(analysis.gaps)}
-          </ul>
-        </div>
       </CardContent>
     </Card>
   )
@@ -352,22 +325,21 @@ export function JobSparkApp() {
 
   const [allResults, setAllResults] = useState<AllGenerationResults | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastSubmittedData, setLastSubmittedData] = useState<Omit<JobApplicationData, 'generationType'> | null>(null);
+  const [lastSubmittedData, setLastSubmittedData] = useState<JobApplicationData | null>(null);
 
   const [currentResponse, setCurrentResponse] = useState<string>("");
-  const [generationType, setGenerationType] = useState<GenerationType>('coverLetter');
+  const [activeTab, setActiveTab] = useState<GenerationType>('coverLetter');
 
   const debouncedEditableResponse = useDebounce(currentResponse, 500);
 
   const { toast } = useToast();
   
-  const formSchema = JobApplicationSchema.pick({ jobDescription: true, bio: true });
-
-  const form = useForm<Omit<JobApplicationData, 'generationType'>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<JobApplicationData>({
+    resolver: zodResolver(JobApplicationSchema),
     defaultValues: {
       jobDescription: "",
       bio: "",
+      generationType: 'coverLetter',
     },
   });
 
@@ -376,7 +348,8 @@ export function JobSparkApp() {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        form.reset(parsedData, { keepDefaultValues: true });
+        // Don't set generationType from storage, always default to coverLetter
+        form.reset({ jobDescription: parsedData.jobDescription || "", bio: parsedData.bio || "" }, { keepDefaultValues: true });
       }
     } catch (e) {
       console.error("Failed to load or parse data from localStorage", e);
@@ -386,7 +359,8 @@ export function JobSparkApp() {
   useEffect(() => {
     const subscription = form.watch((value) => {
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(value));
+        const dataToSave = { jobDescription: value.jobDescription, bio: value.bio };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
       } catch (e) {
         console.error("Failed to save data to localStorage", e);
       }
@@ -394,21 +368,20 @@ export function JobSparkApp() {
     return () => subscription.unsubscribe();
   }, [form.watch]);
 
-  const onSubmit = (data: Omit<JobApplicationData, 'generationType'>) => {
+  const onSubmit = (data: JobApplicationData) => {
     setError(null);
     setAllResults(null);
     setCurrentResponse("");
-
-    const fullData: JobApplicationData = { ...data, generationType: 'coverLetter' };
+    setActiveTab(data.generationType);
     setLastSubmittedData(data);
-    setGenerationType('coverLetter');
 
     startInitialGeneration(async () => {
-      const response = await generateInitialAction(fullData);
+      const response = await generateInitialAction(data);
       if (response.success) {
         setAllResults(response.data);
-        if (response.data.coverLetter) {
-          setCurrentResponse(response.data.coverLetter.responses || "");
+        const resultForTab = response.data[data.generationType];
+        if (resultForTab && 'responses' in resultForTab) {
+          setCurrentResponse(resultForTab.responses || "");
         }
       } else {
         setError(response.error);
@@ -418,13 +391,17 @@ export function JobSparkApp() {
   }
   
   const onTabChange = (newTab: string) => {
-    if (!lastSubmittedData || isSwitching || newTab === generationType) return;
+    if (!lastSubmittedData || isSwitching) return;
     const newGenType = newTab as GenerationType;
-    setGenerationType(newGenType);
+    setActiveTab(newGenType);
     
     const existingResult = allResults?.[newGenType];
     if (existingResult) {
-       if ('responses' in existingResult) {
+       if (newGenType === 'deepAnalysis') {
+          // This view doesn't use setCurrentResponse
+       } else if (newGenType === 'qAndA') {
+          // This view doesn't use setCurrentResponse
+       } else if ('responses' in existingResult) {
          setCurrentResponse((existingResult as any).responses || "");
        }
        return;
@@ -433,13 +410,19 @@ export function JobSparkApp() {
     startSwitchingTab(async () => {
       const result = await generateSingleAction({ ...lastSubmittedData, generationType: newGenType });
       if (result.success) {
-        setAllResults(prev => ({ ...prev!, [newGenType]: result.data }));
-        if ('responses' in result.data) {
-          setCurrentResponse(result.data.responses);
+        if (newGenType === 'deepAnalysis') {
+          // Special handling for deep analysis which returns two parts
+          const { deepAnalysis, simpleAnalysis } = result.data as any;
+          setAllResults(prev => ({ ...prev!, deepAnalysis, analysis: simpleAnalysis }));
+        } else {
+          setAllResults(prev => ({ ...prev!, [newGenType]: result.data }));
+          if ('responses' in result.data) {
+            setCurrentResponse(result.data.responses);
+          }
         }
       } else {
         toast({ variant: "destructive", title: "Failed to switch", description: result.error });
-        setGenerationType(generationType); // Revert on failure
+        setActiveTab(activeTab); // Revert on failure
       }
     });
   }
@@ -448,7 +431,7 @@ export function JobSparkApp() {
       if (result.success) {
         const newResponseText = result.data.responses;
         setCurrentResponse(newResponseText);
-        setAllResults(prev => ({...prev!, [generationType]: { responses: newResponseText }}));
+        setAllResults(prev => ({...prev!, [activeTab]: { responses: newResponseText }}));
       } else {
          toast({
           variant: "destructive",
@@ -461,16 +444,16 @@ export function JobSparkApp() {
   const handleManualEdit = (newValue: string) => {
       setCurrentResponse(newValue);
       // We only update the response text, not the entire object structure.
-      if (allResults && (generationType === 'cv' || generationType === 'coverLetter')) {
+      if (allResults && (activeTab === 'cv' || activeTab === 'coverLetter')) {
           setAllResults(prev => ({
               ...prev!, 
-              [generationType]: { responses: newValue }
+              [activeTab]: { responses: newValue }
           }));
       }
   };
 
   const handleClear = () => {
-    form.reset({ jobDescription: "", bio: "" });
+    form.reset({ jobDescription: "", bio: "", generationType: 'coverLetter' });
     setAllResults(null);
     setCurrentResponse("");
     setLastSubmittedData(null);
@@ -501,14 +484,14 @@ export function JobSparkApp() {
   const renderContent = () => {
     if (isSwitching) return <OutputSkeletons />;
   
-    switch (generationType) {
+    switch (activeTab) {
       case 'coverLetter':
       case 'cv':
         return (
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Your Tailored {generationType === 'cv' ? 'CV' : 'Cover Letter'}</CardTitle>
+                <CardTitle>Your Tailored {activeTab === 'cv' ? 'CV' : 'Cover Letter'}</CardTitle>
                 <CopyButton textToCopy={currentResponse} />
               </CardHeader>
               <CardContent>
@@ -516,18 +499,18 @@ export function JobSparkApp() {
               </CardContent>
             </Card>
             <RevisionForm 
-              originalData={{...lastSubmittedData!, generationType}}
+              originalData={{...lastSubmittedData!, originalResponse: currentResponse, revisionComments: ''}}
               currentResponse={debouncedEditableResponse} 
               onRevisionComplete={(res) => startRevising(async () => handleRevisionComplete(res))}
-              generationType={generationType}
+              generationType={activeTab}
               isRevising={isRevising}
             />
           </>
         );
       case 'deepAnalysis':
-        return allResults?.deepAnalysis ? <DeepAnalysisView analysis={allResults.deepAnalysis} /> : <p>No analysis generated.</p>;
+        return allResults?.deepAnalysis && allResults?.analysis ? <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} simpleAnalysis={allResults.analysis} /> : <OutputSkeletons />;
       case 'qAndA':
-        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} /> : <p>No Q&A generated.</p>;
+        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} /> : <OutputSkeletons />;
       default:
         return null;
     }
@@ -546,6 +529,30 @@ export function JobSparkApp() {
           <CardContent>
             <FormProvider {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="generationType"
+                  render={({ field }) => (
+                    <FormItem>
+                       <FormLabel>Select Output</FormLabel>
+                      <FormControl>
+                          <Tabs
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            className="w-full"
+                          >
+                            <TabsList className="grid w-full grid-cols-4">
+                              <TabsTrigger value="coverLetter" className="flex-1"><FileText className="mr-2 h-4 w-4" />Cover Letter</TabsTrigger>
+                              <TabsTrigger value="cv" className="flex-1"><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
+                              <TabsTrigger value="qAndA" className="flex-1"><MessageSquareMore className="mr-2 h-4 w-4" />Q&A</TabsTrigger>
+                              <TabsTrigger value="deepAnalysis" className="flex-1"><FileJson className="mr-2 h-4 w-4" />Deep Analysis</TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="jobDescription"
@@ -615,19 +622,16 @@ export function JobSparkApp() {
         )}
         {allResults && (
           <div className="space-y-4">
-             <Tabs value={generationType} onValueChange={onTabChange} className="w-full">
+             <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="coverLetter"><FileText className="mr-2 h-4 w-4" />Cover Letter</TabsTrigger>
-                <TabsTrigger value="cv"><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
-                <TabsTrigger value="deepAnalysis"><FileJson className="mr-2 h-4 w-4" />Deep Analysis</TabsTrigger>
-                <TabsTrigger value="qAndA"><MessageSquareMore className="mr-2 h-4 w-4" />Q&A</TabsTrigger>
+                <TabsTrigger value="coverLetter" disabled={isPending}><FileText className="mr-2 h-4 w-4" />Cover Letter</TabsTrigger>
+                <TabsTrigger value="cv" disabled={isPending}><Briefcase className="mr-2 h-4 w-4" />CV</TabsTrigger>
+                <TabsTrigger value="qAndA" disabled={isPending}><MessageSquareMore className="mr-2 h-4 w-4" />Q&A</TabsTrigger>
+                <TabsTrigger value="deepAnalysis" disabled={isPending}><FileJson className="mr-2 h-4 w-4" />Deep Analysis</TabsTrigger>
               </TabsList>
             </Tabs>
             
             <div className="space-y-8">
-              {(generationType === 'coverLetter' || generationType === 'cv') && (
-                  <AnalysisAndInsights analysis={allResults.analysis} />
-              )}
               {renderContent()}
             </div>
           </div>
