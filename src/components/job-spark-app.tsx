@@ -85,7 +85,8 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
   const revisionForm = useForm<ReviseResponseData>({
     resolver: zodResolver(ReviseResponseSchema),
     defaultValues: {
-      ...originalData,
+      jobDescription: originalData.jobDescription,
+      bio: originalData.bio,
       originalResponse: currentResponse,
       revisionComments: "",
       generationType,
@@ -94,7 +95,8 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
 
   useEffect(() => {
     revisionForm.reset({
-      ...originalData,
+      jobDescription: originalData.jobDescription,
+      bio: originalData.bio,
       originalResponse: currentResponse,
       revisionComments: "",
       generationType,
@@ -212,9 +214,12 @@ export function JobSparkApp() {
   const [generationType, setGenerationType] = useState<GenerationType>('coverLetter');
 
   const { toast } = useToast();
+  
+  // We only need the zod schema for the form fields, not the generation type
+  const formSchema = JobApplicationSchema.pick({ jobDescription: true, bio: true });
 
-  const form = useForm<JobApplicationData>({
-    resolver: zodResolver(JobApplicationSchema),
+  const form = useForm<Omit<JobApplicationData, 'generationType'>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       jobDescription: "",
       bio: "",
@@ -227,7 +232,7 @@ export function JobSparkApp() {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        const validationResult = JobApplicationSchema.partial().safeParse(parsedData);
+        const validationResult = formSchema.partial().safeParse(parsedData);
         if (validationResult.success) {
           form.reset(validationResult.data);
         }
@@ -235,7 +240,7 @@ export function JobSparkApp() {
     } catch (e) {
       console.error("Failed to load or parse data from localStorage", e);
     }
-  }, [form]);
+  }, [form, formSchema]);
 
   // Save to localStorage on change
   useEffect(() => {
@@ -250,13 +255,15 @@ export function JobSparkApp() {
   }, [form.watch]);
 
 
-  const onSubmit = (data: JobApplicationData) => {
+  const onSubmit = (data: Omit<JobApplicationData, 'generationType'>) => {
     setError(null);
     setResult(null);
     setCurrentResponse("");
-    setLastSubmittedData(data);
+    const fullData: JobApplicationData = { ...data, generationType };
+    setLastSubmittedData(fullData);
+
     startTransition(async () => {
-      const response = await generateAction({ ...data, generationType });
+      const response = await generateAction(fullData);
       if (response.success) {
         setResult(response.data);
         setCurrentResponse(response.data.response.responses);
@@ -449,3 +456,5 @@ export function JobSparkApp() {
     </div>
   );
 }
+
+    
