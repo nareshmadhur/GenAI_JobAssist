@@ -101,7 +101,7 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
       revisionComments: "",
       generationType,
     })
-  }, [currentResponse, originalData, revisionForm, generationType])
+  }, [currentResponse, originalData, generationType, revisionForm])
 
 
   async function onRevise(data: ReviseResponseData) {
@@ -456,5 +456,3 @@ export function JobSparkApp() {
     </div>
   );
 }
-
-    
