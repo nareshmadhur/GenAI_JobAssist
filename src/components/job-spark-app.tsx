@@ -36,6 +36,23 @@ const LOCAL_STORAGE_KEY = 'jobspark_form_data';
 
 type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis';
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+
 function OutputSkeletons() {
   return (
     <div className="space-y-6">
@@ -93,17 +110,15 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
     },
   });
 
-  const { jobDescription, bio } = originalData;
-
+  // This effect now correctly depends on the `currentResponse` which is the AI-generated or revised response.
+  // It no longer depends on the entire form object, which was causing the infinite loop.
   useEffect(() => {
     revisionForm.reset({
-      jobDescription: jobDescription,
-      bio: bio,
+      ...originalData,
       originalResponse: currentResponse,
-      revisionComments: "",
-      generationType,
+      revisionComments: ""
     })
-  }, [currentResponse, jobDescription, bio, generationType, revisionForm.reset])
+  }, [currentResponse, originalData, revisionForm.reset])
 
 
   async function onRevise(data: ReviseResponseData) {
@@ -111,7 +126,6 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
       const result = await reviseAction(data);
       if (result.success) {
         onRevisionComplete(result.data.responses);
-        revisionForm.reset({ ...data, originalResponse: result.data.responses, revisionComments: '' });
       } else {
          toast({
           variant: "destructive",
@@ -165,13 +179,17 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
 
 function GeneratedResponse({ initialValue, onValueChange }: { initialValue: string, onValueChange: (value: string) => void }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [localValue, setLocalValue] = useState(initialValue);
 
+  // When the initial value changes (i.e. a new response is generated),
+  // update our local state and exit edit mode.
   useEffect(() => {
-    // When the initial value changes (i.e. a new response is generated), exit edit mode.
+    setLocalValue(initialValue);
     setIsEditing(false);
   }, [initialValue]);
 
   const handleSave = () => {
+    onValueChange(localValue);
     setIsEditing(false);
   };
 
@@ -184,8 +202,8 @@ function GeneratedResponse({ initialValue, onValueChange }: { initialValue: stri
       {isEditing ? (
         <>
           <Textarea
-            value={initialValue}
-            onChange={(e) => onValueChange(e.target.value)}
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
             className="min-h-[250px] font-code bg-background"
             aria-label="Generated Response"
           />
@@ -196,7 +214,7 @@ function GeneratedResponse({ initialValue, onValueChange }: { initialValue: stri
       ) : (
         <>
           <div className="prose prose-sm max-w-none p-4 min-h-[250px] rounded-md border bg-background font-code whitespace-pre-wrap">
-             <Markdown>{initialValue}</Markdown>
+             <Markdown>{localValue}</Markdown>
           </div>
           <Button variant="ghost" size="icon" onClick={handleEdit} className="absolute top-2 right-2">
             <Edit className="h-4 w-4" />
@@ -212,12 +230,17 @@ export function JobSparkApp() {
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastSubmittedData, setLastSubmittedData] = useState<JobApplicationData | null>(null);
-  const [currentResponse, setCurrentResponse] = useState<string>("");
+  // This is the "canonical" response from the AI
+  const [aiResponse, setAiResponse] = useState<string>("");
+  // This is the user-editable version of the response
+  const [editableResponse, setEditableResponse] = useState<string>("");
+
+  const debouncedEditableResponse = useDebounce(editableResponse, 500);
+
   const [generationType, setGenerationType] = useState<GenerationType>('coverLetter');
 
   const { toast } = useToast();
   
-  // We only need the zod schema for the form fields, not the generation type
   const formSchema = JobApplicationSchema.pick({ jobDescription: true, bio: true });
 
   const form = useForm<Omit<JobApplicationData, 'generationType'>>({
@@ -260,7 +283,9 @@ export function JobSparkApp() {
   const onSubmit = (data: Omit<JobApplicationData, 'generationType'>) => {
     setError(null);
     setResult(null);
-    setCurrentResponse("");
+    setAiResponse("");
+    setEditableResponse("");
+
     const fullData: JobApplicationData = { ...data, generationType };
     setLastSubmittedData(fullData);
 
@@ -268,7 +293,8 @@ export function JobSparkApp() {
       const response = await generateAction(fullData);
       if (response.success) {
         setResult(response.data);
-        setCurrentResponse(response.data.response.responses);
+        setAiResponse(response.data.response.responses);
+        setEditableResponse(response.data.response.responses);
       } else {
         setError(response.error);
         toast({
@@ -279,6 +305,11 @@ export function JobSparkApp() {
       }
     });
   }
+
+  const handleRevisionComplete = (newResponse: string) => {
+    setAiResponse(newResponse);
+    setEditableResponse(newResponse);
+  };
 
   const handleClear = () => {
     form.reset({ jobDescription: "", bio: "" });
@@ -409,18 +440,18 @@ export function JobSparkApp() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>{getTabTitle()}</CardTitle>
-                <CopyButton textToCopy={currentResponse} />
+                <CopyButton textToCopy={editableResponse} />
               </CardHeader>
               <CardContent>
-                <GeneratedResponse initialValue={currentResponse} onValueChange={setCurrentResponse} />
+                <GeneratedResponse initialValue={aiResponse} onValueChange={setEditableResponse} />
               </CardContent>
             </Card>
 
             {lastSubmittedData && (
               <RevisionForm 
                 originalData={lastSubmittedData} 
-                currentResponse={currentResponse} 
-                onRevisionComplete={setCurrentResponse}
+                currentResponse={debouncedEditableResponse} 
+                onRevisionComplete={handleRevisionComplete}
                 generationType={generationType}
               />
             )}
