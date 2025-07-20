@@ -4,7 +4,7 @@
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, BotMessageSquare, Lightbulb, Target, MessageSquareMore } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, Target, MessageSquareMore } from "lucide-react";
 import Markdown from 'react-markdown';
 
 import { Button } from "@/components/ui/button";
@@ -240,16 +240,6 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Target className="h-6 w-6 text-primary" />
-            Overall Alignment: {deepAnalysis.overallAlignment.score}
-          </CardTitle>
-          <CardDescription className="prose-sm">{deepAnalysis.overallAlignment.justification}</CardDescription>
-        </CardHeader>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-6 w-6 text-green-500" />
             Key Strengths
           </CardTitle>
@@ -280,21 +270,6 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
         </CardHeader>
         <CardContent>
           {renderDetails(deepAnalysis.improvementAreas.details)}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BotMessageSquare className="h-6 w-6 text-blue-500" />
-            Language & Tone
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="font-semibold prose-sm">Analysis:</p>
-          <Markdown className="prose prose-sm max-w-none whitespace-pre-wrap">{deepAnalysis.languageAndTone.analysis}</Markdown>
-          <p className="font-semibold mt-2 prose-sm">Suggestion:</p>
-          <Markdown className="prose prose-sm max-w-none whitespace-pre-wrap">{deepAnalysis.languageAndTone.suggestion}</Markdown>
         </CardContent>
       </Card>
     </div>
