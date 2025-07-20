@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useState, useTransition, useEffect } from "react";
-import { useForm, useFormContext, FormProvider } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2 } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, Info, CheckCircle2, XCircle, Wand2, Edit, Save } from "lucide-react";
 import Markdown from 'react-markdown';
 
 import { Button } from "@/components/ui/button";
@@ -152,17 +153,46 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete }: { o
 }
 
 function GeneratedResponse({ initialValue, onValueChange }: { initialValue: string, onValueChange: (value: string) => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+
   useEffect(() => {
-    onValueChange(initialValue);
-  }, [initialValue, onValueChange]);
+    // When the initial value changes (i.e. a new response is generated), exit edit mode.
+    setIsEditing(false);
+  }, [initialValue]);
+
+  const handleSave = () => {
+    setIsEditing(false);
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
 
   return (
-     <Textarea
-        value={initialValue}
-        onChange={(e) => onValueChange(e.target.value)}
-        className="min-h-[250px] font-code bg-background"
-        aria-label="Generated Response"
-      />
+    <div className="relative">
+      {isEditing ? (
+        <>
+          <Textarea
+            value={initialValue}
+            onChange={(e) => onValueChange(e.target.value)}
+            className="min-h-[250px] font-code bg-background"
+            aria-label="Generated Response"
+          />
+          <Button variant="ghost" size="icon" onClick={handleSave} className="absolute top-2 right-2">
+            <Save className="h-4 w-4" />
+          </Button>
+        </>
+      ) : (
+        <>
+          <div className="prose prose-sm max-w-none p-4 min-h-[250px] rounded-md border bg-background font-code">
+             <Markdown>{initialValue}</Markdown>
+          </div>
+          <Button variant="ghost" size="icon" onClick={handleEdit} className="absolute top-2 right-2">
+            <Edit className="h-4 w-4" />
+          </Button>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -183,7 +213,7 @@ export function JobSparkApp() {
     },
   });
 
-  function onSubmit(data: JobApplicationData) {
+  const onSubmit = (data: JobApplicationData) => {
     setError(null);
     setResult(null);
     setCurrentResponse("");
@@ -203,6 +233,24 @@ export function JobSparkApp() {
       }
     });
   }
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.altKey && event.key === 'Enter') {
+        // Stop the default action to prevent it from typing in a textarea
+        event.preventDefault();
+        // Trigger the form submission
+        form.handleSubmit(onSubmit)();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Cleanup the event listener on component unmount
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [form, onSubmit]); // We need to include form and onSubmit in the dependency array
 
   return (
     <div className="grid md:grid-cols-2 gap-8 w-full p-4 sm:p-6 md:p-8">
