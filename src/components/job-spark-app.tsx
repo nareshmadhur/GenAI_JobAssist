@@ -103,7 +103,7 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
       revisionComments: "",
       generationType,
     })
-  }, [currentResponse, jobDescription, bio, generationType, revisionForm])
+  }, [currentResponse, jobDescription, bio, generationType, revisionForm.reset])
 
 
   async function onRevise(data: ReviseResponseData) {
