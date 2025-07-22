@@ -166,7 +166,7 @@ function GeneratedResponse({
           </Button>
         </>
       ) : (
-        <div className="prose prose-sm max-w-none p-4 min-h-[150px] rounded-md border bg-background">
+        <div className="prose max-w-none p-4 min-h-[150px] rounded-md border bg-background">
           <div className="relative">
              <Markdown>{localValue}</Markdown>
              <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="absolute top-0 right-0">
@@ -193,7 +193,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
       return null;
     }
     return (
-        <ul className="prose prose-sm max-w-none list-disc pl-5 space-y-2">
+        <ul className="prose max-w-none list-disc pl-5 space-y-2">
           {details.map((item, index) => (
             <li key={index} className="ml-5">
                 <Markdown components={{ p: Fragment }}>{item}</Markdown>
@@ -214,7 +214,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
           <CardDescription className="prose-sm">An expert summary of the role's core requirements.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="prose prose-sm max-w-none">
+          <div className="prose max-w-none">
             <Markdown>{deepAnalysis.jobSummary}</Markdown>
           </div>
         </CardContent>
