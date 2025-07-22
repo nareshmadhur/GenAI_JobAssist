@@ -115,4 +115,8 @@
     --tw-prose-invert-th-borders: hsl(var(--border));
     --tw-prose-invert-td-borders: hsl(var(--border));
   }
+  .prose p {
+      margin-top: 1.25em;
+      margin-bottom: 1.25em;
+  }
 }
