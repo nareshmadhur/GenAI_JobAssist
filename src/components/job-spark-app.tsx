@@ -167,13 +167,11 @@ function GeneratedResponse({
           </Button>
         </>
       ) : (
-        <div className="prose max-w-none p-4 min-h-[150px] rounded-md border bg-background">
-          <div className="relative">
-             <Markdown>{localValue}</Markdown>
-             <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="absolute top-0 right-0">
-                <Edit className="h-4 w-4" />
-             </Button>
-          </div>
+        <div className="prose max-w-none p-4 min-h-[150px] rounded-md border bg-background relative">
+          <Markdown>{localValue}</Markdown>
+          <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="absolute top-0 right-0">
+              <Edit className="h-4 w-4" />
+          </Button>
         </div>
       )}
       <RevisionForm
@@ -258,13 +256,13 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
             <span className="text-yellow-600">Improvement Areas</span>
           </CardTitle>
            <CardDescription className="prose-sm">Actionable advice to better present your experience.</CardDescription>
-        </Header>
+        </CardHeader>
         <CardContent>
           {renderDetails(deepAnalysis.improvementAreas)}
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
