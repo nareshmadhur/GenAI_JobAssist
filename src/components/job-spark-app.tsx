@@ -87,6 +87,8 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
       const root = ReactDOMClient.createRoot(tempDiv);
       
       await new Promise<void>(resolve => {
+        // This is a bit of a hack to wait for the render to complete.
+        // In a real-world scenario, you'd want a more robust solution.
         root.render(
           <React.Fragment>
             {reactElement}
@@ -127,11 +129,9 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
   );
 }
 
-function GeneratedResponse({ initialValue, onValueChange, generationType }: { initialValue: string, onValueChange: (value: string) => void, generationType: 'coverLetter' | 'cv' }) {
+function GeneratedResponse({ initialValue, onValueChange, generationType, onRevision }: { initialValue: string, onValueChange: (value: string) => void, generationType: 'coverLetter' | 'cv', onRevision: (data: ReviseResponseData) => Promise<void> }) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(initialValue);
-  
-  const form = useFormContext<Omit<JobApplicationData, 'generationType'>>();
   const debouncedValue = useDebounce(initialValue, 500);
 
   useEffect(() => {
@@ -168,9 +168,9 @@ function GeneratedResponse({ initialValue, onValueChange, generationType }: { in
         </>
       )}
       <RevisionForm
-        originalData={{ ...form.getValues(), generationType }}
         currentResponse={debouncedValue}
         generationType={generationType}
+        onRevision={onRevision}
       />
     </div>
   );
@@ -357,6 +357,11 @@ export function JobSparkApp() {
         setActiveView(generationType);
         setGenerationError(null);
 
+        // If data for this view already exists, we don't need to fetch it again.
+        if (allResults[generationType]) {
+            return;
+        }
+
         startGenerating(async () => {
             const response = await generateAction(data);
             if (response.success) {
@@ -376,6 +381,22 @@ export function JobSparkApp() {
       }));
   };
 
+  const handleRevision = async (data: ReviseResponseData) => {
+    const result = await reviseAction(data);
+    if (result.success) {
+      const { generationType } = data;
+      const newResponseText = result.data.responses;
+      setAllResults(prev => ({ ...prev, [generationType]: { responses: newResponseText } }));
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Revision Failed",
+        description: result.error,
+      });
+    }
+  };
+
+
   const handleClear = () => {
     form.reset({ jobDescription: "", bio: "" });
     setAllResults({});
@@ -392,10 +413,10 @@ export function JobSparkApp() {
   const cvResponse = allResults.cv?.responses ?? "";
 
   const renderActiveView = () => {
-      if (isGenerating) {
+      if (isGenerating && !allResults[activeView]) {
         return <SectionSkeleton />;
       }
-      if (generationError) {
+      if (generationError && activeView !== 'none' && !allResults[activeView]) {
           return (
              <Card>
                 <CardContent className="p-4">
@@ -417,6 +438,7 @@ export function JobSparkApp() {
                     initialValue={coverLetterResponse}
                     onValueChange={(val) => handleManualEdit(val, 'coverLetter')} 
                     generationType="coverLetter"
+                    onRevision={handleRevision}
                 />
             );
           case 'cv':
@@ -426,6 +448,7 @@ export function JobSparkApp() {
                     initialValue={cvResponse} 
                     onValueChange={(val) => handleManualEdit(val, 'cv')}
                     generationType="cv"
+                    onRevision={handleRevision}
                 />
              );
           case 'deepAnalysis':
@@ -450,162 +473,152 @@ export function JobSparkApp() {
   };
 
   return (
-    <div className="grid md:grid-cols-2 gap-8 w-full p-4 sm:p-6 md:p-8">
-      {/* Input Column */}
-      <div className="flex flex-col gap-8">
-        <Card className="bg-card/80 backdrop-blur-sm sticky top-24">
-          <CardHeader>
-            <CardTitle>Your Information</CardTitle>
-            <CardDescription className="prose-sm">
-              Provide your info, then choose what to generate.
-            </CardDescription>
-          </CardHeader>
-          <FormProvider {...form}>
-          <CardContent>
-              <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="jobDescription"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Job Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
-                          className="min-h-[150px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="bio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Your Bio / Resume</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
-                          className="min-h-[200px]"
-                          {...field}
-                        />
-                      </FormControl>
-                       <FormDescription className="prose-sm">
-                        This will be compared against the job description to find matches and gaps.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </form>
-          </CardContent>
-          <CardFooter className="flex-col items-start gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-                {/* Application Materials */}
-                <div className="space-y-2">
-                    <h3 className="font-semibold text-center text-sm text-muted-foreground">Application Materials</h3>
-                    <Button onClick={() => handleGeneration('coverLetter')} disabled={isGenerating} className="w-full">
-                        {isGenerating && activeView === 'coverLetter' ? <Loader2 className="animate-spin" /> : <FileText />}
-                        Generate Letter
-                    </Button>
-                     <Button onClick={() => handleGeneration('cv')} disabled={isGenerating} className="w-full">
-                        {isGenerating && activeView === 'cv' ? <Loader2 className="animate-spin" /> : <Briefcase />}
-                        Generate CV
-                    </Button>
-                </div>
-                {/* Job Insights */}
-                <div className="space-y-2">
-                     <h3 className="font-semibold text-center text-sm text-muted-foreground">Job Insights</h3>
-                     <Button onClick={() => handleGeneration('deepAnalysis')} disabled={isGenerating} className="w-full">
-                        {isGenerating && activeView === 'deepAnalysis' ? <Loader2 className="animate-spin" /> : <Lightbulb />}
-                        Generate Analysis
-                    </Button>
-                </div>
-            </div>
-            <Separator />
-             <Button type="button" variant="outline" onClick={handleClear} className="w-full sm:w-auto">
-                <Trash2 className="mr-2 h-4 w-4" />
-                Clear All
-            </Button>
-          </CardFooter>
-          </FormProvider>
-        </Card>
-      </div>
-
-      {/* Output Column */}
-      <div className="flex flex-col gap-4">
-        <Card>
+    <FormProvider {...form}>
+      <div className="grid md:grid-cols-2 gap-8 w-full p-4 sm:p-6 md:p-8">
+        {/* Input Column */}
+        <div className="flex flex-col gap-8">
+          <Card className="bg-card/80 backdrop-blur-sm sticky top-24">
             <CardHeader>
-                <div className="flex justify-between items-center">
-                    {activeView !== 'none' ? (
-                        <CardTitle className="flex items-center gap-2">{VIEW_CONFIG[activeView].icon} {VIEW_CONFIG[activeView].title}</CardTitle>
-                    ) : (
-                        <CardTitle>Output</CardTitle>
-                    )}
-                    <div className="flex items-center gap-1">
-                        {(Object.keys(allResults) as GenerationType[]).map(key => (
-                            <Button 
-                                key={key}
-                                variant={activeView === key ? 'default' : 'ghost'} 
-                                size="icon"
-                                onClick={() => setActiveView(key)}
-                                aria-label={`View ${VIEW_CONFIG[key].title}`}
-                                disabled={isGenerating}
-                            >
-                                {VIEW_CONFIG[key].icon}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
+              <CardTitle>Your Information</CardTitle>
+              <CardDescription className="prose-sm">
+                Provide your info, then choose what to generate.
+              </CardDescription>
             </CardHeader>
             <CardContent>
-                {renderActiveView()}
+                <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="jobDescription"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Job Description</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
+                            className="min-h-[150px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="bio"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Your Bio / Resume</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
+                            className="min-h-[200px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription className="prose-sm">
+                          This will be compared against the job description to find matches and gaps.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </form>
             </CardContent>
-        </Card>
+            <CardFooter className="flex-col items-start gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                  {/* Application Materials */}
+                  <div className="space-y-2">
+                      <h3 className="font-semibold text-center text-sm text-muted-foreground">Application Materials</h3>
+                      <Button onClick={() => handleGeneration('coverLetter')} disabled={isGenerating} className="w-full">
+                          {isGenerating && activeView === 'coverLetter' ? <Loader2 className="animate-spin" /> : <FileText />}
+                          Generate Letter
+                      </Button>
+                      <Button onClick={() => handleGeneration('cv')} disabled={isGenerating} className="w-full">
+                          {isGenerating && activeView === 'cv' ? <Loader2 className="animate-spin" /> : <Briefcase />}
+                          Generate CV
+                      </Button>
+                  </div>
+                  {/* Job Insights */}
+                  <div className="space-y-2">
+                      <h3 className="font-semibold text-center text-sm text-muted-foreground">Job Insights</h3>
+                      <Button onClick={() => handleGeneration('deepAnalysis')} disabled={isGenerating} className="w-full">
+                          {isGenerating && activeView === 'deepAnalysis' ? <Loader2 className="animate-spin" /> : <Lightbulb />}
+                          Generate Analysis
+                      </Button>
+                  </div>
+              </div>
+              <Separator />
+              <Button type="button" variant="outline" onClick={handleClear} className="w-full sm:w-auto">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Clear All
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        {/* Output Column */}
+        <div className="flex flex-col gap-4">
+          <Card>
+              <CardHeader>
+                  <div className="flex justify-between items-center">
+                      {activeView !== 'none' ? (
+                          <CardTitle className="flex items-center gap-2">{VIEW_CONFIG[activeView].icon} {VIEW_CONFIG[activeView].title}</CardTitle>
+                      ) : (
+                          <CardTitle>Output</CardTitle>
+                      )}
+                      <div className="flex items-center gap-1">
+                          {(Object.keys(allResults) as GenerationType[]).map(key => (
+                              <Button 
+                                  key={key}
+                                  variant={activeView === key ? 'default' : 'ghost'} 
+                                  size="icon"
+                                  onClick={() => setActiveView(key)}
+                                  aria-label={`View ${VIEW_CONFIG[key].title}`}
+                                  disabled={isGenerating && !allResults[key]}
+                              >
+                                  {VIEW_CONFIG[key].icon}
+                              </Button>
+                          ))}
+                      </div>
+                  </div>
+              </CardHeader>
+              <CardContent>
+                  {renderActiveView()}
+              </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </FormProvider>
   );
 }
 
-function RevisionForm({ originalData, currentResponse, generationType }: { originalData: JobApplicationData, currentResponse: string, generationType: 'cv' | 'coverLetter' }) {
+function RevisionForm({ currentResponse, generationType, onRevision }: { currentResponse: string, generationType: 'cv' | 'coverLetter', onRevision: (data: ReviseResponseData) => Promise<void> }) {
   const [isRevising, startRevising] = useTransition();
-  const { toast } = useToast();
-  const { setAllResults } = useJobSparkContext();
+  const form = useFormContext<Omit<JobApplicationData, 'generationType'>>();
 
   const revisionForm = useForm<ReviseResponseData>({
     resolver: zodResolver(ReviseResponseSchema),
     defaultValues: {
-      jobDescription: originalData.jobDescription,
-      bio: originalData.bio,
-      originalResponse: currentResponse,
       revisionComments: "",
+      // These will be updated via useEffect
+      jobDescription: form.getValues().jobDescription,
+      bio: form.getValues().bio,
+      originalResponse: currentResponse,
       generationType: generationType,
     },
   });
   
   useEffect(() => {
-      revisionForm.setValue('jobDescription', originalData.jobDescription);
-      revisionForm.setValue('bio', originalData.bio);
+      revisionForm.setValue('jobDescription', form.getValues().jobDescription);
+      revisionForm.setValue('bio', form.getValues().bio);
       revisionForm.setValue('originalResponse', currentResponse);
-  }, [currentResponse, originalData.jobDescription, originalData.bio, revisionForm]);
+  }, [currentResponse, form, revisionForm]);
 
   async function onRevise(data: ReviseResponseData) {
     startRevising(async () => {
-        const result = await reviseAction(data);
-        if (result.success) {
-            const newResponseText = result.data.responses;
-            setAllResults(prev => ({...prev!, [generationType]: { responses: newResponseText }}));
-            revisionForm.reset({ ...data, revisionComments: "" });
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Revision Failed",
-                description: result.error,
-            });
-        }
+        await onRevision(data);
+        revisionForm.reset({ ...data, revisionComments: "" });
     });
   }
   
@@ -623,7 +636,6 @@ function RevisionForm({ originalData, currentResponse, generationType }: { origi
         <CardDescription className="prose-sm">Not quite right? Tell the AI how to improve the response.</CardDescription>
       </CardHeader>
       <CardContent>
-        <FormProvider {...revisionForm}>
           <form onSubmit={revisionForm.handleSubmit(onRevise)} className="space-y-4">
             <FormField
               control={revisionForm.control}
@@ -644,7 +656,7 @@ function RevisionForm({ originalData, currentResponse, generationType }: { origi
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isRevising || !revisionForm.formState.isValid} className="w-full sm:w-auto">
+            <Button type="submit" disabled={isRevising || !revisionForm.formState.isDirty || !revisionForm.formState.isValid} className="w-full sm:w-auto">
               {isRevising ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -653,44 +665,9 @@ function RevisionForm({ originalData, currentResponse, generationType }: { origi
               Revise
             </Button>
           </form>
-        </FormProvider>
       </CardContent>
     </Card>
   )
 }
 
-
-// Context to share state between components
-type JobSparkContextType = {
-  setAllResults: React.Dispatch<React.SetStateAction<AllGenerationResults>>;
-};
-
-const JobSparkContext = React.createContext<JobSparkContextType | null>(null);
-
-function useJobSparkContext() {
-    const context = React.useContext(JobSparkContext);
-    if (!context) {
-        throw new Error("useJobSparkContext must be used within a JobSparkProvider");
-    }
-    return context;
-}
-
-// Wrapper to provide context to the app
-export function JobSparkProvider() {
-    const [allResults, setAllResults] = useState<AllGenerationResults>({});
     
-    // This is a simplified version. A real app might need a more complex state structure.
-    const contextValue = {
-        allResults,
-        setAllResults,
-    };
-
-    return (
-        // This is a mock provider. The actual JobSparkApp doesn't use it this way.
-        // The state is managed within JobSparkApp itself. This structure is for demonstration.
-        // In a real refactor, state would be lifted here.
-        <JobSparkContext.Provider value={contextValue as any}>
-            <JobSparkApp /> 
-        </JobSparkContext.Provider>
-    );
-}
