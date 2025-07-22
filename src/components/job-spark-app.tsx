@@ -7,6 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle } from "lucide-react";
 import Markdown from 'react-markdown';
 import { compiler } from 'markdown-to-jsx';
+import ReactDOMServer from 'react-dom/server';
+
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -81,24 +83,9 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
     const plainText = textToCopy.replace(/\*\*/g, '');
 
     try {
+      // Use a more robust method to get HTML from markdown
       const reactElement = compiler(textToCopy, { forceBlock: true });
-      const tempDiv = document.createElement('div');
-      
-      const ReactDOMClient = (await import('react-dom/client'));
-      const root = ReactDOMClient.createRoot(tempDiv);
-      
-      await new Promise<void>(resolve => {
-        // This is a bit of a hack to wait for the render to complete.
-        // In a real-world scenario, you'd want a more robust solution.
-        root.render(
-          <React.Fragment>
-            {reactElement}
-            <img src="" style={{display: 'none'}} onLoad={() => resolve()} />
-          </React.Fragment>
-        );
-      });
-
-      const html = tempDiv.innerHTML;
+      const html = ReactDOMServer.renderToString(reactElement);
       
       const blobHtml = new Blob([html], { type: 'text/html' });
       const blobText = new Blob([plainText], { type: 'text/plain' });
