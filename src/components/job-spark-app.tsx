@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm, FormProvider, useFormContext } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle } from "lucide-react";
 import Markdown from 'react-markdown';
@@ -132,6 +132,7 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
 function GeneratedResponse({ initialValue, onValueChange, generationType, onRevision }: { initialValue: string, onValueChange: (value: string) => void, generationType: 'coverLetter' | 'cv', onRevision: (data: ReviseResponseData) => Promise<void> }) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(initialValue);
+  const form = useFormContext<Omit<JobApplicationData, 'generationType'>>();
   const debouncedValue = useDebounce(initialValue, 500);
 
   useEffect(() => {
@@ -171,6 +172,8 @@ function GeneratedResponse({ initialValue, onValueChange, generationType, onRevi
         currentResponse={debouncedValue}
         generationType={generationType}
         onRevision={onRevision}
+        jobDescription={form.getValues().jobDescription}
+        bio={form.getValues().bio}
       />
     </div>
   );
@@ -485,45 +488,47 @@ export function JobSparkApp() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-                <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="jobDescription"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Job Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
-                            className="min-h-[150px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="bio"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Your Bio / Resume</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
-                            className="min-h-[200px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription className="prose-sm">
-                          This will be compared against the job description to find matches and gaps.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </form>
+                <Form {...form}>
+                    <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+                    <FormField
+                        control={form.control}
+                        name="jobDescription"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Job Description</FormLabel>
+                            <FormControl>
+                            <Textarea
+                                placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
+                                className="min-h-[150px]"
+                                {...field}
+                            />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="bio"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Your Bio / Resume</FormLabel>
+                            <FormControl>
+                            <Textarea
+                                placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
+                                className="min-h-[200px]"
+                                {...field}
+                            />
+                            </FormControl>
+                            <FormDescription className="prose-sm">
+                            This will be compared against the job description to find matches and gaps.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    </form>
+                </Form>
             </CardContent>
             <CardFooter className="flex-col items-start gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
@@ -593,27 +598,37 @@ export function JobSparkApp() {
   );
 }
 
-function RevisionForm({ currentResponse, generationType, onRevision }: { currentResponse: string, generationType: 'cv' | 'coverLetter', onRevision: (data: ReviseResponseData) => Promise<void> }) {
+function RevisionForm({ 
+    currentResponse, 
+    generationType, 
+    onRevision,
+    jobDescription,
+    bio
+}: { 
+    currentResponse: string; 
+    generationType: 'cv' | 'coverLetter';
+    onRevision: (data: ReviseResponseData) => Promise<void>;
+    jobDescription: string;
+    bio: string;
+}) {
   const [isRevising, startRevising] = useTransition();
-  const form = useFormContext<Omit<JobApplicationData, 'generationType'>>();
 
   const revisionForm = useForm<ReviseResponseData>({
     resolver: zodResolver(ReviseResponseSchema),
     defaultValues: {
       revisionComments: "",
-      // These will be updated via useEffect
-      jobDescription: form.getValues().jobDescription,
-      bio: form.getValues().bio,
+      jobDescription: jobDescription,
+      bio: bio,
       originalResponse: currentResponse,
       generationType: generationType,
     },
   });
   
   useEffect(() => {
-      revisionForm.setValue('jobDescription', form.getValues().jobDescription);
-      revisionForm.setValue('bio', form.getValues().bio);
+      revisionForm.setValue('jobDescription', jobDescription);
+      revisionForm.setValue('bio', bio);
       revisionForm.setValue('originalResponse', currentResponse);
-  }, [currentResponse, form, revisionForm]);
+  }, [currentResponse, jobDescription, bio, revisionForm]);
 
   async function onRevise(data: ReviseResponseData) {
     startRevising(async () => {
@@ -636,38 +651,38 @@ function RevisionForm({ currentResponse, generationType, onRevision }: { current
         <CardDescription className="prose-sm">Not quite right? Tell the AI how to improve the response.</CardDescription>
       </CardHeader>
       <CardContent>
-          <form onSubmit={revisionForm.handleSubmit(onRevise)} className="space-y-4">
-            <FormField
-              control={revisionForm.control}
-              name="revisionComments"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Your Feedback</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="e.g., 'Make it more formal.' or 'Emphasize my experience with project management tools.'"
-                      className="min-h-[100px] bg-background"
-                      {...field}
-                      onKeyDown={handleKeyDown}
-                      disabled={isRevising}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" disabled={isRevising || !revisionForm.formState.isDirty || !revisionForm.formState.isValid} className="w-full sm:w-auto">
-              {isRevising ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Wand2 className="mr-2 h-4 w-4" />
-              )}
-              Revise
-            </Button>
-          </form>
+          <Form {...revisionForm}>
+            <form onSubmit={revisionForm.handleSubmit(onRevise)} className="space-y-4">
+                <FormField
+                control={revisionForm.control}
+                name="revisionComments"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Your Feedback</FormLabel>
+                    <FormControl>
+                        <Textarea
+                        placeholder="e.g., 'Make it more formal.' or 'Emphasize my experience with project management tools.'"
+                        className="min-h-[100px] bg-background"
+                        {...field}
+                        onKeyDown={handleKeyDown}
+                        disabled={isRevising}
+                        />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <Button type="submit" disabled={isRevising || !revisionForm.formState.isDirty || !revisionForm.formState.isValid} className="w-full sm:w-auto">
+                {isRevising ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                    <Wand2 className="mr-2 h-4 w-4" />
+                )}
+                Revise
+                </Button>
+            </form>
+          </Form>
       </CardContent>
     </Card>
   )
 }
-
-    
