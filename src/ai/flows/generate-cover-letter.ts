@@ -35,7 +35,8 @@ const prompt = ai.definePrompt({
 
 The cover letter should be concise and impactful, focusing only on the most effective and strong points from the user's bio that align with the job description.
 
-Use professional paragraphs and standard Markdown for formatting, specifically:
+Use professional paragraphs and standard Markdown for formatting. Specifically:
+- **Use a double newline character ('\\n\\n') to separate paragraphs.** This is critical for correct formatting.
 - Use a hyphen (-) for bullet points for lists where appropriate.
 - Use **bolding** to highlight key skills, experiences, and qualifications that directly align with the most important requirements in the job description.
 - Structure the response like a formal letter with proper salutations and closing.
