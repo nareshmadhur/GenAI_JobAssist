@@ -75,9 +75,13 @@ export async function reviseAction(
     const errorMessage = validationResult.error.issues.map((issue) => issue.message).join(' ');
     return { success: false, error: errorMessage || "Invalid input for revision." };
   }
+  const validatedData = validationResult.data;
+  if (validatedData.generationType === 'cv') {
+      return { success: false, error: "CV revision is not supported in this format." };
+  }
 
   try {
-    const response = await reviseResponse(validationResult.data as ReviseResponseInput);
+    const response = await reviseResponse(validatedData as ReviseResponseInput);
     return {
       success: true,
       data: response,

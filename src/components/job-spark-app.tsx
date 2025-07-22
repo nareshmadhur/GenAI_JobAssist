@@ -32,7 +32,8 @@ import {
   type QAndAOutput
 } from "@/lib/schemas";
 import { generateAction, reviseAction, AllGenerationResults } from "@/app/actions";
-import { DeepAnalysisOutput } from "@/ai/flows";
+import { DeepAnalysisOutput, CvOutput } from "@/ai/flows";
+import { CvView } from './cv-view';
 import { Skeleton } from "./ui/skeleton";
 import { Separator } from "./ui/separator";
 import { cn } from "@/lib/utils";
@@ -80,32 +81,37 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
   const { toast } = useToast();
 
   const copy = async () => {
-    const plainText = textToCopy.replace(/\*\*/g, '');
+    // This is a simplified version of the copy function
+    const plainText = textToCopy.replace(/[\*\-_#]/g, ''); 
 
     try {
-      // Use a more robust method to get HTML from markdown
-      const reactElement = compiler(textToCopy, { forceBlock: true });
-      const html = ReactDOMServer.renderToString(reactElement);
-      
-      const blobHtml = new Blob([html], { type: 'text/html' });
-      const blobText = new Blob([plainText], { type: 'text/plain' });
-      
-      const clipboardItem = new ClipboardItem({
-        'text/html': blobHtml,
-        'text/plain': blobText,
-      });
-
-      await navigator.clipboard.write([clipboardItem]);
-      setIsCopied(true);
-      toast({ title: "Copied to clipboard!" });
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy rich text, falling back to plain text:", err);
-      navigator.clipboard.writeText(plainText).then(() => {
+        const reactElement = compiler(textToCopy, { forceBlock: true });
+        const html = ReactDOMServer.renderToString(reactElement);
+        
+        const blobHtml = new Blob([html], { type: 'text/html' });
+        const blobText = new Blob([plainText], { type: 'text/plain' });
+        
+        // Use the modern clipboard API
+        await navigator.clipboard.write([
+            new ClipboardItem({
+                'text/html': blobHtml,
+                'text/plain': blobText,
+            })
+        ]);
+        
         setIsCopied(true);
-        toast({ title: "Copied as plain text!" });
+        toast({ title: "Copied to clipboard!" });
         setTimeout(() => setIsCopied(false), 2000);
-      });
+    } catch (err) {
+        console.error("Failed to copy rich text, falling back to plain text:", err);
+        // Fallback for browsers that don't support ClipboardItem
+        navigator.clipboard.writeText(plainText).then(() => {
+            setIsCopied(true);
+            toast({ title: "Copied as plain text!" });
+            setTimeout(() => setIsCopied(false), 2000);
+        }, () => {
+            toast({ variant: "destructive", title: "Copy failed", description: "Could not write to clipboard." });
+        });
     }
   };
 
@@ -127,7 +133,7 @@ function GeneratedResponse({
 }: { 
   initialValue: string;
   onValueChange: (value: string) => void;
-  generationType: 'coverLetter' | 'cv';
+  generationType: 'coverLetter';
   onRevision: (data: ReviseResponseData) => Promise<void>;
   jobDescription: string;
   bio: string;
@@ -318,7 +324,7 @@ export function JobSparkApp() {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
   
-  const form = useForm<Omit<JobApplicationData, 'generationType'>>({
+  const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
     resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
     defaultValues: { jobDescription: "", bio: "" },
   });
@@ -329,16 +335,16 @@ export function JobSparkApp() {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        form.reset({ jobDescription: parsedData.jobDescription || "", bio: parsedData.bio || "" });
+        formMethods.reset({ jobDescription: parsedData.jobDescription || "", bio: parsedData.bio || "" });
       }
     } catch (e) {
       console.error("Failed to load or parse data from localStorage", e);
     }
-  }, [form]);
+  }, [formMethods]);
 
   // Save to localStorage on change
   useEffect(() => {
-    const subscription = form.watch((value) => {
+    const subscription = formMethods.watch((value) => {
        try {
          const dataToSave = { jobDescription: value.jobDescription, bio: value.bio };
          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
@@ -347,16 +353,16 @@ export function JobSparkApp() {
        }
     });
     return () => subscription.unsubscribe();
-  }, [form.watch]);
+  }, [formMethods.watch]);
 
   const handleGeneration = (generationType: GenerationType) => {
-    form.trigger().then(isValid => {
+    formMethods.trigger().then(isValid => {
         if (!isValid) {
             toast({ variant: "destructive", title: "Please fill out both fields."});
             return;
         }
         
-        const data = { ...form.getValues(), generationType };
+        const data = { ...formMethods.getValues(), generationType };
 
         setActiveView(generationType);
         setGenerationError(null);
@@ -378,17 +384,23 @@ export function JobSparkApp() {
     });
   }
   
-  const handleManualEdit = (newValue: string, generationType: 'coverLetter' | 'cv') => {
-      setAllResults(prev => ({
-          ...prev, 
-          [generationType]: { responses: newValue }
-      }));
+  const handleManualEdit = (newValue: string, generationType: 'coverLetter') => {
+      setAllResults(prev => {
+        if (!prev[generationType]) return prev;
+        const newResult = { ...prev[generationType]!, responses: newValue };
+        return { ...prev, [generationType]: newResult };
+      });
   };
 
   const handleRevision = async (data: ReviseResponseData) => {
     const result = await reviseAction(data);
     if (result.success) {
       const { generationType } = data;
+      if (generationType === 'cv') {
+        // CV doesn't have a simple text response anymore, so this case might need adjustment
+        // For now, we assume revision is only for coverLetter
+        return;
+      }
       const newResponseText = result.data.responses;
       setAllResults(prev => ({ ...prev, [generationType]: { responses: newResponseText } }));
     } else {
@@ -402,7 +414,7 @@ export function JobSparkApp() {
 
 
   const handleClear = () => {
-    form.reset({ jobDescription: "", bio: "" });
+    formMethods.reset({ jobDescription: "", bio: "" });
     setAllResults({});
     setActiveView('none');
     setGenerationError(null);
@@ -413,9 +425,8 @@ export function JobSparkApp() {
     }
   };
   
-  const { jobDescription, bio } = form.getValues();
+  const { jobDescription, bio } = formMethods.getValues();
   const coverLetterResponse = allResults.coverLetter?.responses ?? "";
-  const cvResponse = allResults.cv?.responses ?? "";
 
   const renderActiveView = () => {
       if (isGenerating && !allResults[activeView]) {
@@ -450,16 +461,8 @@ export function JobSparkApp() {
             );
           case 'cv':
              if (!allResults.cv) return null;
-             return (
-                 <GeneratedResponse 
-                    initialValue={cvResponse} 
-                    onValueChange={(val) => handleManualEdit(val, 'cv')}
-                    generationType="cv"
-                    onRevision={handleRevision}
-                    jobDescription={jobDescription}
-                    bio={bio}
-                />
-             );
+             // Here we use the new CV View component
+             return <CvView cvData={allResults.cv as CvOutput} />;
           case 'deepAnalysis':
             if (!allResults.deepAnalysis) return null;
             return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} />;
@@ -482,7 +485,7 @@ export function JobSparkApp() {
   };
 
   return (
-    <FormProvider {...form}>
+    <FormProvider {...formMethods}>
       <div className="grid md:grid-cols-2 gap-8 w-full p-4 sm:p-6 md:p-8">
         {/* Input Column */}
         <div className="flex flex-col gap-8">
@@ -494,10 +497,10 @@ export function JobSparkApp() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-                <Form {...form}>
+                <Form {...formMethods}>
                     <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
                     <FormField
-                        control={form.control}
+                        control={formMethods.control}
                         name="jobDescription"
                         render={({ field }) => (
                         <FormItem>
@@ -514,7 +517,7 @@ export function JobSparkApp() {
                         )}
                     />
                     <FormField
-                        control={form.control}
+                        control={formMethods.control}
                         name="bio"
                         render={({ field }) => (
                         <FormItem>
@@ -547,7 +550,7 @@ export function JobSparkApp() {
                       </Button>
                       <Button onClick={() => handleGeneration('cv')} disabled={isGenerating} className="w-full">
                           {isGenerating && activeView === 'cv' ? <Loader2 className="animate-spin" /> : <Briefcase />}
-                          Generate CV
+                          Generate CV Advice
                       </Button>
                   </div>
                   {/* Job Insights */}
@@ -612,7 +615,7 @@ function RevisionForm({
     bio
 }: { 
     currentResponse: string; 
-    generationType: 'cv' | 'coverLetter';
+    generationType: 'coverLetter';
     onRevision: (data: ReviseResponseData) => Promise<void>;
     jobDescription: string;
     bio: string;
