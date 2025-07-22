@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const JobApplicationSchema = z.object({
   jobDescription: z.string().min(50, { message: "Job description must be at least 50 characters long." }),
   bio: z.string().min(100, { message: "Your bio must be at least 100 characters long to provide enough detail." }),
-  generationType: z.enum(['coverLetter', 'cv', 'deepAnalysis', 'qAndA']),
+  generationType: z.enum(['coverLetter', 'cv', 'deepAnalysis']),
 });
 
 export type JobApplicationData = z.infer<typeof JobApplicationSchema>;
@@ -24,3 +24,16 @@ export const ReviseResponseSchema = z.object({
 });
 
 export type ReviseResponseData = z.infer<typeof ReviseResponseSchema>;
+
+
+// Schemas for the Q&A flow
+export const QuestionAnswerPairSchema = z.object({
+  question: z.string().describe('The verbatim question found in the job description.'),
+  answer: z.string().describe("A concise and professional answer based on the user's bio. If the answer cannot be found in the bio, return the exact string '[Answer not found in bio]'."),
+});
+
+export const QAndAOutputSchema = z.object({
+  questionsFound: z.boolean().describe('Whether or not any questions were found in the job description.'),
+  qaPairs: z.array(QuestionAnswerPairSchema).describe('A list of question and answer pairs.'),
+});
+export type QAndAOutput = z.infer<typeof QAndAOutputSchema>;

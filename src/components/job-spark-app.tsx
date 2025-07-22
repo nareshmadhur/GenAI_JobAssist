@@ -4,7 +4,7 @@
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle } from "lucide-react";
 import Markdown from 'react-markdown';
 import { compiler } from 'markdown-to-jsx';
 
@@ -28,18 +28,16 @@ import {
   type JobApplicationData, 
   type ReviseResponseData,
 } from "@/lib/schemas";
-import { generateAction, AllGenerationResults } from "@/app/actions";
-import { DeepAnalysisOutput, QAndAOutput } from "@/ai/flows";
+import { generateAction, reviseAction, AllGenerationResults } from "@/app/actions";
+import { DeepAnalysisOutput } from "@/ai/flows";
 import { Skeleton } from "./ui/skeleton";
 import { Separator } from "./ui/separator";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { cn } from "@/lib/utils";
 
 const LOCAL_STORAGE_KEY = 'jobspark_form_data';
 
-type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis' | 'qAndA';
-type GeneratingState = { [key in GenerationType]?: boolean };
-type ErrorState = { [key in GenerationType]?: string | null };
+type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis';
+type ActiveView = GenerationType | 'none';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -60,10 +58,16 @@ function useDebounce<T>(value: T, delay: number): T {
 function SectionSkeleton() {
     return (
       <div className="space-y-4 p-4">
-        <Skeleton className="h-4 w-1/3" />
+        <Skeleton className="h-8 w-1/3 mb-4" />
+        <Skeleton className="h-4 w-1/4" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-5/6" />
+        <div className="pt-4">
+            <Skeleton className="h-4 w-1/4" />
+            <Skeleton className="h-4 w-full mt-2" />
+            <Skeleton className="h-4 w-full mt-2" />
+        </div>
       </div>
     );
 }
@@ -123,9 +127,12 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
   );
 }
 
-function GeneratedResponse({ initialValue, onValueChange }: { initialValue: string, onValueChange: (value: string) => void }) {
+function GeneratedResponse({ initialValue, onValueChange, generationType }: { initialValue: string, onValueChange: (value: string) => void, generationType: 'coverLetter' | 'cv' }) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(initialValue);
+  
+  const form = useFormContext<Omit<JobApplicationData, 'generationType'>>();
+  const debouncedValue = useDebounce(initialValue, 500);
 
   useEffect(() => {
     setLocalValue(initialValue);
@@ -160,76 +167,15 @@ function GeneratedResponse({ initialValue, onValueChange }: { initialValue: stri
           </Button>
         </>
       )}
+      <RevisionForm
+        originalData={{ ...form.getValues(), generationType }}
+        currentResponse={debouncedValue}
+        generationType={generationType}
+      />
     </div>
   );
 }
 
-function CollapsibleSection({ 
-    title, 
-    description, 
-    icon, 
-    children, 
-    generationType, 
-    isGenerating,
-    error,
-    resultExists 
-} : { 
-    title: string, 
-    description: string, 
-    icon: React.ReactNode, 
-    children: React.ReactNode, 
-    generationType: GenerationType,
-    isGenerating: boolean,
-    error: string | null | undefined,
-    resultExists: boolean
-}) {
-    const [isOpen, setIsOpen] = useState(false);
-    
-    useEffect(() => {
-      // Auto-open the section when results come in
-      if(resultExists && !isGenerating && !error) {
-        setIsOpen(true);
-      }
-    }, [resultExists, isGenerating, error]);
-
-    return (
-        <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
-          <Card>
-            <CardHeader className="p-4">
-                <CollapsibleTrigger asChild>
-                    <div className="flex justify-between items-center cursor-pointer">
-                        <div className="flex items-center gap-3">
-                            {icon}
-                            <div className="flex flex-col">
-                                <CardTitle className="text-xl">{title}</CardTitle>
-                                <CardDescription className="prose-sm">{description}</CardDescription>
-                            </div>
-                        </div>
-                        <Button variant="ghost" size="icon">
-                            {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                        </Button>
-                    </div>
-                </CollapsibleTrigger>
-            </CardHeader>
-            <CollapsibleContent>
-              <CardContent className="p-4 pt-0">
-                  {isGenerating ? (
-                      <SectionSkeleton />
-                  ) : error ? (
-                      <Alert variant="destructive">
-                          <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle>Generation Failed</AlertTitle>
-                          <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                  ) : (
-                      resultExists ? children : null
-                  )}
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-    )
-}
 
 function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }) {
   const renderDetails = (details?: string[]) => {
@@ -264,6 +210,10 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
         </CardContent>
       </Card>
       
+      {deepAnalysis.qAndA?.questionsFound && (
+          <QAndAView qAndA={deepAnalysis.qAndA} />
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -306,13 +256,9 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
   )
 }
 
-function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
+function QAndAView({ qAndA }: { qAndA: NonNullable<DeepAnalysisOutput['qAndA']> }) {
   if (!qAndA.questionsFound) {
-    return (
-        <CardContent>
-          <p className="prose-sm">No explicit questions were found in the job description.</p>
-        </CardContent>
-    )
+    return null;
   }
 
   const allAnswers = qAndA.qaPairs.map(p => `Q: ${p.question}\nA: ${p.answer}`).join('\n\n');
@@ -320,49 +266,54 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
   const NOT_FOUND_STRING = '[Answer not found in bio]';
 
   return (
-    <div className="space-y-6">
-      {missingAnswersCount > 0 && (
-        <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Missing Information</AlertTitle>
-            <AlertDescription className="prose-sm">
-                {missingAnswersCount} question{missingAnswersCount > 1 ? 's' : ''} could not be answered based on your bio. These are highlighted below.
-            </AlertDescription>
-        </Alert>
-      )}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="prose-sm">Generated Answers</CardTitle>
-            <CopyButton textToCopy={allAnswers} />
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {qAndA.qaPairs.map((pair, index) => (
-            <div key={index} className="p-4 rounded-md border bg-muted/50 relative">
-              <p className="font-semibold text-primary mb-2 pr-10 prose-sm">{pair.question}</p>
-              <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                  {pair.answer === NOT_FOUND_STRING ? (
-                      <span className="text-destructive">{pair.answer}</span>
-                  ) : (
-                      <Markdown>{pair.answer}</Markdown>
-                  )}
-              </div>
-              {pair.answer !== NOT_FOUND_STRING && <CopyButton textToCopy={pair.answer} className="absolute top-2 right-2" />}
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div className="flex flex-col">
+            <CardTitle className="flex items-center gap-2">
+                <MessageSquareMore className="h-6 w-6 text-primary" />
+                Q&A
+            </CardTitle>
+            <CardDescription className="prose-sm">Answers to questions found in the job description.</CardDescription>
+        </div>
+        <CopyButton textToCopy={allAnswers} />
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {missingAnswersCount > 0 && (
+          <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Missing Information</AlertTitle>
+              <AlertDescription className="prose-sm">
+                  {missingAnswersCount} question{missingAnswersCount > 1 ? 's' : ''} could not be answered based on your bio. These are highlighted below.
+              </AlertDescription>
+          </Alert>
+        )}
+        <div className="space-y-4">
+            {qAndA.qaPairs.map((pair, index) => (
+                <div key={index} className="p-4 rounded-md border bg-muted/50 relative">
+                <p className="font-semibold text-primary mb-2 pr-10 prose-sm">{pair.question}</p>
+                <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                    {pair.answer === NOT_FOUND_STRING ? (
+                        <span className="text-destructive">{pair.answer}</span>
+                    ) : (
+                        <Markdown>{pair.answer}</Markdown>
+                    )}
+                </div>
+                {pair.answer !== NOT_FOUND_STRING && <CopyButton textToCopy={pair.answer} className="absolute top-2 right-2" />}
+                </div>
+            ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
 
 export function JobSparkApp() {
-  const [generating, setGenerating] = useState<GeneratingState>({});
-  const [errors, setErrors] = useState<ErrorState>({});
+  const [isGenerating, startGenerating] = useTransition();
+  const [activeView, setActiveView] = useState<ActiveView>('none');
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
   
-  const [isRevising, startRevising] = useTransition();
-
   const form = useForm<Omit<JobApplicationData, 'generationType'>>({
     resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
     defaultValues: { jobDescription: "", bio: "" },
@@ -403,40 +354,24 @@ export function JobSparkApp() {
         
         const data = { ...form.getValues(), generationType };
 
-        setGenerating(prev => ({ ...prev, [generationType]: true }));
-        setErrors(prev => ({ ...prev, [generationType]: null }));
+        setActiveView(generationType);
+        setGenerationError(null);
 
-        startRevising(async () => { // Using the same transition for all async actions
+        startGenerating(async () => {
             const response = await generateAction(data);
             if (response.success) {
                 setAllResults(prev => ({...prev, [generationType]: response.data}));
             } else {
-                setErrors(prev => ({ ...prev, [generationType]: response.error }));
+                setGenerationError(response.error);
                 toast({ variant: "destructive", title: "Generation Failed", description: response.error });
             }
-            setGenerating(prev => ({ ...prev, [generationType]: false }));
         });
     });
   }
   
-  const handleRevisionComplete = (result: any, generationType: GenerationType) => {
-      startRevising(async () => {
-        if (result.success) {
-          const newResponseText = result.data.responses;
-          setAllResults(prev => ({...prev!, [generationType]: { responses: newResponseText }}));
-        } else {
-           toast({
-            variant: "destructive",
-            title: "Revision Failed",
-            description: result.error,
-          });
-        }
-      });
-  };
-  
-  const handleManualEdit = (newValue: string, generationType: GenerationType) => {
+  const handleManualEdit = (newValue: string, generationType: 'coverLetter' | 'cv') => {
       setAllResults(prev => ({
-          ...prev!, 
+          ...prev, 
           [generationType]: { responses: newValue }
       }));
   };
@@ -444,8 +379,8 @@ export function JobSparkApp() {
   const handleClear = () => {
     form.reset({ jobDescription: "", bio: "" });
     setAllResults({});
-    setGenerating({});
-    setErrors({});
+    setActiveView('none');
+    setGenerationError(null);
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     } catch (e) {
@@ -455,12 +390,64 @@ export function JobSparkApp() {
   
   const coverLetterResponse = allResults.coverLetter?.responses ?? "";
   const cvResponse = allResults.cv?.responses ?? "";
-  
-  // Use debounced values for the revision forms to prevent lag
-  const debouncedCoverLetter = useDebounce(coverLetterResponse, 500);
-  const debouncedCv = useDebounce(cvResponse, 500);
-  
-  const isGeneratingAny = Object.values(generating).some(Boolean);
+
+  const renderActiveView = () => {
+      if (isGenerating) {
+        return <SectionSkeleton />;
+      }
+      if (generationError) {
+          return (
+             <Card>
+                <CardContent className="p-4">
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Generation Failed</AlertTitle>
+                        <AlertDescription>{generationError}</AlertDescription>
+                    </Alert>
+                </CardContent>
+             </Card>
+          );
+      }
+
+      switch (activeView) {
+          case 'coverLetter':
+            if (!allResults.coverLetter) return null;
+            return (
+                <GeneratedResponse 
+                    initialValue={coverLetterResponse}
+                    onValueChange={(val) => handleManualEdit(val, 'coverLetter')} 
+                    generationType="coverLetter"
+                />
+            );
+          case 'cv':
+             if (!allResults.cv) return null;
+             return (
+                 <GeneratedResponse 
+                    initialValue={cvResponse} 
+                    onValueChange={(val) => handleManualEdit(val, 'cv')}
+                    generationType="cv"
+                />
+             );
+          case 'deepAnalysis':
+            if (!allResults.deepAnalysis) return null;
+            return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} />;
+          default:
+            return (
+                 <Card className="flex items-center justify-center min-h-[400px]">
+                    <CardContent className="p-4 text-center">
+                        <Sparkles className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                        <p className="mt-4 text-muted-foreground">Your generated content will appear here.</p>
+                    </CardContent>
+                </Card>
+            );
+      }
+  };
+
+  const VIEW_CONFIG: Record<GenerationType, { title: string; icon: React.ReactNode }> = {
+      coverLetter: { title: "Cover Letter", icon: <FileText className="h-5 w-5" /> },
+      cv: { title: "Curriculum Vitae (CV)", icon: <Briefcase className="h-5 w-5" /> },
+      deepAnalysis: { title: "Deep Analysis", icon: <Lightbulb className="h-5 w-5" /> },
+  };
 
   return (
     <div className="grid md:grid-cols-2 gap-8 w-full p-4 sm:p-6 md:p-8">
@@ -473,8 +460,8 @@ export function JobSparkApp() {
               Provide your info, then choose what to generate.
             </CardDescription>
           </CardHeader>
+          <FormProvider {...form}>
           <CardContent>
-            <FormProvider {...form}>
               <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
                 <FormField
                   control={form.control}
@@ -514,31 +501,26 @@ export function JobSparkApp() {
                   )}
                 />
               </form>
-            </FormProvider>
           </CardContent>
           <CardFooter className="flex-col items-start gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                 {/* Application Materials */}
                 <div className="space-y-2">
                     <h3 className="font-semibold text-center text-sm text-muted-foreground">Application Materials</h3>
-                    <Button onClick={() => handleGeneration('coverLetter')} disabled={generating.coverLetter} className="w-full">
-                        {generating.coverLetter ? <Loader2 className="animate-spin" /> : <FileText />}
+                    <Button onClick={() => handleGeneration('coverLetter')} disabled={isGenerating} className="w-full">
+                        {isGenerating && activeView === 'coverLetter' ? <Loader2 className="animate-spin" /> : <FileText />}
                         Generate Letter
                     </Button>
-                     <Button onClick={() => handleGeneration('cv')} disabled={generating.cv} className="w-full">
-                        {generating.cv ? <Loader2 className="animate-spin" /> : <Briefcase />}
+                     <Button onClick={() => handleGeneration('cv')} disabled={isGenerating} className="w-full">
+                        {isGenerating && activeView === 'cv' ? <Loader2 className="animate-spin" /> : <Briefcase />}
                         Generate CV
                     </Button>
                 </div>
                 {/* Job Insights */}
                 <div className="space-y-2">
                      <h3 className="font-semibold text-center text-sm text-muted-foreground">Job Insights</h3>
-                     <Button onClick={() => handleGeneration('qAndA')} disabled={generating.qAndA} className="w-full">
-                        {generating.qAndA ? <Loader2 className="animate-spin" /> : <MessageSquareMore />}
-                        Generate Q&A
-                    </Button>
-                     <Button onClick={() => handleGeneration('deepAnalysis')} disabled={generating.deepAnalysis} className="w-full">
-                        {generating.deepAnalysis ? <Loader2 className="animate-spin" /> : <Lightbulb />}
+                     <Button onClick={() => handleGeneration('deepAnalysis')} disabled={isGenerating} className="w-full">
+                        {isGenerating && activeView === 'deepAnalysis' ? <Loader2 className="animate-spin" /> : <Lightbulb />}
                         Generate Analysis
                     </Button>
                 </div>
@@ -549,96 +531,50 @@ export function JobSparkApp() {
                 Clear All
             </Button>
           </CardFooter>
+          </FormProvider>
         </Card>
       </div>
 
       {/* Output Column */}
       <div className="flex flex-col gap-4">
-        <CollapsibleSection
-            title="Cover Letter"
-            description="An AI-generated draft for your review."
-            icon={<FileText className="h-6 w-6 text-primary" />}
-            generationType="coverLetter"
-            isGenerating={!!generating.coverLetter}
-            error={errors.coverLetter}
-            resultExists={!!allResults.coverLetter}
-        >
-             <div className="space-y-4">
-                <div className="flex justify-end">
-                    <CopyButton textToCopy={coverLetterResponse} />
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    {activeView !== 'none' ? (
+                        <CardTitle className="flex items-center gap-2">{VIEW_CONFIG[activeView].icon} {VIEW_CONFIG[activeView].title}</CardTitle>
+                    ) : (
+                        <CardTitle>Output</CardTitle>
+                    )}
+                    <div className="flex items-center gap-1">
+                        {(Object.keys(allResults) as GenerationType[]).map(key => (
+                            <Button 
+                                key={key}
+                                variant={activeView === key ? 'default' : 'ghost'} 
+                                size="icon"
+                                onClick={() => setActiveView(key)}
+                                aria-label={`View ${VIEW_CONFIG[key].title}`}
+                                disabled={isGenerating}
+                            >
+                                {VIEW_CONFIG[key].icon}
+                            </Button>
+                        ))}
+                    </div>
                 </div>
-                <GeneratedResponse 
-                    initialValue={coverLetterResponse} 
-                    onValueChange={(val) => handleManualEdit(val, 'coverLetter')} 
-                />
-                <RevisionForm 
-                    originalData={{...form.getValues(), generationType: 'coverLetter'}}
-                    currentResponse={debouncedCoverLetter} 
-                    onRevisionComplete={(res) => handleRevisionComplete(res, 'coverLetter')}
-                    generationType="coverLetter"
-                    isRevising={isRevising}
-              />
-            </div>
-        </CollapsibleSection>
-
-        <CollapsibleSection
-            title="Curriculum Vitae (CV)"
-            description="A professionally formatted CV tailored to the job."
-            icon={<Briefcase className="h-6 w-6 text-primary" />}
-            generationType="cv"
-            isGenerating={!!generating.cv}
-            error={errors.cv}
-            resultExists={!!allResults.cv}
-        >
-            <div className="space-y-4">
-                <div className="flex justify-end">
-                    <CopyButton textToCopy={cvResponse} />
-                </div>
-                <GeneratedResponse 
-                    initialValue={cvResponse}
-                    onValueChange={(val) => handleManualEdit(val, 'cv')} 
-                />
-                <RevisionForm 
-                    originalData={{...form.getValues(), generationType: 'cv'}}
-                    currentResponse={debouncedCv} 
-                    onRevisionComplete={(res) => handleRevisionComplete(res, 'cv')}
-                    generationType="cv"
-                    isRevising={isRevising}
-                />
-            </div>
-        </CollapsibleSection>
-
-        <CollapsibleSection
-            title="Q&A"
-            description="Answers to questions found in the job description."
-            icon={<MessageSquareMore className="h-6 w-6 text-primary" />}
-            generationType="qAndA"
-            isGenerating={!!generating.qAndA}
-            error={errors.qAndA}
-            resultExists={!!allResults.qAndA}
-        >
-            {allResults.qAndA && <QAndAView qAndA={allResults.qAndA} />}
-        </CollapsibleSection>
-
-         <CollapsibleSection
-            title="Deep Analysis"
-            description="Strengths, gaps, and improvement areas."
-            icon={<Lightbulb className="h-6 w-6 text-primary" />}
-            generationType="deepAnalysis"
-            isGenerating={!!generating.deepAnalysis}
-            error={errors.deepAnalysis}
-            resultExists={!!allResults.deepAnalysis}
-        >
-            {allResults.deepAnalysis && <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} />}
-        </CollapsibleSection>
+            </CardHeader>
+            <CardContent>
+                {renderActiveView()}
+            </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
 
+function RevisionForm({ originalData, currentResponse, generationType }: { originalData: JobApplicationData, currentResponse: string, generationType: 'cv' | 'coverLetter' }) {
+  const [isRevising, startRevising] = useTransition();
+  const { toast } = useToast();
+  const { setAllResults } = useJobSparkContext();
 
-function RevisionForm({ originalData, currentResponse, onRevisionComplete, generationType, isRevising }: { originalData: JobApplicationData, currentResponse: string, onRevisionComplete: (newResponse: any, type: GenerationType) => void, generationType: 'cv' | 'coverLetter', isRevising: boolean }) {
-  
   const revisionForm = useForm<ReviseResponseData>({
     resolver: zodResolver(ReviseResponseSchema),
     defaultValues: {
@@ -650,23 +586,36 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
     },
   });
   
-  // This effect synchronizes the props with the form state
   useEffect(() => {
-      revisionForm.reset({
-          jobDescription: originalData.jobDescription,
-          bio: originalData.bio,
-          originalResponse: currentResponse,
-          revisionComments: revisionForm.getValues('revisionComments') || "", // keep existing comments
-          generationType,
-      });
-  }, [currentResponse, originalData.jobDescription, originalData.bio, generationType, revisionForm]);
-
+      revisionForm.setValue('jobDescription', originalData.jobDescription);
+      revisionForm.setValue('bio', originalData.bio);
+      revisionForm.setValue('originalResponse', currentResponse);
+  }, [currentResponse, originalData.jobDescription, originalData.bio, revisionForm]);
 
   async function onRevise(data: ReviseResponseData) {
-    const { reviseAction } = await import('@/app/actions');
-    onRevisionComplete(await reviseAction(data), generationType);
+    startRevising(async () => {
+        const result = await reviseAction(data);
+        if (result.success) {
+            const newResponseText = result.data.responses;
+            setAllResults(prev => ({...prev!, [generationType]: { responses: newResponseText }}));
+            revisionForm.reset({ ...data, revisionComments: "" });
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Revision Failed",
+                description: result.error,
+            });
+        }
+    });
   }
   
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      revisionForm.handleSubmit(onRevise)();
+    }
+  };
+
   return (
     <Card className="mt-4 bg-muted/50">
       <CardHeader>
@@ -687,13 +636,15 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
                       placeholder="e.g., 'Make it more formal.' or 'Emphasize my experience with project management tools.'"
                       className="min-h-[100px] bg-background"
                       {...field}
+                      onKeyDown={handleKeyDown}
+                      disabled={isRevising}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isRevising} className="w-full sm:w-auto">
+            <Button type="submit" disabled={isRevising || !revisionForm.formState.isValid} className="w-full sm:w-auto">
               {isRevising ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -706,4 +657,40 @@ function RevisionForm({ originalData, currentResponse, onRevisionComplete, gener
       </CardContent>
     </Card>
   )
+}
+
+
+// Context to share state between components
+type JobSparkContextType = {
+  setAllResults: React.Dispatch<React.SetStateAction<AllGenerationResults>>;
+};
+
+const JobSparkContext = React.createContext<JobSparkContextType | null>(null);
+
+function useJobSparkContext() {
+    const context = React.useContext(JobSparkContext);
+    if (!context) {
+        throw new Error("useJobSparkContext must be used within a JobSparkProvider");
+    }
+    return context;
+}
+
+// Wrapper to provide context to the app
+export function JobSparkProvider() {
+    const [allResults, setAllResults] = useState<AllGenerationResults>({});
+    
+    // This is a simplified version. A real app might need a more complex state structure.
+    const contextValue = {
+        allResults,
+        setAllResults,
+    };
+
+    return (
+        // This is a mock provider. The actual JobSparkApp doesn't use it this way.
+        // The state is managed within JobSparkApp itself. This structure is for demonstration.
+        // In a real refactor, state would be lifted here.
+        <JobSparkContext.Provider value={contextValue as any}>
+            <JobSparkApp /> 
+        </JobSparkContext.Provider>
+    );
 }

@@ -9,6 +9,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { QAndAOutputSchema } from '@/lib/schemas';
+import type { QAndAOutput } from '@/lib/schemas';
 
 const QAndAInputSchema = z.object({
   jobDescription: z.string().describe('The job description to scan for questions.'),
@@ -16,16 +18,6 @@ const QAndAInputSchema = z.object({
 });
 export type QAndAInput = z.infer<typeof QAndAInputSchema>;
 
-const QuestionAnswerPairSchema = z.object({
-  question: z.string().describe('The verbatim question found in the job description.'),
-  answer: z.string().describe("A concise and professional answer based on the user's bio. If the answer cannot be found in the bio, return the exact string '[Answer not found in bio]'."),
-});
-
-const QAndAOutputSchema = z.object({
-  questionsFound: z.boolean().describe('Whether or not any questions were found in the job description.'),
-  qaPairs: z.array(QuestionAnswerPairSchema).describe('A list of question and answer pairs.'),
-});
-export type QAndAOutput = z.infer<typeof QAndAOutputSchema>;
 
 export async function generateQAndA(input: QAndAInput): Promise<QAndAOutput> {
   return generateQAndAFlow(input);

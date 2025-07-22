@@ -2,11 +2,9 @@
 "use server";
 
 import { z } from 'zod';
-import { analyzeJobDescription, type AnalyzeJobDescriptionOutput } from '@/ai/flows/analyze-job-description';
 import { generateCoverLetter, type CoverLetterOutput } from '@/ai/flows/generate-cover-letter';
 import { generateCv, type CvOutput } from '@/ai/flows/generate-cv';
 import { generateDeepAnalysis, type DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
-import { generateQAndA, type QAndAOutput } from '@/ai/flows/generate-q-and-a';
 import { reviseResponse, type ReviseResponseInput } from '@/ai/flows/revise-response';
 import { JobApplicationSchema, ReviseResponseSchema, type ResponseData } from '@/lib/schemas';
 
@@ -21,14 +19,12 @@ type ReviseActionResponse =
 export type GenerationResult = 
     | CoverLetterOutput
     | CvOutput
-    | DeepAnalysisOutput
-    | QAndAOutput;
+    | DeepAnalysisOutput;
 
 export type AllGenerationResults = {
     coverLetter?: CoverLetterOutput;
     cv?: CvOutput;
     deepAnalysis?: DeepAnalysisOutput;
-    qAndA?: QAndAOutput;
 };
 
 const SingleGenerationSchema = JobApplicationSchema.pick({ jobDescription: true, bio: true, generationType: true });
@@ -39,7 +35,6 @@ export async function generateAction(
     | SingleGenerateActionResponse<CoverLetterOutput>
     | SingleGenerateActionResponse<CvOutput>
     | SingleGenerateActionResponse<DeepAnalysisOutput>
-    | SingleGenerateActionResponse<QAndAOutput>
     | { success: false; error: string }
 > {
     const validationResult = SingleGenerationSchema.safeParse(rawData);
@@ -57,9 +52,6 @@ export async function generateAction(
                 break;
             case 'deepAnalysis':
                 response = await generateDeepAnalysis({ jobDescription, userBio: bio });
-                break;
-            case 'qAndA':
-                response = await generateQAndA({ jobDescription, userBio: bio });
                 break;
             case 'coverLetter':
             default:
