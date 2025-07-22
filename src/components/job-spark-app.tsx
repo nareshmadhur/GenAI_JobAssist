@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
-import { useForm, FormProvider, useFormContext } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle } from "lucide-react";
 import Markdown from 'react-markdown';
@@ -27,6 +27,7 @@ import {
   ReviseResponseSchema,
   type JobApplicationData, 
   type ReviseResponseData,
+  type QAndAOutput
 } from "@/lib/schemas";
 import { generateAction, reviseAction, AllGenerationResults } from "@/app/actions";
 import { DeepAnalysisOutput } from "@/ai/flows";
@@ -129,10 +130,23 @@ function CopyButton({ textToCopy, className }: { textToCopy: string, className?:
   );
 }
 
-function GeneratedResponse({ initialValue, onValueChange, generationType, onRevision }: { initialValue: string, onValueChange: (value: string) => void, generationType: 'coverLetter' | 'cv', onRevision: (data: ReviseResponseData) => Promise<void> }) {
+function GeneratedResponse({ 
+  initialValue, 
+  onValueChange, 
+  generationType, 
+  onRevision, 
+  jobDescription,
+  bio
+}: { 
+  initialValue: string;
+  onValueChange: (value: string) => void;
+  generationType: 'coverLetter' | 'cv';
+  onRevision: (data: ReviseResponseData) => Promise<void>;
+  jobDescription: string;
+  bio: string;
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(initialValue);
-  const form = useFormContext<Omit<JobApplicationData, 'generationType'>>();
   const debouncedValue = useDebounce(initialValue, 500);
 
   useEffect(() => {
@@ -160,7 +174,7 @@ function GeneratedResponse({ initialValue, onValueChange, generationType, onRevi
         </>
       ) : (
         <>
-          <div className="prose prose-sm max-w-none p-4 min-h-[150px] rounded-md border bg-background whitespace-pre-wrap">
+          <div className="prose prose-sm max-w-none p-4 min-h-[150px] rounded-md border bg-background">
              <Markdown>{localValue}</Markdown>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="absolute top-2 right-2">
@@ -172,8 +186,8 @@ function GeneratedResponse({ initialValue, onValueChange, generationType, onRevi
         currentResponse={debouncedValue}
         generationType={generationType}
         onRevision={onRevision}
-        jobDescription={form.getValues().jobDescription}
-        bio={form.getValues().bio}
+        jobDescription={jobDescription}
+        bio={bio}
       />
     </div>
   );
@@ -207,7 +221,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
           <CardDescription className="prose-sm">An expert summary of the role's core requirements.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+          <div className="prose prose-sm max-w-none">
             <Markdown>{deepAnalysis.jobSummary}</Markdown>
           </div>
         </CardContent>
@@ -259,7 +273,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
   )
 }
 
-function QAndAView({ qAndA }: { qAndA: NonNullable<DeepAnalysisOutput['qAndA']> }) {
+function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
   if (!qAndA.questionsFound) {
     return null;
   }
@@ -294,7 +308,7 @@ function QAndAView({ qAndA }: { qAndA: NonNullable<DeepAnalysisOutput['qAndA']> 
             {qAndA.qaPairs.map((pair, index) => (
                 <div key={index} className="p-4 rounded-md border bg-muted/50 relative">
                 <p className="font-semibold text-primary mb-2 pr-10 prose-sm">{pair.question}</p>
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                <div className="prose prose-sm max-w-none">
                     {pair.answer === NOT_FOUND_STRING ? (
                         <span className="text-destructive">{pair.answer}</span>
                     ) : (
@@ -412,6 +426,7 @@ export function JobSparkApp() {
     }
   };
   
+  const { jobDescription, bio } = form.getValues();
   const coverLetterResponse = allResults.coverLetter?.responses ?? "";
   const cvResponse = allResults.cv?.responses ?? "";
 
@@ -442,6 +457,8 @@ export function JobSparkApp() {
                     onValueChange={(val) => handleManualEdit(val, 'coverLetter')} 
                     generationType="coverLetter"
                     onRevision={handleRevision}
+                    jobDescription={jobDescription}
+                    bio={bio}
                 />
             );
           case 'cv':
@@ -452,6 +469,8 @@ export function JobSparkApp() {
                     onValueChange={(val) => handleManualEdit(val, 'cv')}
                     generationType="cv"
                     onRevision={handleRevision}
+                    jobDescription={jobDescription}
+                    bio={bio}
                 />
              );
           case 'deepAnalysis':

@@ -33,7 +33,7 @@ const prompt = ai.definePrompt({
 
 **Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** The CV must be a truthful representation of the user's bio.
 
-Analyze the user's bio and the job description. Create the following sections in well-formatted, clean Markdown. Ensure the final output is a single, polished Markdown document with professional and compact spacing, avoiding excessive newlines between list items or sections.
+Analyze the user's bio and the job description. Create the following sections in well-formatted, clean Markdown. Ensure the final output is a single, polished Markdown document with professional and compact spacing. **You MUST NOT use excessive newlines between list items or sections. Use single newlines for lists to ensure they are rendered tightly.**
 
 1.  **Summary**: A brief, 2-3 sentence professional summary that highlights the candidate's key qualifications relevant to the job description.
 2.  **Work Experience**: List job titles, companies, and dates. For each role, create 2-3 bullet points describing achievements and responsibilities. **Bold** metrics and skills that directly match the job description to make them stand out.
