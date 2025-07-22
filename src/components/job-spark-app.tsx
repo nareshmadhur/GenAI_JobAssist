@@ -262,7 +262,7 @@ function GeneratedResponse({ initialValue, onValueChange, isSaving, isSwitching 
 
 function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }) {
   const renderDetails = (details?: string[]) => {
-    if (!details) return null;
+    if (!details || details.length === 0) return null;
     return (
         <ul className="prose prose-sm max-w-none list-disc pl-5 space-y-2">
           {details.map((item, index) => (
@@ -474,9 +474,10 @@ export function JobSparkApp() {
   const onTabChange = (newTab: string) => {
     const newGenType = newTab as GenerationType;
     setActiveTab(newGenType);
+    setError(null);
     
     // If we haven't generated anything yet, just switch tabs locally.
-    if (!lastSubmittedData || isSwitching) return;
+    if (!lastSubmittedData) return;
     
     const existingResult = allResults?.[newGenType];
     if (existingResult) {
@@ -491,11 +492,11 @@ export function JobSparkApp() {
       if (result.success) {
           setAllResults(prev => ({ ...prev!, [newGenType]: result.data }));
           if (newGenType === 'coverLetter' || newGenType === 'cv') {
-            setCurrentResponse((result.data as any).responses);
+            setCurrentResponse((result.data as any).responses || "");
           }
       } else {
+        setError(result.error);
         toast({ variant: "destructive", title: "Failed to switch", description: result.error });
-        // Don't revert on failure, let user see the error and stay on the tab they clicked.
       }
     });
   }
@@ -559,7 +560,7 @@ export function JobSparkApp() {
   const isPending = isGenerating || isSwitching;
 
   const renderContent = () => {
-    if (isPending && !allResults) return <OutputSkeletons />;
+    if (isGenerating && !allResults) return <OutputSkeletons />;
   
     switch (activeTab) {
       case 'coverLetter':
@@ -593,9 +594,11 @@ export function JobSparkApp() {
           </>
         );
       case 'deepAnalysis':
-        return allResults?.deepAnalysis ? <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} /> : (isSwitching ? <OutputSkeletons /> : null);
+        if (isSwitching) return <OutputSkeletons />;
+        return allResults?.deepAnalysis ? <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} /> : null;
       case 'qAndA':
-        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} isSwitching={isSwitching} /> : (isSwitching ? <OutputSkeletons /> : null);
+        if (isSwitching) return <OutputSkeletons />;
+        return allResults?.qAndA ? <QAndAView qAndA={allResults.qAndA} isSwitching={isSwitching} /> : null;
       default:
         return null;
     }
@@ -685,7 +688,7 @@ export function JobSparkApp() {
 
         {isGenerating && !allResults && <OutputSkeletons />}
         
-        {error && !isPending && !allResults && (
+        {error && !isPending && (
           <Alert variant="destructive">
             <Info className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>

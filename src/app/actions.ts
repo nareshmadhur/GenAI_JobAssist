@@ -107,14 +107,8 @@ export async function generateSingleAction(
                 response = await generateCv({ jobDescription, userBio: bio });
                 break;
             case 'deepAnalysis':
-                 const [deepAnalysis, simpleAnalysis] = await Promise.all([
-                    generateDeepAnalysis({ jobDescription, userBio: bio }),
-                    // Also fetch the simple analysis if it doesn't exist yet
-                    // This is a bit redundant if generateInitialAction was called for deepAnalysis first,
-                    // but it ensures it's always present.
-                    analyzeJobDescription({ jobDescription, bio: bio }) 
-                ]);
-                return { success: true, data: { deepAnalysis, simpleAnalysis } as any }; // A bit of a hack to pass both
+                response = await generateDeepAnalysis({ jobDescription, userBio: bio });
+                break;
             case 'qAndA':
                 response = await generateQAndA({ jobDescription, userBio: bio });
                 break;
@@ -126,7 +120,8 @@ export async function generateSingleAction(
         return { success: true, data: response };
     } catch (error) {
         console.error(`Error in generateSingleAction for ${generationType}:`, error);
-        return { success: false, error: `Failed to generate ${generationType}.` };
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+        return { success: false, error: `Failed to generate ${generationType}: ${errorMessage}.` };
     }
 }
 
