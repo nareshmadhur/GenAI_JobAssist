@@ -166,14 +166,14 @@ function GeneratedResponse({
           </Button>
         </>
       ) : (
-        <>
-          <div className="prose prose-sm max-w-none p-4 min-h-[150px] rounded-md border bg-background">
+        <div className="prose prose-sm max-w-none p-4 min-h-[150px] rounded-md border bg-background">
+          <div className="relative">
              <Markdown>{localValue}</Markdown>
+             <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="absolute top-0 right-0">
+                <Edit className="h-4 w-4" />
+             </Button>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="absolute top-2 right-2">
-            <Edit className="h-4 w-4" />
-          </Button>
-        </>
+        </div>
       )}
       <RevisionForm
         currentResponse={debouncedValue}
@@ -397,8 +397,7 @@ export function JobSparkApp() {
     if (result.success) {
       const { generationType } = data;
       if (generationType === 'cv') {
-        // CV doesn't have a simple text response anymore, so this case might need adjustment
-        // For now, we assume revision is only for coverLetter
+        // CV revision is not supported in this format.
         return;
       }
       const newResponseText = result.data.responses;
