@@ -35,9 +35,9 @@ const prompt = ai.definePrompt({
 
 Analyze the user's bio and the job description. Create the following sections in well-formatted, clean Markdown. Ensure the final output is a single, polished Markdown document with professional and compact spacing. **You MUST NOT use excessive newlines between list items or sections. Use single newlines for lists to ensure they are rendered tightly.**
 
-1.  **Summary**: A brief, 2-3 sentence professional summary that highlights the candidate's key qualifications relevant to the job description.
-2.  **Work Experience**: List job titles, companies, and dates. For each role, create 2-3 bullet points describing achievements and responsibilities. **Bold** metrics and skills that directly match the job description to make them stand out.
-3.  **Skills**: A bulleted list of technical and soft skills. Prioritize skills mentioned in the job description.
+1.  **Summary**: A brief, 2-3 sentence professional summary that highlights the candidate's key qualifications relevant to the job.
+2.  **Work Experience**: List job titles, companies, and dates. For each role, create 2-3 bullet points (using * or -) describing achievements and responsibilities. **Bold** metrics and skills that directly match the job description to make them stand out.
+3.  **Skills**: A bulleted list (using * or -) of technical and soft skills. Prioritize skills mentioned in the job description.
 4.  **Projects**: If any are mentioned, list key projects with a brief description and highlight relevant achievements.
 5.  **Education**: List degrees, institutions, and graduation dates.
 
