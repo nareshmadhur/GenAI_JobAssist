@@ -20,13 +20,6 @@ export async function reviseResponse(input: ReviseResponseInput): Promise<Revise
   return reviseResponseFlow(input);
 }
 
-const getOutputSchema = (generationType: 'coverLetter' | 'qAndA' | 'cv') => {
-    if (generationType === 'qAndA') {
-        return QAndAOutputSchema;
-    }
-    return ResponseSchema;
-}
-
 const prompt = ai.definePrompt({
   name: 'reviseResponsePrompt',
   input: {schema: ReviseResponseSchema},
@@ -39,7 +32,7 @@ Your task is to revise the original response based on the user's comments, while
 The type of content to generate is: {{generationType}}
 
 {{#if (eq generationType 'qAndA')}}
-The original response is a JSON object containing questions and answers. You MUST return a valid JSON string representing the revised Q&A object.
+The original response is a JSON object containing questions and answers. You MUST return a valid JSON string representing the revised Q&A object. Do NOT add any explanatory text or formatting outside of the JSON string itself.
 {{else}}
 It must be concise and impactful. Use Markdown for formatting, specifically **bolding** to highlight key skills and experiences.
 {{/if}}
