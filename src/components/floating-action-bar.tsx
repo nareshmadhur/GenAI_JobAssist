@@ -1,3 +1,4 @@
+
 import {
   Briefcase,
   FileText,
@@ -5,7 +6,7 @@ import {
   Loader2,
   MessageSquareMore,
 } from 'lucide-react';
-
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import type { ActiveView, GenerationType } from './job-spark-app';
 
@@ -26,14 +27,18 @@ export function FloatingActionBar({
   activeView,
   onGeneration,
 }: FloatingActionBarProps) {
+  const baseButtonClass =
+    'h-auto flex-col rounded-full py-2 text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground/90 data-[active=true]:bg-primary-foreground/20 data-[active=true]:text-primary-foreground';
+
   return (
     <footer className="fixed bottom-0 left-0 z-20 w-full p-4">
-      <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-2 rounded-full border bg-background/80 p-2 shadow-lg backdrop-blur-sm sm:grid-cols-4">
+      <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-1 rounded-full bg-primary p-1 shadow-lg sm:grid-cols-4">
         <Button
           onClick={() => onGeneration('coverLetter')}
           disabled={isGenerating}
-          variant={activeView === 'coverLetter' ? 'default' : 'ghost'}
-          className="h-auto flex-col rounded-full py-2"
+          variant="ghost"
+          data-active={activeView === 'coverLetter'}
+          className={baseButtonClass}
         >
           {isGenerating && activeView === 'coverLetter' ? (
             <Loader2 className="animate-spin" />
@@ -46,8 +51,9 @@ export function FloatingActionBar({
         <Button
           onClick={() => onGeneration('cv')}
           disabled={isGenerating}
-          variant={activeView === 'cv' ? 'default' : 'ghost'}
-          className="h-auto flex-col rounded-full py-2"
+          variant="ghost"
+          data-active={activeView === 'cv'}
+          className={baseButtonClass}
         >
           {isGenerating && activeView === 'cv' ? (
             <Loader2 className="animate-spin" />
@@ -60,8 +66,9 @@ export function FloatingActionBar({
         <Button
           onClick={() => onGeneration('deepAnalysis')}
           disabled={isGenerating}
-          variant={activeView === 'deepAnalysis' ? 'default' : 'ghost'}
-          className="h-auto flex-col rounded-full py-2"
+          variant="ghost"
+          data-active={activeView === 'deepAnalysis'}
+          className={baseButtonClass}
         >
           {isGenerating && activeView === 'deepAnalysis' ? (
             <Loader2 className="animate-spin" />
@@ -74,8 +81,9 @@ export function FloatingActionBar({
         <Button
           onClick={() => onGeneration('qAndA')}
           disabled={isGenerating}
-          variant={activeView === 'qAndA' ? 'default' : 'ghost'}
-          className="h-auto flex-col rounded-full py-2"
+          variant="ghost"
+          data-active={activeView === 'qAndA'}
+          className={baseButtonClass}
         >
           {isGenerating && activeView === 'qAndA' ? (
             <Loader2 className="animate-spin" />
