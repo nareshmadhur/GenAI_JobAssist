@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
@@ -511,36 +510,19 @@ export function JobSparkApp() {
   };
 
   const handleRevision = async (data: ReviseResponseData) => {
-      const { generationType } = data;
+    const { generationType } = data;
 
-      const result = await reviseAction(data);
+    const result = await reviseAction(data);
 
-      if (result.success) {
-          let newResult;
-
-          if (generationType === 'qAndA') {
-              try {
-                  newResult = JSON.parse(result.data.responses);
-              } catch (e) {
-                  console.error("Failed to parse revised Q&A JSON:", e);
-                  toast({ variant: "destructive", title: "Revision Failed", description: "The AI returned an invalid format for the Q&A."});
-                  return;
-              }
-          } else if (generationType === 'coverLetter') {
-              newResult = { responses: result.data.responses };
-          }
-
-          if (newResult) {
-              setAllResults(prev => ({ ...prev, [generationType]: newResult as any }));
-          }
-
-      } else {
-          toast({
-              variant: "destructive",
-              title: "Revision Failed",
-              description: result.error,
-          });
-      }
+    if (result.success) {
+        setAllResults(prev => ({ ...prev, [generationType]: result.data as any }));
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Revision Failed",
+            description: result.error,
+        });
+    }
   };
 
 
@@ -848,29 +830,32 @@ function RevisionForm({
     onRevision: (data: ReviseResponseData) => Promise<void>;
 }) {
   const [isRevising, startRevising] = useTransition();
-  const mainForm = useFormContext<Omit<JobApplicationData, 'generationType'>>();
+  const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
 
   const revisionForm = useForm<ReviseResponseData>({
     resolver: zodResolver(ReviseResponseSchema),
     defaultValues: {
       revisionComments: "",
-      jobDescription: mainForm.getValues('jobDescription'),
-      bio: mainForm.getValues('bio'),
-      originalResponse: currentResponse,
-      generationType: generationType,
     },
   });
   
+  // This effect ensures the form has the latest data for submission
   useEffect(() => {
-      revisionForm.setValue('jobDescription', mainForm.getValues('jobDescription'));
-      revisionForm.setValue('bio', mainForm.getValues('bio'));
-      revisionForm.setValue('originalResponse', currentResponse);
-  }, [currentResponse, mainForm, revisionForm]);
+    revisionForm.reset({
+      revisionComments: revisionForm.getValues('revisionComments') || "",
+      jobDescription: formMethods.getValues('jobDescription'),
+      bio: formMethods.getValues('bio'),
+      originalResponse: currentResponse,
+      generationType: generationType,
+    });
+  }, [currentResponse, generationType, formMethods, revisionForm]);
+
 
   async function onRevise(data: ReviseResponseData) {
     startRevising(async () => {
         await onRevision(data);
-        revisionForm.reset({ ...data, revisionComments: "" });
+        // Clear just the revision comments field after submission
+        revisionForm.setValue('revisionComments', '');
     });
   }
   
@@ -888,37 +873,39 @@ function RevisionForm({
         <CardDescription className="prose-sm">Not quite right? Tell the AI how to improve the response.</CardDescription>
       </CardHeader>
       <CardContent>
-          <Form {...revisionForm}>
-            <form onSubmit={revisionForm.handleSubmit(onRevise)} className="space-y-4">
-                <FormField
-                control={revisionForm.control}
-                name="revisionComments"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Your Feedback</FormLabel>
-                    <FormControl>
-                        <Textarea
-                        placeholder="e.g., 'Make it more formal.' or 'Emphasize my experience with project management tools.'"
-                        className="min-h-[100px] bg-background"
-                        {...field}
-                        onKeyDown={handleKeyDown}
-                        disabled={isRevising}
-                        />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <Button type="submit" disabled={isRevising || !revisionForm.formState.isDirty || !revisionForm.formState.isValid} className="w-full sm:w-auto">
-                {isRevising ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <Wand2 className="mr-2 h-4 w-4" />
-                )}
-                Revise
-                </Button>
-            </form>
-          </Form>
+          <FormProvider {...revisionForm}>
+            <Form {...revisionForm}>
+                <form onSubmit={revisionForm.handleSubmit(onRevise)} className="space-y-4">
+                    <FormField
+                    control={revisionForm.control}
+                    name="revisionComments"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Your Feedback</FormLabel>
+                        <FormControl>
+                            <Textarea
+                            placeholder="e.g., 'Make it more formal.' or 'Emphasize my experience with project management tools.'"
+                            className="min-h-[100px] bg-background"
+                            {...field}
+                            onKeyDown={handleKeyDown}
+                            disabled={isRevising}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <Button type="submit" disabled={isRevising || !revisionForm.formState.isDirty || !revisionForm.formState.isValid} className="w-full sm:w-auto">
+                    {isRevising ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                        <Wand2 className="mr-2 h-4 w-4" />
+                    )}
+                    Revise
+                    </Button>
+                </form>
+            </Form>
+          </FormProvider>
       </CardContent>
     </Card>
   )

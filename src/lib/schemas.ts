@@ -1,4 +1,3 @@
-
 import { z } from 'zod';
 
 export const JobApplicationSchema = z.object({
@@ -22,7 +21,7 @@ export const ReviseResponseSchema = z.object({
   bio: z.string(),
   originalResponse: z.string().describe("The original AI-generated response that needs to be revised."),
   revisionComments: z.string().min(5, { message: "Please provide some feedback to revise the response." }),
-  generationType: z.enum(['coverLetter', 'cv', 'qAndA']),
+  generationType: z.enum(['coverLetter', 'qAndA']),
 });
 
 export type ReviseResponseData = z.infer<typeof ReviseResponseSchema>;

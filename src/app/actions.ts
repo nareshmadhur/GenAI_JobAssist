@@ -1,4 +1,3 @@
-
 "use server";
 
 import { z } from 'zod';
@@ -6,15 +5,15 @@ import { generateCoverLetter, type CoverLetterOutput } from '@/ai/flows/generate
 import { generateCv, type CvOutput } from '@/ai/flows/generate-cv';
 import { generateDeepAnalysis, type DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
 import { generateQAndA } from '@/ai/flows/generate-q-and-a';
-import { reviseResponse, type ReviseResponseInput } from '@/ai/flows/revise-response';
-import { JobApplicationSchema, ReviseResponseSchema, type ResponseData, type QAndAOutput } from '@/lib/schemas';
+import { reviseResponse } from '@/ai/flows/revise-response';
+import { JobApplicationSchema, ReviseResponseSchema, type ResponseData, type QAndAOutput, ReviseResponseData } from '@/lib/schemas';
 
 type SingleGenerateActionResponse<T> = 
   | { success: true; data: T }
   | { success: false; error: string };
 
 type ReviseActionResponse = 
-  | { success: true; data: ResponseData }
+  | { success: true; data: ResponseData | QAndAOutput }
   | { success: false; error: string };
 
 export type GenerationResult = 
@@ -88,7 +87,7 @@ export async function reviseAction(
   }
 
   // Do not wrap in try/catch to allow raw errors to propagate to the client for debugging.
-  const response = await reviseResponse(validatedData as ReviseResponseInput);
+  const response = await reviseResponse(validatedData as ReviseResponseData);
   return {
     success: true,
     data: response,
