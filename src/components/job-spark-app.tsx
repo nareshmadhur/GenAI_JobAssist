@@ -21,6 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -693,7 +694,7 @@ export function JobSparkApp() {
                       <h3 className="font-semibold text-center text-sm text-muted-foreground">Application Materials</h3>
                       <Button onClick={() => handleGeneration('coverLetter')} disabled={isGenerating} className="w-full">
                           {isGenerating && activeView === 'coverLetter' ? <Loader2 className="animate-spin" /> : <FileText />}
-                          Generate Letter
+                          Generate Cover Letter
                       </Button>
                       <Button onClick={() => handleGeneration('cv')} disabled={isGenerating} className="w-full">
                           {isGenerating && activeView === 'cv' ? <Loader2 className="animate-spin" /> : <Briefcase />}
