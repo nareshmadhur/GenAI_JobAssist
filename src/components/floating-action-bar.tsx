@@ -28,64 +28,62 @@ export function FloatingActionBar({
 }: FloatingActionBarProps) {
   return (
     <footer className="fixed bottom-0 left-0 z-20 w-full p-4">
-      <div className="mx-auto w-full max-w-lg rounded-full border bg-background/80 p-2 shadow-lg backdrop-blur-sm">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Button
-            onClick={() => onGeneration('coverLetter')}
-            disabled={isGenerating}
-            variant={activeView === 'coverLetter' ? 'default' : 'ghost'}
-            className="flex-col h-auto"
-          >
-            {isGenerating && activeView === 'coverLetter' ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <FileText />
-            )}
-            <span className="text-xs">Cover Letter</span>
-          </Button>
+      <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-2 rounded-full border bg-background/80 p-2 shadow-lg backdrop-blur-sm sm:grid-cols-4">
+        <Button
+          onClick={() => onGeneration('coverLetter')}
+          disabled={isGenerating}
+          variant={activeView === 'coverLetter' ? 'default' : 'ghost'}
+          className="h-auto flex-col rounded-full py-2"
+        >
+          {isGenerating && activeView === 'coverLetter' ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <FileText />
+          )}
+          <span className="text-xs">Cover Letter</span>
+        </Button>
 
-          <Button
-            onClick={() => onGeneration('cv')}
-            disabled={isGenerating}
-            variant={activeView === 'cv' ? 'default' : 'ghost'}
-             className="flex-col h-auto"
-          >
-            {isGenerating && activeView === 'cv' ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Briefcase />
-            )}
-            <span className="text-xs">CV Advice</span>
-          </Button>
+        <Button
+          onClick={() => onGeneration('cv')}
+          disabled={isGenerating}
+          variant={activeView === 'cv' ? 'default' : 'ghost'}
+          className="h-auto flex-col rounded-full py-2"
+        >
+          {isGenerating && activeView === 'cv' ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Briefcase />
+          )}
+          <span className="text-xs">CV Advice</span>
+        </Button>
 
-          <Button
-            onClick={() => onGeneration('deepAnalysis')}
-            disabled={isGenerating}
-            variant={activeView === 'deepAnalysis' ? 'default' : 'ghost'}
-            className="flex-col h-auto"
-          >
-            {isGenerating && activeView === 'deepAnalysis' ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Lightbulb />
-            )}
-            <span className="text-xs">Analysis</span>
-          </Button>
+        <Button
+          onClick={() => onGeneration('deepAnalysis')}
+          disabled={isGenerating}
+          variant={activeView === 'deepAnalysis' ? 'default' : 'ghost'}
+          className="h-auto flex-col rounded-full py-2"
+        >
+          {isGenerating && activeView === 'deepAnalysis' ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Lightbulb />
+          )}
+          <span className="text-xs">Analysis</span>
+        </Button>
 
-          <Button
-            onClick={() => onGeneration('qAndA')}
-            disabled={isGenerating}
-            variant={activeView === 'qAndA' ? 'default' : 'ghost'}
-            className="flex-col h-auto"
-          >
-            {isGenerating && activeView === 'qAndA' ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <MessageSquareMore />
-            )}
-            <span className="text-xs">Q & A</span>
-          </Button>
-        </div>
+        <Button
+          onClick={() => onGeneration('qAndA')}
+          disabled={isGenerating}
+          variant={activeView === 'qAndA' ? 'default' : 'ghost'}
+          className="h-auto flex-col rounded-full py-2"
+        >
+          {isGenerating && activeView === 'qAndA' ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <MessageSquareMore />
+          )}
+          <span className="text-xs">Q & A</span>
+        </Button>
       </div>
     </footer>
   );
