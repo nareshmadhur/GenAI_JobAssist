@@ -25,22 +25,20 @@ const prompt = ai.definePrompt({
   input: {schema: ReviseResponseSchema},
   // The output schema for revision is just a string, which can be a simple text or a JSON string.
   output: {schema: z.object({ responses: z.string() })},
-  prompt: `You are a professional resume and cover letter writer. A previous response was generated for a user. The user has provided feedback for revision.
+  prompt: `You are a professional editor. A previous response was generated for a user based on their bio and a job description. The user has provided feedback for revision.
 
-Your task is to revise the original response based on the user's comments, while still considering the original job description and user bio for context. The new response should incorporate the feedback seamlessly.
+Your task is to revise the "Original Response" based on the "User's Revision Comments". You MUST maintain the original context from the Job Description and User Bio.
 
-The type of content to generate is: {{generationType}}
+The type of content to revise is: '{{generationType}}'.
 
-{{#if (eq generationType 'qAndA')}}
-The original response is a JSON object containing questions and answers. You MUST return a valid JSON string representing the revised Q&A object. Do NOT add any explanatory text or formatting outside of the JSON string itself.
-{{else}}
-It must be concise and impactful. Use Markdown for formatting, specifically **bolding** to highlight key skills and experiences.
-{{/if}}
+**CRITICAL INSTRUCTIONS:**
+- If 'generationType' is 'qAndA', the "Original Response" is a JSON object. You MUST return a valid JSON string representing the revised Q&A object. Do NOT add any explanatory text or formatting outside of the JSON string itself.
+- If 'generationType' is 'coverLetter', the "Original Response" is a Markdown text. You MUST return a revised Markdown text. Use professional language and Markdown formatting, especially **bolding** for emphasis.
 
-Job Description:
+Job Description (for context):
 {{{jobDescription}}}
 
-User Bio:
+User Bio (for context):
 {{{bio}}}
 
 Original Response (to be revised):
@@ -49,8 +47,7 @@ Original Response (to be revised):
 User's Revision Comments:
 "{{{revisionComments}}}"
 
-Generate a new, revised response based on this feedback.
-Revised Response:`,
+Generate the new, revised response now.`,
 });
 
 const reviseResponseFlow = ai.defineFlow(
