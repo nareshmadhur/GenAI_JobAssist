@@ -57,6 +57,7 @@ import { ErrorDisplay } from './error-display';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { Progress } from './ui/progress';
 
 interface OutputViewProps {
   activeView: ActiveView;
@@ -324,6 +325,25 @@ function DeepAnalysisView({
 }: {
   deepAnalysis: DeepAnalysisOutput;
 }) {
+  const sortedRequirements = [...deepAnalysis.requirements].sort((a, b) =>
+    a.isMandatory === b.isMandatory ? 0 : a.isMandatory ? -1 : 1
+  );
+
+  const mandatoryReqs = sortedRequirements.filter((r) => r.isMandatory);
+  const preferredReqs = sortedRequirements.filter((r) => !r.isMandatory);
+
+  const mandatoryMet = mandatoryReqs.filter((r) => r.isMet).length;
+  const preferredMet = preferredReqs.filter((r) => r.isMet).length;
+
+  const mandatoryMatchRate =
+    mandatoryReqs.length > 0
+      ? (mandatoryMet / mandatoryReqs.length) * 100
+      : 100;
+  const preferredMatchRate =
+    preferredReqs.length > 0
+      ? (preferredMet / preferredReqs.length) * 100
+      : 100;
+
   const renderImprovementAreas = (details?: string[]) => {
     if (!details || details.length === 0) {
       return null;
@@ -355,6 +375,35 @@ function DeepAnalysisView({
           <div className="prose prose-sm max-w-none">
             <Markdown>{deepAnalysis.jobSummary}</Markdown>
           </div>
+          <div className="mt-4 space-y-4 rounded-lg border bg-muted/50 p-4">
+            <h4 className="font-semibold text-center text-sm text-muted-foreground mb-2">
+              Match Rate
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Mandatory</p>
+                <p className="text-2xl font-bold text-primary">
+                  {Math.round(mandatoryMatchRate)}%
+                </p>
+                <Progress
+                  value={mandatoryMatchRate}
+                  className="h-2 mt-1"
+                  aria-label={`${Math.round(mandatoryMatchRate)}% of mandatory requirements met`}
+                />
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">Preferred</p>
+                <p className="text-2xl font-bold text-primary/80">
+                  {Math.round(preferredMatchRate)}%
+                </p>
+                <Progress
+                  value={preferredMatchRate}
+                  className="h-2 mt-1"
+                  aria-label={`${Math.round(preferredMatchRate)}% of preferred requirements met`}
+                />
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -380,7 +429,7 @@ function DeepAnalysisView({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {deepAnalysis.requirements.map((item, index) => (
+                {sortedRequirements.map((item, index) => (
                   <TableRow key={index}>
                     <TableCell>
                       <Badge
@@ -395,9 +444,9 @@ function DeepAnalysisView({
                       <Tooltip>
                         <TooltipTrigger>
                           {item.isMet ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-500 inline-block" />
+                            <CheckCircle2 className="h-5 w-5 text-green-600 fill-green-100 inline-block" />
                           ) : (
-                            <XCircle className="h-5 w-5 text-red-500 inline-block" />
+                            <XCircle className="h-5 w-5 text-red-600 fill-red-100 inline-block" />
                           )}
                         </TooltipTrigger>
                         <TooltipContent>
