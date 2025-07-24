@@ -21,7 +21,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -517,34 +516,42 @@ export function JobSparkApp() {
   };
 
   const handleRevision = async (data: ReviseResponseData) => {
-    const result = await reviseAction(data);
-    if (result.success) {
-      const { generationType } = data;
-      let newResult;
+    try {
+      const result = await reviseAction(data);
+      if (result.success) {
+        const { generationType } = data;
+        let newResult;
 
-      if (generationType === 'qAndA') {
-          try {
-            // The response for Q&A revision is a stringified JSON, we need to parse it.
-            const parsedResult = JSON.parse(result.data.responses);
-            newResult = { ...parsedResult };
-          } catch (e) {
-              toast({ variant: "destructive", title: "Revision Failed", description: "Could not parse the revised Q&A."});
-              return;
-          }
-      } else if (generationType === 'coverLetter') {
-          newResult = { responses: result.data.responses };
+        if (generationType === 'qAndA') {
+            try {
+              const parsedResult = JSON.parse(result.data.responses);
+              newResult = { ...parsedResult };
+            } catch (e) {
+                toast({ variant: "destructive", title: "Revision Failed", description: "Could not parse the revised Q&A."});
+                return;
+            }
+        } else if (generationType === 'coverLetter') {
+            newResult = { responses: result.data.responses };
+        }
+
+        if (newResult) {
+            setAllResults(prev => ({ ...prev, [generationType]: newResult as any }));
+        }
+
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Revision Failed",
+          description: result.error,
+        });
       }
-
-      if (newResult) {
-          setAllResults(prev => ({ ...prev, [generationType]: newResult as any }));
-      }
-
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Revision Failed",
-        description: result.error,
-      });
+    } catch (error: any) {
+        console.error("Revision failed:", error);
+        toast({
+            variant: "destructive",
+            title: "An Error Occurred During Revision",
+            description: error.message || "Please check the console for more details.",
+        });
     }
   };
 
@@ -931,4 +938,3 @@ function RevisionForm({
     </Card>
   )
 }
-
