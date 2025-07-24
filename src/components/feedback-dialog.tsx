@@ -137,6 +137,7 @@ export function FeedbackDialog({
                   placeholder="Your feedback is valuable!"
                   required
                   disabled={isSubmitting}
+                  className="bg-background"
                 />
               </div>
 
