@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { generateCoverLetter, type CoverLetterOutput } from '@/ai/flows/generate-cover-letter';
 import { generateCv, type CvOutput } from '@/ai/flows/generate-cv';
 import { generateDeepAnalysis, type DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
+import { generateQAndA, type QAndAOutput } from '@/ai/flows/generate-q-and-a';
 import { reviseResponse, type ReviseResponseInput } from '@/ai/flows/revise-response';
 import { JobApplicationSchema, ReviseResponseSchema, type ResponseData } from '@/lib/schemas';
 
@@ -19,15 +20,17 @@ type ReviseActionResponse =
 export type GenerationResult = 
     | CoverLetterOutput
     | CvOutput
-    | DeepAnalysisOutput;
+    | DeepAnalysisOutput
+    | QAndAOutput;
 
 export type AllGenerationResults = {
     coverLetter?: CoverLetterOutput;
     cv?: CvOutput;
     deepAnalysis?: DeepAnalysisOutput;
+    qAndA?: QAndAOutput;
 };
 
-const SingleGenerationSchema = JobApplicationSchema.pick({ jobDescription: true, bio: true, generationType: true });
+const SingleGenerationSchema = JobApplicationSchema.pick({ jobDescription: true, bio: true, generationType: true, questions: true });
 
 export async function generateAction(
   rawData: unknown
@@ -35,6 +38,7 @@ export async function generateAction(
     | SingleGenerateActionResponse<CoverLetterOutput>
     | SingleGenerateActionResponse<CvOutput>
     | SingleGenerateActionResponse<DeepAnalysisOutput>
+    | SingleGenerateActionResponse<QAndAOutput>
     | { success: false; error: string }
 > {
     const validationResult = SingleGenerationSchema.safeParse(rawData);
@@ -42,7 +46,7 @@ export async function generateAction(
         const errorMessage = validationResult.error.issues.map((issue) => issue.message).join(' ');
         return { success: false, error: errorMessage || "Invalid input." };
     }
-    const { jobDescription, bio, generationType } = validationResult.data;
+    const { jobDescription, bio, generationType, questions } = validationResult.data;
 
     try {
         let response;
@@ -52,6 +56,9 @@ export async function generateAction(
                 break;
             case 'deepAnalysis':
                 response = await generateDeepAnalysis({ jobDescription, userBio: bio });
+                break;
+            case 'qAndA':
+                response = await generateQAndA({ jobDescription, userBio: bio, questions });
                 break;
             case 'coverLetter':
             default:
@@ -76,8 +83,8 @@ export async function reviseAction(
     return { success: false, error: errorMessage || "Invalid input for revision." };
   }
   const validatedData = validationResult.data;
-  if (validatedData.generationType === 'cv') {
-      return { success: false, error: "CV revision is not supported in this format." };
+  if (validatedData.generationType === 'cv' || validatedData.generationType === 'qAndA') {
+      return { success: false, error: "Revision is not supported for this format." };
   }
 
   try {

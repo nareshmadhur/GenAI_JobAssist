@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 const LOCAL_STORAGE_KEY = 'jobspark_form_data';
 const API_KEY_STORAGE_KEY = 'jobspark_api_key';
 
-type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis';
+type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis' | 'qAndA';
 type ActiveView = GenerationType | 'none';
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -267,7 +267,13 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
 
 function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
   if (!qAndA.questionsFound) {
-    return null;
+    return (
+        <Card>
+            <CardContent className="p-4 text-center text-muted-foreground">
+                <p>No questions were found in the job description, and none were provided by you.</p>
+            </CardContent>
+        </Card>
+    );
   }
 
   const allAnswers = qAndA.qaPairs.map(p => `Q: ${p.question}\nA: ${p.answer}`).join('\n\n');
@@ -327,7 +333,7 @@ export function JobSparkApp() {
   
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
     resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
-    defaultValues: { jobDescription: "", bio: "" },
+    defaultValues: { jobDescription: "", bio: "", questions: "" },
   });
 
   // Load from localStorage on mount
@@ -336,7 +342,11 @@ export function JobSparkApp() {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        formMethods.reset({ jobDescription: parsedData.jobDescription || "", bio: parsedData.bio || "" });
+        formMethods.reset({ 
+            jobDescription: parsedData.jobDescription || "", 
+            bio: parsedData.bio || "",
+            questions: parsedData.questions || ""
+        });
       }
       const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
       if (savedApiKey) {
@@ -351,7 +361,11 @@ export function JobSparkApp() {
   useEffect(() => {
     const subscription = formMethods.watch((value) => {
        try {
-         const dataToSave = { jobDescription: value.jobDescription, bio: value.bio };
+         const dataToSave = { 
+             jobDescription: value.jobDescription, 
+             bio: value.bio,
+             questions: value.questions
+        };
          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
        } catch (e) {
          console.error("Failed to save data to localStorage", e);
@@ -369,9 +383,9 @@ export function JobSparkApp() {
   }, [apiKey]);
 
   const handleGeneration = (generationType: GenerationType) => {
-    formMethods.trigger().then(isValid => {
+    formMethods.trigger(['jobDescription', 'bio']).then(isValid => {
         if (!isValid) {
-            toast({ variant: "destructive", title: "Please fill out both fields."});
+            toast({ variant: "destructive", title: "Please fill out both Job Description and Bio fields."});
             return;
         }
         
@@ -380,9 +394,12 @@ export function JobSparkApp() {
         setActiveView(generationType);
         setGenerationError(null);
 
-        if (allResults[generationType]) {
-            return;
-        }
+        // Clear previous results for this type to force re-generation
+        setAllResults(prev => {
+            const newResults = {...prev};
+            delete newResults[generationType];
+            return newResults;
+        });
 
         startGenerating(async () => {
             const response = await generateAction(data);
@@ -408,7 +425,7 @@ export function JobSparkApp() {
     const result = await reviseAction(data);
     if (result.success) {
       const { generationType } = data;
-      if (generationType === 'cv') {
+      if (generationType === 'cv' || generationType === 'qAndA') {
         return;
       }
       const newResponseText = result.data.responses;
@@ -424,7 +441,7 @@ export function JobSparkApp() {
 
 
   const handleClear = () => {
-    formMethods.reset({ jobDescription: "", bio: "" });
+    formMethods.reset({ jobDescription: "", bio: "", questions: "" });
     setAllResults({});
     setActiveView('none');
     setGenerationError(null);
@@ -477,6 +494,9 @@ export function JobSparkApp() {
           case 'deepAnalysis':
             if (!allResults.deepAnalysis) return null;
             return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} />;
+          case 'qAndA':
+            if (!allResults.qAndA) return null;
+            return <QAndAView qAndA={allResults.qAndA as QAndAOutput} />;
           default:
             return (
                  <Card className="flex items-center justify-center min-h-[400px]">
@@ -493,6 +513,7 @@ export function JobSparkApp() {
       coverLetter: { title: "Cover Letter", icon: <FileText className="h-5 w-5" /> },
       cv: { title: "Curriculum Vitae (CV)", icon: <Briefcase className="h-5 w-5" /> },
       deepAnalysis: { title: "Deep Analysis", icon: <Lightbulb className="h-5 w-5" /> },
+      qAndA: { title: "Q & A", icon: <MessageSquareMore className="h-5 w-5" /> },
   };
 
   return (
@@ -542,6 +563,26 @@ export function JobSparkApp() {
                             </FormControl>
                             <FormDescription className="prose-sm">
                             This will be compared against the job description to find matches and gaps.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={formMethods.control}
+                        name="questions"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Specific Questions (Optional)</FormLabel>
+                            <FormControl>
+                            <Textarea
+                                placeholder="Have specific questions? Enter them here, one per line. The AI will answer them using your bio and the job description."
+                                className="min-h-[100px]"
+                                {...field}
+                            />
+                            </FormControl>
+                             <FormDescription className="prose-sm">
+                                Use this to answer questions like "Why are you interested in this role?". If left blank, the AI will try to find questions in the job description.
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
@@ -598,6 +639,10 @@ export function JobSparkApp() {
                       <Button onClick={() => handleGeneration('deepAnalysis')} disabled={isGenerating} className="w-full">
                           {isGenerating && activeView === 'deepAnalysis' ? <Loader2 className="animate-spin" /> : <Lightbulb />}
                           Generate Analysis
+                      </Button>
+                       <Button onClick={() => handleGeneration('qAndA')} disabled={isGenerating} className="w-full">
+                          {isGenerating && activeView === 'qAndA' ? <Loader2 className="animate-spin" /> : <MessageSquareMore />}
+                          Answer Questions
                       </Button>
                   </div>
               </div>
