@@ -142,6 +142,16 @@ export function FeedbackDialog({
                 />
               </div>
 
+              <div className="flex items-center space-x-2">
+                <Checkbox id="include-data" defaultChecked disabled={isSubmitting}/>
+                <Label
+                  htmlFor="include-data"
+                  className="text-sm text-muted-foreground"
+                >
+                  Include job description & bio for better context.
+                </Label>
+              </div>
+
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Submit Feedback
