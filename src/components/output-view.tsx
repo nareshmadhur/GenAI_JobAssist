@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -51,7 +50,7 @@ import { ErrorDisplay } from './error-display';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
+import { CircularProgress } from './circular-progress';
 
 interface OutputViewProps {
   activeView: ActiveView;
@@ -331,11 +330,11 @@ function DeepAnalysisView({
 
   const mandatoryMatchRate =
     mandatoryReqs.length > 0
-      ? (mandatoryMet / mandatoryReqs.length) * 100
+      ? Math.round((mandatoryMet / mandatoryReqs.length) * 100)
       : 100;
   const preferredMatchRate =
     preferredReqs.length > 0
-      ? (preferredMet / preferredReqs.length) * 100
+      ? Math.round((preferredMet / preferredReqs.length) * 100)
       : 100;
 
   const renderImprovementAreas = (details?: string[]) => {
@@ -369,36 +368,18 @@ function DeepAnalysisView({
           <div className="prose prose-sm max-w-none">
             <Markdown>{deepAnalysis.jobSummary}</Markdown>
           </div>
-          <div className="mt-4 space-y-4 rounded-lg border bg-muted/50 p-4">
-            <h4 className="font-semibold text-center text-sm text-muted-foreground mb-4">
+          <div className="mt-6 rounded-lg border bg-muted/50 p-4">
+            <h4 className="mb-4 text-center text-sm font-semibold text-muted-foreground">
               Match Rate
             </h4>
-            <div className="space-y-4">
-               <div>
-                 <div className="flex justify-between items-center mb-1">
-                    <p className="text-sm text-muted-foreground">Mandatory</p>
-                    <p className="text-lg font-bold text-primary">
-                      {Math.round(mandatoryMatchRate)}%
-                    </p>
-                 </div>
-                <Progress
-                  value={mandatoryMatchRate}
-                  className="h-2"
-                  aria-label={`${Math.round(mandatoryMatchRate)}% of mandatory requirements met`}
-                />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="flex flex-col items-center gap-2">
+                <CircularProgress value={mandatoryMatchRate} />
+                <p className="font-semibold">Mandatory</p>
               </div>
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                    <p className="text-sm text-muted-foreground">Preferred</p>
-                    <p className="text-lg font-bold text-primary/80">
-                      {Math.round(preferredMatchRate)}%
-                    </p>
-                </div>
-                <Progress
-                  value={preferredMatchRate}
-                  className="h-2"
-                  aria-label={`${Math.round(preferredMatchRate)}% of preferred requirements met`}
-                />
+              <div className="flex flex-col items-center gap-2">
+                <CircularProgress value={preferredMatchRate} />
+                <p className="font-semibold">Preferred</p>
               </div>
             </div>
           </div>
