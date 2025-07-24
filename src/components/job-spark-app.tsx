@@ -246,7 +246,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
           <CardDescription className="prose-sm">An expert summary of the role's core requirements.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="prose max-w-none">
+          <div className="prose prose-sm max-w-none">
             <Markdown>{deepAnalysis.jobSummary}</Markdown>
           </div>
         </CardContent>
@@ -309,7 +309,7 @@ function QAndAView({
     jobDescription: string;
     bio: string;
 }) {
-  if (!qAndA.questionsFound) {
+  if (!qAndA || !qAndA.questionsFound) {
     return (
         <Card>
             <CardContent className="p-4 text-center text-muted-foreground">
@@ -363,13 +363,15 @@ function QAndAView({
             </div>
         </CardContent>
         </Card>
-        <RevisionForm
-            currentResponse={JSON.stringify(qAndA, null, 2)}
-            generationType="qAndA"
-            onRevision={onRevision}
-            jobDescription={jobDescription}
-            bio={bio}
-        />
+        {qAndA && (
+            <RevisionForm
+                currentResponse={JSON.stringify(qAndA, null, 2)}
+                generationType="qAndA"
+                onRevision={onRevision}
+                jobDescription={jobDescription}
+                bio={bio}
+            />
+        )}
     </div>
   )
 }
@@ -609,14 +611,16 @@ export function JobSparkApp() {
           case 'coverLetter':
             if (!allResults.coverLetter) return null;
             return (
-                <GeneratedResponse 
-                    initialValue={coverLetterResponse}
-                    onValueChange={(val) => handleManualEdit(val, 'coverLetter')} 
-                    generationType="coverLetter"
-                    onRevision={handleRevision}
-                    jobDescription={jobDescription}
-                    bio={bio}
-                />
+                <div className="prose prose-sm max-w-none">
+                    <GeneratedResponse 
+                        initialValue={coverLetterResponse}
+                        onValueChange={(val) => handleManualEdit(val, 'coverLetter')} 
+                        generationType="coverLetter"
+                        onRevision={handleRevision}
+                        jobDescription={jobDescription}
+                        bio={bio}
+                    />
+                </div>
             );
           case 'cv':
              if (!allResults.cv) return null;
