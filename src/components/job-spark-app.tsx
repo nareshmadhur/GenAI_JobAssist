@@ -252,7 +252,7 @@ function DeepAnalysisView({ deepAnalysis, jobDescription, bio, onRevision }: { d
         </CardContent>
       </Card>
       
-      {deepAnalysis.qAndA?.questionsFound && (
+      {deepAnalysis.qAndA?.qaPairs.length && (
           <QAndAView qAndA={deepAnalysis.qAndA} onRevision={onRevision} jobDescription={jobDescription} bio={bio} />
       )}
 
@@ -309,11 +309,11 @@ function QAndAView({
     jobDescription: string;
     bio: string;
 }) {
-  if (!qAndA || !qAndA.questionsFound) {
+  if (!qAndA || !qAndA.qaPairs || qAndA.qaPairs.length === 0) {
     return (
         <Card>
             <CardContent className="p-4 text-center text-muted-foreground">
-                <p>No questions were found in the job description, and none were provided by you.</p>
+                <p>No questions were provided to be answered.</p>
             </CardContent>
         </Card>
     );
@@ -484,6 +484,11 @@ export function JobSparkApp() {
             toast({ variant: "destructive", title: "Please fill out both Job Description and Bio fields."});
             return;
         }
+
+        if (generationType === 'qAndA' && !formMethods.getValues('questions')) {
+            toast({ variant: "destructive", title: "Please provide specific questions to answer." });
+            return;
+        }
         
         const data = { ...formMethods.getValues(), generationType };
 
@@ -520,42 +525,33 @@ export function JobSparkApp() {
   const handleRevision = async (data: ReviseResponseData) => {
       const { generationType } = data;
 
-      try {
-        const result = await reviseAction(data);
+      const result = await reviseAction(data);
 
-        if (result.success) {
-            let newResult;
+      if (result.success) {
+          let newResult;
 
-            if (generationType === 'qAndA') {
-                try {
-                    newResult = JSON.parse(result.data.responses);
-                } catch (e) {
-                    console.error("Failed to parse revised Q&A JSON:", e);
-                    toast({ variant: "destructive", title: "Revision Failed", description: "The AI returned an invalid format for the Q&A."});
-                    return;
-                }
-            } else if (generationType === 'coverLetter') {
-                newResult = { responses: result.data.responses };
-            }
+          if (generationType === 'qAndA') {
+              try {
+                  newResult = JSON.parse(result.data.responses);
+              } catch (e) {
+                  console.error("Failed to parse revised Q&A JSON:", e);
+                  toast({ variant: "destructive", title: "Revision Failed", description: "The AI returned an invalid format for the Q&A."});
+                  return;
+              }
+          } else if (generationType === 'coverLetter') {
+              newResult = { responses: result.data.responses };
+          }
 
-            if (newResult) {
-                setAllResults(prev => ({ ...prev, [generationType]: newResult as any }));
-            }
+          if (newResult) {
+              setAllResults(prev => ({ ...prev, [generationType]: newResult as any }));
+          }
 
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Revision Failed",
-                description: result.error,
-            });
-        }
-      } catch(error) {
-        console.error('Revision submission failed', error);
-        toast({
-            variant: "destructive",
-            title: "Revision Failed",
-            description: error instanceof Error ? error.message : "An unknown error occurred.",
-        });
+      } else {
+          toast({
+              variant: "destructive",
+              title: "Revision Failed",
+              description: result.error,
+          });
       }
   };
 

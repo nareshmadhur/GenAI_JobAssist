@@ -35,7 +35,6 @@ export const QuestionAnswerPairSchema = z.object({
 });
 
 export const QAndAOutputSchema = z.object({
-  questionsFound: z.boolean().describe('Whether or not any questions were found in the job description.'),
   qaPairs: z.array(QuestionAnswerPairSchema).describe('A list of question and answer pairs.'),
 });
 export type QAndAOutput = z.infer<typeof QAndAOutputSchema>;
