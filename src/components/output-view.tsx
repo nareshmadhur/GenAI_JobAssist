@@ -418,47 +418,42 @@ function DeepAnalysisView({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TooltipProvider>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Requirement</TableHead>
-                  <TableHead className="text-center">Met</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="py-2 px-4">Status</TableHead>
+                <TableHead className="py-2 px-4">Category</TableHead>
+                <TableHead className="py-2 px-4">Requirement</TableHead>
+                <TableHead className="py-2 px-4 text-center">Met</TableHead>
+                <TableHead className="py-2 px-4 w-[40%]">Justification</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedRequirements.map((item, index) => (
+                <TableRow key={index}>
+                  <TableCell className="py-2 px-4">
+                    <Badge
+                      variant={item.isMandatory ? 'default' : 'secondary'}
+                    >
+                      {item.isMandatory ? 'Mandatory' : 'Preferred'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="py-2 px-4">{item.category}</TableCell>
+                  <TableCell className="py-2 px-4">{item.requirement}</TableCell>
+                  <TableCell className="py-2 px-4 text-center">
+                    {item.isMet ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600 fill-green-100 inline-block" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-red-600 fill-red-100 inline-block" />
+                    )}
+                  </TableCell>
+                  <TableCell className="py-2 px-4 text-sm text-muted-foreground">
+                    {item.justification}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedRequirements.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <Badge
-                        variant={item.isMandatory ? 'default' : 'secondary'}
-                      >
-                        {item.isMandatory ? 'Mandatory' : 'Preferred'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell>{item.requirement}</TableCell>
-                    <TableCell className="text-center">
-                      <Tooltip>
-                        <TooltipTrigger>
-                          {item.isMet ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600 fill-green-100 inline-block" />
-                          ) : (
-                            <XCircle className="h-5 w-5 text-red-600 fill-red-100 inline-block" />
-                          )}
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-xs">{item.justification}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TooltipProvider>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
