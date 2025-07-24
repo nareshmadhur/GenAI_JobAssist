@@ -29,7 +29,7 @@ const DeepAnalysisOutputSchema = z.object({
   jobSummary: z.string().describe("A professional summary of the job description, abstracting jargon and focusing on key takeaways, with important elements bolded. If relevant, it may also include comments on the job description's structure, language, and tone."),
   mustHaves: z.array(RequirementSchema).describe("A list of 'must-have' or essential requirements from the job description and whether they are met."),
   preferred: z.array(RequirementSchema).describe("A list of 'preferred' or 'nice-to-have' qualifications from the job description and whether they are met."),
-  improvementAreas: z.array(z.string()).describe("A list of specific bullet points providing areas where the user's bio could be improved for this role. Each bullet point MUST start with a bolded category and sub-category (e.g., '**Actionable Advice - Quantify Achievements:** ...')."),
+  improvementAreas: z.array(z.string()).describe("A list of specific bullet points providing areas where the user's bio could be improved for this role. Each bullet point MUST start with a bolded category (e.g., '**Quantify Achievements:** ...')."),
   qAndA: QAndAOutputSchema.optional().describe("An optional section with questions found in the job description and their answers."),
 });
 
@@ -51,7 +51,7 @@ First, act as a professional in the field and write a concise summary of the rol
 
 Next, analyze the job description to identify "must-have" (essential, required) and "preferred" (nice-to-have, bonus) qualifications. For each requirement you identify, check if it is clearly met in the user's bio and set the 'isMet' flag to true or false.
 
-Then, generate a list of actionable advice on how to **better present** the information that is already in the bio. This is about enhancing the existing content, not pointing out what's missing. Every bullet point for Improvement Areas MUST begin with a concise, bolded category followed by a hyphen, a 2-4 word sub-category, and then a colon. Example: **Actionable Advice - Quantify Achievements:** Consider adding metrics...
+Then, generate a list of actionable advice on how to **better present** the information that is already in the bio. This is about enhancing the existing content, not pointing out what's missing. Every bullet point for Improvement Areas MUST begin with a concise, bolded category and then a colon. Example: **Quantify Achievements:** Consider adding metrics...
 
 Job Description:
 {{{jobDescription}}}
@@ -79,7 +79,7 @@ const generateDeepAnalysisFlow = ai.defineFlow(
         ...analysisResponse.output!,
     };
 
-    if (qAndAResponse.questionsFound) {
+    if (qAndAResponse.qaPairs.length > 0) {
         finalOutput.qAndA = qAndAResponse;
     }
 
