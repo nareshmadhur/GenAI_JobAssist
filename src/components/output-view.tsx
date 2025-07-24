@@ -38,12 +38,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import type { QAndAOutput, ReviseResponseData } from '@/lib/schemas';
@@ -447,7 +441,7 @@ function DeepAnalysisView({
                       <XCircle className="h-5 w-5 text-red-600 fill-red-100 inline-block" />
                     )}
                   </TableCell>
-                  <TableCell className="py-2 px-4 text-sm text-muted-foreground">
+                  <TableCell className="py-2 px-4 text-sm">
                     {item.justification}
                   </TableCell>
                 </TableRow>

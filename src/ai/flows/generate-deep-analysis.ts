@@ -20,7 +20,7 @@ export type DeepAnalysisInput = z.infer<typeof DeepAnalysisInputSchema>;
 const RequirementSchema = z.object({
   requirement: z
     .string()
-    .describe('The specific requirement extracted from the job description.'),
+    .describe('A concise summary of the specific requirement extracted from the job description.'),
   category: z
     .string()
     .describe(
@@ -78,7 +78,7 @@ const prompt = ai.definePrompt({
 1.  **Job Summary**: Act as a professional in the field and write a concise summary of the role. Abstract away jargon and focus on core responsibilities. **Bold** key phrases. Note anything about the language or tone that might imply company culture.
 
 2.  **Consolidated Requirements**: Analyze the job description to identify all requirements. For each one, create an object with the following fields:
-    *   \`requirement\`: The specific requirement.
+    *   \`requirement\`: The specific requirement, summarized concisely.
     *   \`category\`: Classify it (e.g., 'Experience', 'Education', 'Skills', 'Certification').
     *   \`isMandatory\`: Set to \`true\` if it's a "must-have" or "required", and \`false\` if it's "preferred" or "nice-to-have".
     *   \`isMet\`: Check if the requirement is clearly met in the user's bio and set to \`true\` or \`false\`.
