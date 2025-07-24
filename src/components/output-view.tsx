@@ -30,6 +30,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import type { QAndAOutput, ReviseResponseData } from '@/lib/schemas';
@@ -42,6 +56,7 @@ import { Textarea } from './ui/textarea';
 import { ErrorDisplay } from './error-display';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
+import { Badge } from './ui/badge';
 
 interface OutputViewProps {
   activeView: ActiveView;
@@ -52,10 +67,16 @@ interface OutputViewProps {
   generationError: string | null;
 }
 
-const VIEW_CONFIG: Record<GenerationType, { title: string; icon: React.ReactNode }> = {
+const VIEW_CONFIG: Record<
+  GenerationType,
+  { title: string; icon: React.ReactNode }
+> = {
   coverLetter: { title: 'Cover Letter', icon: <FileText className="h-5 w-5" /> },
   cv: { title: 'Curriculum Vitae (CV)', icon: <Briefcase className="h-5 w-5" /> },
-  deepAnalysis: { title: 'Deep Analysis', icon: <Lightbulb className="h-5 w-5" /> },
+  deepAnalysis: {
+    title: 'Deep Analysis',
+    icon: <Lightbulb className="h-5 w-5" />,
+  },
   qAndA: { title: 'Q & A', icon: <MessageSquareMore className="h-5 w-5" /> },
 };
 
@@ -96,7 +117,10 @@ function CopyButton({
       toast({ title: 'Copied to clipboard!' });
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy rich text, falling back to plain text:', err);
+      console.error(
+        'Failed to copy rich text, falling back to plain text:',
+        err
+      );
       navigator.clipboard.writeText(plainText).then(
         () => {
           setIsCopied(true);
@@ -292,40 +316,14 @@ function QAndAView({
 /**
  * Renders the Deep Analysis view.
  *
- * @param {{ deepAnalysis: DeepAnalysisOutput, onRevision: (data: ReviseResponseData) => Promise<void> }} props - The component props.
+ * @param {{ deepAnalysis: DeepAnalysisOutput }} props - The component props.
  * @returns {JSX.Element} The rendered deep analysis view.
  */
 function DeepAnalysisView({
   deepAnalysis,
-  onRevision,
 }: {
   deepAnalysis: DeepAnalysisOutput;
-  onRevision: (data: ReviseResponseData) => Promise<void>;
 }) {
-  const renderRequirements = (items: typeof deepAnalysis.mustHaves) => {
-    if (!items || items.length === 0) {
-      return (
-        <p className="text-sm text-muted-foreground">
-          No specific requirements were identified in this category.
-        </p>
-      );
-    }
-    return (
-      <ul className="space-y-3">
-        {items.map((item, index) => (
-          <li key={index} className="flex items-start gap-3">
-            {item.isMet ? (
-              <CheckCircle2 className="mt-1 h-5 w-5 flex-shrink-0 text-green-500" />
-            ) : (
-              <XCircle className="mt-1 h-5 w-5 flex-shrink-0 text-red-500" />
-            )}
-            <span className="text-sm">{item.requirement}</span>
-          </li>
-        ))}
-      </ul>
-    );
-  };
-
   const renderImprovementAreas = (details?: string[]) => {
     if (!details || details.length === 0) {
       return null;
@@ -360,35 +358,58 @@ function DeepAnalysisView({
         </CardContent>
       </Card>
 
-      {deepAnalysis.qAndA && (
-        <QAndAView qAndA={deepAnalysis.qAndA} onRevision={onRevision} />
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CheckCircle2 className="h-6 w-6 text-primary" />
-            <span>Must-Have Requirements</span>
+            <span>Requirement Analysis</span>
           </CardTitle>
           <CardDescription className="prose-sm">
-            Essential criteria for the role and your alignment.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>{renderRequirements(deepAnalysis.mustHaves)}</CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-primary" />
-            <span>Preferred Qualifications</span>
-          </CardTitle>
-          <CardDescription className="prose-sm">
-            "Nice-to-have" skills and your alignment.
+            How your bio aligns with the job's key requirements.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {renderRequirements(deepAnalysis.preferred)}
+          <TooltipProvider>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Requirement</TableHead>
+                  <TableHead className="text-center">Met</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {deepAnalysis.requirements.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <Badge
+                        variant={item.isMandatory ? 'default' : 'secondary'}
+                      >
+                        {item.isMandatory ? 'Mandatory' : 'Preferred'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{item.category}</TableCell>
+                    <TableCell>{item.requirement}</TableCell>
+                    <TableCell className="text-center">
+                      <Tooltip>
+                        <TooltipTrigger>
+                          {item.isMet ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500 inline-block" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-500 inline-block" />
+                          )}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">{item.justification}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TooltipProvider>
         </CardContent>
       </Card>
 
@@ -459,7 +480,10 @@ export function OutputView({
     const result = await reviseAction(data);
 
     if (result.success) {
-      setAllResults((prev) => ({ ...prev, [generationType]: result.data as any }));
+      setAllResults((prev) => ({
+        ...prev,
+        [generationType]: result.data as any,
+      }));
     } else {
       toast({
         variant: 'destructive',
@@ -510,12 +534,7 @@ export function OutputView({
         return <CvView cvData={allResults.cv as CvOutput} />;
       case 'deepAnalysis':
         if (!allResults.deepAnalysis) return null;
-        return (
-          <DeepAnalysisView
-            deepAnalysis={allResults.deepAnalysis}
-            onRevision={handleRevision}
-          />
-        );
+        return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} />;
       case 'qAndA':
         if (!allResults.qAndA) return null;
         return (
