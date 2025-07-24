@@ -27,6 +27,19 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { 
   JobApplicationSchema, 
   ReviseResponseSchema,
@@ -39,7 +52,6 @@ import { DeepAnalysisOutput, CvOutput } from "@/ai/flows";
 import { CvView } from './cv-view';
 import { Skeleton } from "./ui/skeleton";
 import { Separator } from "./ui/separator";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 
 const LOCAL_STORAGE_KEY = 'jobspark_form_data';
@@ -247,7 +259,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckSquare className="h-6 w-6 text-primary" />
+            <CheckCircle2 className="h-6 w-6 text-primary" />
             <span>Must-Have Requirements</span>
           </CardTitle>
           <CardDescription className="prose-sm">Essential criteria for the role and your alignment.</CardDescription>
@@ -260,7 +272,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-primary"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            <CheckCircle2 className="h-6 w-6 text-primary" />
             <span>Preferred Qualifications</span>
           </CardTitle>
           <CardDescription className="prose-sm">"Nice-to-have" skills and your alignment.</CardDescription>
@@ -344,7 +356,7 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
 }
 
 
-function FeedbackForm({ jobDescription, bio, lastGeneratedOutput }: { jobDescription: string; bio: string; lastGeneratedOutput: string }) {
+function FeedbackForm({ jobDescription, bio, lastGeneratedOutput, closeDialog }: { jobDescription: string; bio: string; lastGeneratedOutput: string, closeDialog: () => void; }) {
     const [name, setName] = useState('');
     const [feedback, setFeedback] = useState('');
     const [includeJD, setIncludeJD] = useState(true);
@@ -368,10 +380,11 @@ function FeedbackForm({ jobDescription, bio, lastGeneratedOutput }: { jobDescrip
         
         const url = `${baseUrl}&${params.toString()}`;
         window.open(url, '_blank');
+        closeDialog();
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
             <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                     <Checkbox id="includeJD" checked={includeJD} onCheckedChange={(checked) => setIncludeJD(Boolean(checked))} />
@@ -401,6 +414,7 @@ export function JobSparkApp() {
   const [activeView, setActiveView] = useState<ActiveView>('none');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const { toast } = useToast();
   
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
@@ -520,6 +534,8 @@ export function JobSparkApp() {
       if (activeView === 'none' || !allResults[activeView]) return "";
       
       const activeResult = allResults[activeView];
+      if (!activeResult) return "";
+      
       if ('responses' in activeResult) { // CoverLetter
           return activeResult.responses;
       }
@@ -697,47 +713,60 @@ export function JobSparkApp() {
                       </Button>
                   </div>
               </div>
-              <Separator />
-               <Accordion type="multiple" className="w-full">
-                  <AccordionItem value="feedback">
-                      <AccordionTrigger className="text-sm">
-                          <div className="flex items-center gap-2">
-                            <MessageSquareHeart className="h-5 w-5" />
-                            <span>Provide Feedback</span>
-                          </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                          <FeedbackForm 
-                            jobDescription={formMethods.getValues('jobDescription')}
-                            bio={formMethods.getValues('bio')}
-                            lastGeneratedOutput={getLastGeneratedOutput()}
-                          />
-                      </AccordionContent>
-                  </AccordionItem>
-                  <AccordionItem value="api-key">
-                      <AccordionTrigger className="text-sm">
-                           <div className="flex items-center gap-2">
-                            <KeyRound className="h-5 w-5" />
-                            <span>Use Custom API Key (Optional)</span>
-                          </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                          <div className="space-y-2">
-                            <Label htmlFor="apiKey">Gemini API Key</Label>
-                            <Input id="apiKey" type="password" placeholder="Enter your Gemini API key" />
-                            <p className="text-xs text-muted-foreground">
-                                Your key will be used for your requests instead of the default.
-                            </p>
-                          </div>
-                      </AccordionContent>
-                  </AccordionItem>
-              </Accordion>
-              <Separator />
+              <Separator className="my-4" />
+              <div className="flex items-center gap-2 w-full">
+                <Button type="button" variant="outline" onClick={handleClear} className="flex-grow">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Clear All
+                </Button>
+                
+                <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                        <MessageSquareHeart className="mr-2 h-4 w-4" />
+                        Feedback
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Provide Feedback</DialogTitle>
+                      <DialogDescription>
+                        Your feedback helps us improve the AI. Tell us what you think!
+                      </DialogDescription>
+                    </DialogHeader>
+                    <FeedbackForm
+                      jobDescription={formMethods.getValues('jobDescription')}
+                      bio={formMethods.getValues('bio')}
+                      lastGeneratedOutput={getLastGeneratedOutput()}
+                      closeDialog={() => setIsFeedbackDialogOpen(false)}
+                    />
+                  </DialogContent>
+                </Dialog>
 
-              <Button type="button" variant="outline" onClick={handleClear} className="w-full sm:w-auto">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Clear All
-              </Button>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline">
+                            <KeyRound className="mr-2 h-4 w-4" />
+                            API Key
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                         <div className="grid gap-4">
+                            <div className="space-y-2">
+                                <h4 className="font-medium leading-none">Custom API Key</h4>
+                                <p className="text-sm text-muted-foreground">
+                                    Use your own Gemini API key for requests.
+                                </p>
+                            </div>
+                             <div className="grid gap-2">
+                                <Label htmlFor="apiKey">Gemini API Key</Label>
+                                <Input id="apiKey" type="password" placeholder="Enter your Gemini API key" />
+                             </div>
+                         </div>
+                    </PopoverContent>
+                </Popover>
+              </div>
+
             </CardFooter>
           </Card>
         </div>
@@ -754,6 +783,7 @@ export function JobSparkApp() {
                       )}
                       <div className="flex items-center gap-1">
                           {(Object.keys(allResults) as GenerationType[]).map(key => (
+                            allResults[key] && (
                               <Button 
                                   key={key}
                                   variant={activeView === key ? 'default' : 'ghost'} 
@@ -764,6 +794,7 @@ export function JobSparkApp() {
                               >
                                   {VIEW_CONFIG[key].icon}
                               </Button>
+                            )
                           ))}
                       </div>
                   </div>
@@ -866,5 +897,3 @@ function RevisionForm({
     </Card>
   )
 }
-
-    
