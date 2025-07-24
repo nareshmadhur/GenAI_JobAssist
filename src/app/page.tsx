@@ -153,15 +153,15 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/20">
-      <header className="sticky top-0 z-10 w-full border-b bg-background/80 px-4 py-4 backdrop-blur-sm sm:px-6 md:px-8">
+      <header className="sticky top-0 z-10 w-full border-b border-primary-foreground/20 bg-primary px-4 py-4 sm:px-6 md:px-8">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <JobSparkLogo className="h-10 w-10 text-primary" />
+            <JobSparkLogo className="h-10 w-10 text-primary-foreground" />
             <div className="flex flex-col">
-              <h1 className="font-headline text-2xl font-bold text-primary md:text-3xl">
+              <h1 className="font-headline text-2xl font-bold text-primary-foreground md:text-3xl">
                 JobSpark
               </h1>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-primary-foreground/80">
                 Allow AI to boost your job application productivity
               </p>
             </div>
