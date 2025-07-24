@@ -180,7 +180,7 @@ function GeneratedResponse({
           </Button>
         </>
       ) : (
-        <div className="prose max-w-none p-4 min-h-[150px] rounded-md border bg-background relative">
+        <div className="prose prose-sm max-w-none p-4 min-h-[150px] rounded-md border bg-background relative">
           <Markdown>{localValue}</Markdown>
           <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="absolute top-0 right-0">
               <Edit className="h-4 w-4" />
@@ -254,7 +254,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
       </Card>
       
       {deepAnalysis.qAndA?.questionsFound && (
-          <QAndAView qAndA={deepAnalysis.qAndA} />
+          <QAndAView qAndA={deepAnalysis.qAndA} onRevision={() => {}} jobDescription={""} bio={""} />
       )}
 
       <Card>
@@ -299,7 +299,17 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
   );
 }
 
-function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
+function QAndAView({ 
+    qAndA, 
+    onRevision, 
+    jobDescription, 
+    bio 
+}: { 
+    qAndA: QAndAOutput;
+    onRevision: (data: ReviseResponseData) => Promise<void>;
+    jobDescription: string;
+    bio: string;
+}) {
   if (!qAndA.questionsFound) {
     return (
         <Card>
@@ -315,44 +325,53 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
   const NOT_FOUND_STRING = '[Answer not found in bio]';
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="flex flex-col">
-            <CardTitle className="flex items-center gap-2">
-                <MessageSquareMore className="h-6 w-6 text-primary" />
-                Q&A
-            </CardTitle>
-            <CardDescription className="prose-sm">Answers to questions found in the job description.</CardDescription>
-        </div>
-        <CopyButton textToCopy={allAnswers} />
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {missingAnswersCount > 0 && (
-          <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Missing Information</AlertTitle>
-              <AlertDescription className="prose-sm">
-                  {missingAnswersCount} question{missingAnswersCount > 1 ? 's' : ''} could not be answered based on your bio. These are highlighted below.
-              </AlertDescription>
-          </Alert>
-        )}
-        <div className="space-y-4">
-            {qAndA.qaPairs.map((pair, index) => (
-                <div key={index} className="p-4 rounded-md border bg-muted/50 relative">
-                <p className="font-semibold text-primary mb-2 pr-10 prose-sm">{pair.question}</p>
-                <div className="prose prose-sm max-w-none">
-                    {pair.answer === NOT_FOUND_STRING ? (
-                        <span className="text-destructive">{pair.answer}</span>
-                    ) : (
-                        <Markdown>{pair.answer}</Markdown>
-                    )}
-                </div>
-                {pair.answer !== NOT_FOUND_STRING && <CopyButton textToCopy={pair.answer} className="absolute top-2 right-2" />}
-                </div>
-            ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div>
+        <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex flex-col">
+                <CardTitle className="flex items-center gap-2">
+                    <MessageSquareMore className="h-6 w-6 text-primary" />
+                    Q&A
+                </CardTitle>
+                <CardDescription className="prose-sm">Answers to questions found in the job description.</CardDescription>
+            </div>
+            <CopyButton textToCopy={allAnswers} />
+        </CardHeader>
+        <CardContent className="space-y-6">
+            {missingAnswersCount > 0 && (
+            <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Missing Information</AlertTitle>
+                <AlertDescription className="prose-sm">
+                    {missingAnswersCount} question{missingAnswersCount > 1 ? 's' : ''} could not be answered based on your bio. These are highlighted below.
+                </AlertDescription>
+            </Alert>
+            )}
+            <div className="space-y-4">
+                {qAndA.qaPairs.map((pair, index) => (
+                    <div key={index} className="p-4 rounded-md border bg-muted/50 relative">
+                    <p className="font-semibold text-primary mb-2 pr-10 prose-sm">{pair.question}</p>
+                    <div className="prose prose-sm max-w-none">
+                        {pair.answer === NOT_FOUND_STRING ? (
+                            <span className="text-destructive">{pair.answer}</span>
+                        ) : (
+                            <Markdown>{pair.answer}</Markdown>
+                        )}
+                    </div>
+                    {pair.answer !== NOT_FOUND_STRING && <CopyButton textToCopy={pair.answer} className="absolute top-2 right-2" />}
+                    </div>
+                ))}
+            </div>
+        </CardContent>
+        </Card>
+        <RevisionForm
+            currentResponse={JSON.stringify(qAndA, null, 2)}
+            generationType="qAndA"
+            onRevision={onRevision}
+            jobDescription={jobDescription}
+            bio={bio}
+        />
+    </div>
   )
 }
 
@@ -501,11 +520,25 @@ export function JobSparkApp() {
     const result = await reviseAction(data);
     if (result.success) {
       const { generationType } = data;
-      if (generationType === 'cv' || generationType === 'qAndA') {
-        return;
+      let newResult;
+
+      if (generationType === 'qAndA') {
+          try {
+            // The response for Q&A revision is a stringified JSON, we need to parse it.
+            const parsedResult = JSON.parse(result.data.responses);
+            newResult = { ...parsedResult };
+          } catch (e) {
+              toast({ variant: "destructive", title: "Revision Failed", description: "Could not parse the revised Q&A."});
+              return;
+          }
+      } else if (generationType === 'coverLetter') {
+          newResult = { responses: result.data.responses };
       }
-      const newResponseText = result.data.responses;
-      setAllResults(prev => ({ ...prev, [generationType]: { responses: newResponseText } }));
+
+      if (newResult) {
+          setAllResults(prev => ({ ...prev, [generationType]: newResult as any }));
+      }
+
     } else {
       toast({
         variant: "destructive",
@@ -592,7 +625,7 @@ export function JobSparkApp() {
             return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} />;
           case 'qAndA':
             if (!allResults.qAndA) return null;
-            return <QAndAView qAndA={allResults.qAndA as QAndAOutput} />;
+            return <QAndAView qAndA={allResults.qAndA as QAndAOutput} onRevision={handleRevision} jobDescription={jobDescription} bio={bio} />;
           default:
             return (
                  <Card className="flex items-center justify-center min-h-[400px]">
@@ -716,16 +749,16 @@ export function JobSparkApp() {
               </div>
               <Separator className="my-4" />
               <div className="flex items-center gap-2 w-full">
-                <Button type="button" variant="outline" onClick={handleClear} className="flex-grow">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Clear All
+                <Button type="button" variant="outline" size="icon" onClick={handleClear}>
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Clear All</span>
                 </Button>
                 
                 <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline">
-                        <MessageSquareHeart className="mr-2 h-4 w-4" />
-                        Feedback
+                    <Button variant="outline" size="icon">
+                        <MessageSquareHeart className="h-4 w-4" />
+                        <span className="sr-only">Feedback</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
@@ -746,9 +779,9 @@ export function JobSparkApp() {
 
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="outline">
-                            <KeyRound className="mr-2 h-4 w-4" />
-                            API Key
+                        <Button variant="outline" size="icon">
+                            <KeyRound className="h-4 w-4" />
+                            <span className="sr-only">API Key</span>
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-80">
@@ -818,7 +851,7 @@ function RevisionForm({
     bio
 }: { 
     currentResponse: string; 
-    generationType: 'coverLetter';
+    generationType: 'coverLetter' | 'qAndA';
     onRevision: (data: ReviseResponseData) => Promise<void>;
     jobDescription: string;
     bio: string;
@@ -898,3 +931,4 @@ function RevisionForm({
     </Card>
   )
 }
+

@@ -5,9 +5,9 @@ import { z } from 'zod';
 import { generateCoverLetter, type CoverLetterOutput } from '@/ai/flows/generate-cover-letter';
 import { generateCv, type CvOutput } from '@/ai/flows/generate-cv';
 import { generateDeepAnalysis, type DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
-import { generateQAndA, type QAndAOutput } from '@/ai/flows/generate-q-and-a';
+import { generateQAndA } from '@/ai/flows/generate-q-and-a';
 import { reviseResponse, type ReviseResponseInput } from '@/ai/flows/revise-response';
-import { JobApplicationSchema, ReviseResponseSchema, type ResponseData } from '@/lib/schemas';
+import { JobApplicationSchema, ReviseResponseSchema, type ResponseData, type QAndAOutput } from '@/lib/schemas';
 
 type SingleGenerateActionResponse<T> = 
   | { success: true; data: T }
@@ -83,7 +83,7 @@ export async function reviseAction(
     return { success: false, error: errorMessage || "Invalid input for revision." };
   }
   const validatedData = validationResult.data;
-  if (validatedData.generationType === 'cv' || validatedData.generationType === 'qAndA') {
+  if (validatedData.generationType === 'cv') {
       return { success: false, error: "Revision is not supported for this format." };
   }
 
@@ -98,3 +98,4 @@ export async function reviseAction(
     return { success: false, error: "Failed to revise content. Please try again." };
   }
 }
+
