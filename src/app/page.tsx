@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { KeyRound, Sparkles, Trash2 } from 'lucide-react';
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
+import Link from 'next/link';
 
 import { AllGenerationResults, generateAction } from '@/app/actions';
 import { FeedbackDialog } from '@/components/feedback-dialog';
@@ -155,6 +156,9 @@ export default function Home() {
               <p className="text-xs text-primary-foreground/80">
                 Allow AI to boost your job application productivity
               </p>
+              <Link href="https://www.nareshmadhur.com" target="_blank" rel="noopener noreferrer" className="text-xs text-primary-foreground/60 hover:underline mt-1">
+                Created with ❤️ by Naresh
+              </Link>
             </div>
           </div>
           <div className="flex items-center gap-2">
