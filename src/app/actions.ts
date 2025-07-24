@@ -87,11 +87,10 @@ export async function reviseAction(
       return { success: false, error: "Revision is not supported for this format." };
   }
 
+  // Do not wrap in try/catch to allow raw errors to propagate to the client for debugging.
   const response = await reviseResponse(validatedData as ReviseResponseInput);
   return {
     success: true,
     data: response,
   };
 }
-
-
