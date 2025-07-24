@@ -144,7 +144,7 @@ export default function Home() {
   const renderInitialView = () => (
     <Card className="flex min-h-[400px] items-center justify-center">
         <CardContent className="p-4 text-center">
-            {isGenerating ? (
+            {isGenerating && (
                 <div className="space-y-4 p-4">
                     <Skeleton className="mb-4 h-8 w-48" />
                     <Skeleton className="h-4 w-32" />
@@ -152,13 +152,6 @@ export default function Home() {
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-5/6" />
                 </div>
-            ) : (
-                <>
-                    <Sparkles className="mx-auto h-12 w-12 text-muted-foreground/50" />
-                    <p className="mt-4 text-muted-foreground">
-                        Your generated content will appear here.
-                    </p>
-                </>
             )}
         </CardContent>
     </Card>
