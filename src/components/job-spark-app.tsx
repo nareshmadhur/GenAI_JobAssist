@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm, FormProvider, useFormContext } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle, KeyRound, MessageSquareHeart } from "lucide-react";
 import Markdown from 'react-markdown';
@@ -140,16 +140,12 @@ function GeneratedResponse({
   initialValue, 
   onValueChange, 
   generationType, 
-  onRevision, 
-  jobDescription,
-  bio
+  onRevision
 }: { 
   initialValue: string;
   onValueChange: (value: string) => void;
   generationType: 'coverLetter';
   onRevision: (data: ReviseResponseData) => Promise<void>;
-  jobDescription: string;
-  bio: string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(initialValue);
@@ -190,15 +186,13 @@ function GeneratedResponse({
         currentResponse={debouncedValue}
         generationType={generationType}
         onRevision={onRevision}
-        jobDescription={jobDescription}
-        bio={bio}
       />
     </div>
   );
 }
 
 
-function DeepAnalysisView({ deepAnalysis, jobDescription, bio, onRevision }: { deepAnalysis: DeepAnalysisOutput, jobDescription: string, bio: string, onRevision: (data: ReviseResponseData) => Promise<void> }) {
+function DeepAnalysisView({ deepAnalysis, onRevision }: { deepAnalysis: DeepAnalysisOutput, onRevision: (data: ReviseResponseData) => Promise<void> }) {
   const renderRequirements = (items: typeof deepAnalysis.mustHaves) => {
     if (!items || items.length === 0) {
       return (
@@ -252,8 +246,8 @@ function DeepAnalysisView({ deepAnalysis, jobDescription, bio, onRevision }: { d
         </CardContent>
       </Card>
       
-      {deepAnalysis.qAndA?.qaPairs.length && (
-          <QAndAView qAndA={deepAnalysis.qAndA} onRevision={onRevision} jobDescription={jobDescription} bio={bio} />
+      {deepAnalysis.qAndA && (
+          <QAndAView qAndA={deepAnalysis.qAndA} onRevision={onRevision} />
       )}
 
       <Card>
@@ -300,14 +294,10 @@ function DeepAnalysisView({ deepAnalysis, jobDescription, bio, onRevision }: { d
 
 function QAndAView({ 
     qAndA, 
-    onRevision, 
-    jobDescription, 
-    bio 
+    onRevision
 }: { 
     qAndA: QAndAOutput;
     onRevision: (data: ReviseResponseData) => Promise<void>;
-    jobDescription: string;
-    bio: string;
 }) {
   if (!qAndA || !qAndA.qaPairs || qAndA.qaPairs.length === 0) {
     return (
@@ -368,8 +358,6 @@ function QAndAView({
                 currentResponse={JSON.stringify(qAndA, null, 2)}
                 generationType="qAndA"
                 onRevision={onRevision}
-                jobDescription={jobDescription}
-                bio={bio}
             />
         )}
     </div>
@@ -621,8 +609,6 @@ export function JobSparkApp() {
                         onValueChange={(val) => handleManualEdit(val, 'coverLetter')} 
                         generationType="coverLetter"
                         onRevision={handleRevision}
-                        jobDescription={jobDescription}
-                        bio={bio}
                     />
                 </div>
             );
@@ -631,10 +617,10 @@ export function JobSparkApp() {
              return <CvView cvData={allResults.cv as CvOutput} />;
           case 'deepAnalysis':
             if (!allResults.deepAnalysis) return null;
-            return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} jobDescription={jobDescription} bio={bio} onRevision={handleRevision} />;
+            return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} onRevision={handleRevision} />;
           case 'qAndA':
             if (!allResults.qAndA) return null;
-            return <QAndAView qAndA={allResults.qAndA as QAndAOutput} onRevision={handleRevision} jobDescription={jobDescription} bio={bio} />;
+            return <QAndAView qAndA={allResults.qAndA as QAndAOutput} onRevision={handleRevision} />;
           default:
             return (
                  <Card className="flex items-center justify-center min-h-[400px]">
@@ -855,34 +841,31 @@ export function JobSparkApp() {
 function RevisionForm({ 
     currentResponse, 
     generationType, 
-    onRevision,
-    jobDescription,
-    bio
+    onRevision
 }: { 
     currentResponse: string; 
     generationType: 'coverLetter' | 'qAndA';
     onRevision: (data: ReviseResponseData) => Promise<void>;
-    jobDescription: string;
-    bio: string;
 }) {
   const [isRevising, startRevising] = useTransition();
+  const mainForm = useFormContext<Omit<JobApplicationData, 'generationType'>>();
 
   const revisionForm = useForm<ReviseResponseData>({
     resolver: zodResolver(ReviseResponseSchema),
     defaultValues: {
       revisionComments: "",
-      jobDescription: jobDescription,
-      bio: bio,
+      jobDescription: mainForm.getValues('jobDescription'),
+      bio: mainForm.getValues('bio'),
       originalResponse: currentResponse,
       generationType: generationType,
     },
   });
   
   useEffect(() => {
-      revisionForm.setValue('jobDescription', jobDescription);
-      revisionForm.setValue('bio', bio);
+      revisionForm.setValue('jobDescription', mainForm.getValues('jobDescription'));
+      revisionForm.setValue('bio', mainForm.getValues('bio'));
       revisionForm.setValue('originalResponse', currentResponse);
-  }, [currentResponse, jobDescription, bio, revisionForm]);
+  }, [currentResponse, mainForm, revisionForm]);
 
   async function onRevise(data: ReviseResponseData) {
     startRevising(async () => {
