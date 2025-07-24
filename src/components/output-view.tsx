@@ -370,29 +370,33 @@ function DeepAnalysisView({
             <Markdown>{deepAnalysis.jobSummary}</Markdown>
           </div>
           <div className="mt-4 space-y-4 rounded-lg border bg-muted/50 p-4">
-            <h4 className="font-semibold text-center text-sm text-muted-foreground mb-2">
+            <h4 className="font-semibold text-center text-sm text-muted-foreground mb-4">
               Match Rate
             </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Mandatory</p>
-                <p className="text-2xl font-bold text-primary">
-                  {Math.round(mandatoryMatchRate)}%
-                </p>
+            <div className="space-y-4">
+               <div>
+                 <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm text-muted-foreground">Mandatory</p>
+                    <p className="text-lg font-bold text-primary">
+                      {Math.round(mandatoryMatchRate)}%
+                    </p>
+                 </div>
                 <Progress
                   value={mandatoryMatchRate}
-                  className="h-2 mt-1"
+                  className="h-2"
                   aria-label={`${Math.round(mandatoryMatchRate)}% of mandatory requirements met`}
                 />
               </div>
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground">Preferred</p>
-                <p className="text-2xl font-bold text-primary/80">
-                  {Math.round(preferredMatchRate)}%
-                </p>
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm text-muted-foreground">Preferred</p>
+                    <p className="text-lg font-bold text-primary/80">
+                      {Math.round(preferredMatchRate)}%
+                    </p>
+                </div>
                 <Progress
                   value={preferredMatchRate}
-                  className="h-2 mt-1"
+                  className="h-2"
                   aria-label={`${Math.round(preferredMatchRate)}% of preferred requirements met`}
                 />
               </div>
