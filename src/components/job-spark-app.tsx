@@ -4,7 +4,7 @@
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle, KeyRound, CheckSquare, Square } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle, KeyRound, MessageSquareHeart } from "lucide-react";
 import Markdown from 'react-markdown';
 import { compiler } from 'markdown-to-jsx';
 import ReactDOMServer from 'react-dom/server';
@@ -24,6 +24,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -259,7 +260,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Square className="h-6 w-6 text-primary" />
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-primary"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
             <span>Preferred Qualifications</span>
           </CardTitle>
           <CardDescription className="prose-sm">"Nice-to-have" skills and your alignment.</CardDescription>
@@ -340,6 +341,58 @@ function QAndAView({ qAndA }: { qAndA: QAndAOutput }) {
       </CardContent>
     </Card>
   )
+}
+
+
+function FeedbackForm({ jobDescription, bio, lastGeneratedOutput }: { jobDescription: string; bio: string; lastGeneratedOutput: string }) {
+    const [name, setName] = useState('');
+    const [feedback, setFeedback] = useState('');
+    const [includeJD, setIncludeJD] = useState(true);
+    const [includeBio, setIncludeBio] = useState(true);
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const baseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSevlFVGQ1i4EBKiZLquITCGtCxFtetWpumNxKFLN9vGzd7aTw/viewform?usp=pp_url";
+        const entry_JD = "entry.685011891";
+        const entry_BIO = "entry.1458936165";
+        const entry_QNA = "entry.292295861";
+        const entry_COMMENT = "entry.1898597184";
+        const entry_NAME = "entry.145348937";
+
+        const params = new URLSearchParams();
+        if (includeJD && jobDescription) params.append(entry_JD, jobDescription);
+        if (includeBio && bio) params.append(entry_BIO, bio);
+        if (lastGeneratedOutput) params.append(entry_QNA, lastGeneratedOutput);
+        if (feedback) params.append(entry_COMMENT, feedback);
+        if (name) params.append(entry_NAME, name);
+        
+        const url = `${baseUrl}&${params.toString()}`;
+        window.open(url, '_blank');
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="includeJD" checked={includeJD} onCheckedChange={(checked) => setIncludeJD(Boolean(checked))} />
+                    <Label htmlFor="includeJD" className="text-sm font-normal">Include Job Description</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="includeBio" checked={includeBio} onCheckedChange={(checked) => setIncludeBio(Boolean(checked))} />
+                    <Label htmlFor="includeBio" className="text-sm font-normal">Include Bio/Resume</Label>
+                </div>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="feedbackName">Name (Optional)</Label>
+                <Input id="feedbackName" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="feedbackText">Feedback</Label>
+                <Textarea id="feedbackText" value={feedback} onChange={(e) => setFeedback(e.target.value)} required placeholder="Your feedback is valuable!" />
+            </div>
+            <Button type="submit" disabled={!feedback}>Submit Feedback</Button>
+        </form>
+    );
 }
 
 
@@ -462,6 +515,26 @@ export function JobSparkApp() {
   
   const { jobDescription, bio } = formMethods.getValues();
   const coverLetterResponse = allResults.coverLetter?.responses ?? "";
+
+  const getLastGeneratedOutput = () => {
+      if (activeView === 'none' || !allResults[activeView]) return "";
+      
+      const activeResult = allResults[activeView];
+      if ('responses' in activeResult) { // CoverLetter
+          return activeResult.responses;
+      }
+      if ('sections' in activeResult) { // CV
+          return JSON.stringify(activeResult, null, 2);
+      }
+      if ('jobSummary' in activeResult) { // Deep Analysis
+          return JSON.stringify(activeResult, null, 2);
+      }
+      if ('qaPairs' in activeResult) { // Q&A
+          return JSON.stringify(activeResult, null, 2);
+      }
+      return "";
+  };
+
 
   const renderActiveView = () => {
       if (isGenerating && !allResults[activeView]) {
@@ -625,6 +698,42 @@ export function JobSparkApp() {
                   </div>
               </div>
               <Separator />
+               <Accordion type="multiple" className="w-full">
+                  <AccordionItem value="feedback">
+                      <AccordionTrigger className="text-sm">
+                          <div className="flex items-center gap-2">
+                            <MessageSquareHeart className="h-5 w-5" />
+                            <span>Provide Feedback</span>
+                          </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                          <FeedbackForm 
+                            jobDescription={formMethods.getValues('jobDescription')}
+                            bio={formMethods.getValues('bio')}
+                            lastGeneratedOutput={getLastGeneratedOutput()}
+                          />
+                      </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="api-key">
+                      <AccordionTrigger className="text-sm">
+                           <div className="flex items-center gap-2">
+                            <KeyRound className="h-5 w-5" />
+                            <span>Use Custom API Key (Optional)</span>
+                          </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                          <div className="space-y-2">
+                            <Label htmlFor="apiKey">Gemini API Key</Label>
+                            <Input id="apiKey" type="password" placeholder="Enter your Gemini API key" />
+                            <p className="text-xs text-muted-foreground">
+                                Your key will be used for your requests instead of the default.
+                            </p>
+                          </div>
+                      </AccordionContent>
+                  </AccordionItem>
+              </Accordion>
+              <Separator />
+
               <Button type="button" variant="outline" onClick={handleClear} className="w-full sm:w-auto">
                   <Trash2 className="mr-2 h-4 w-4" />
                   Clear All
@@ -757,3 +866,5 @@ function RevisionForm({
     </Card>
   )
 }
+
+    
