@@ -1,505 +1,37 @@
 "use client";
 
-import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
-import { useForm, FormProvider, useFormContext } from "react-hook-form";
+import React, { useState, useTransition, useEffect } from "react";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle, KeyRound, MessageSquareHeart } from "lucide-react";
-import Markdown from 'react-markdown';
-import { compiler } from 'markdown-to-jsx';
-import ReactDOMServer from 'react-dom/server';
+import { Sparkles } from "lucide-react";
 
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { 
   JobApplicationSchema, 
-  ReviseResponseSchema,
-  FeedbackSchema,
   type JobApplicationData, 
-  type ReviseResponseData,
-  type FeedbackData,
-  type QAndAOutput
 } from "@/lib/schemas";
-import { generateAction, reviseAction, AllGenerationResults, submitFeedbackAction } from "@/app/actions";
-import { DeepAnalysisOutput, CvOutput } from "@/ai/flows";
-import { CvView } from './cv-view';
-import { Skeleton } from "./ui/skeleton";
-import { Separator } from "./ui/separator";
-import { cn } from "@/lib/utils";
+import { generateAction, AllGenerationResults } from "@/app/actions";
+import { InputForm } from "./input-form";
+import { OutputView } from "./output-view";
 
 const LOCAL_STORAGE_KEY = 'jobspark_form_data';
 
-type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis' | 'qAndA';
-type ActiveView = GenerationType | 'none';
+export type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis' | 'qAndA';
+export type ActiveView = GenerationType | 'none';
 
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-function SectionSkeleton() {
-    return (
-      <div className="space-y-4 p-4">
-        <Skeleton className="h-8 w-1/3 mb-4" />
-        <Skeleton className="h-4 w-1/4" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
-        <div className="pt-4">
-            <Skeleton className="h-4 w-1/4" />
-            <Skeleton className="h-4 w-full mt-2" />
-            <Skeleton className="h-4 w-full mt-2" />
-        </div>
-      </div>
-    );
-}
-
-function CopyButton({ textToCopy, className }: { textToCopy: string, className?: string }) {
-  const [isCopied, setIsCopied] = useState(false);
-  const { toast } = useToast();
-
-  const copy = async () => {
-    const plainText = textToCopy.replace(/[\*\-_#]/g, ''); 
-
-    try {
-        const reactElement = compiler(textToCopy, { forceBlock: true });
-        const html = ReactDOMServer.renderToString(reactElement);
-        
-        const blobHtml = new Blob([html], { type: 'text/html' });
-        const blobText = new Blob([plainText], { type: 'text/plain' });
-        
-        await navigator.clipboard.write([
-            new ClipboardItem({
-                'text/html': blobHtml,
-                'text/plain': blobText,
-            })
-        ]);
-        
-        setIsCopied(true);
-        toast({ title: "Copied to clipboard!" });
-        setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
-        console.error("Failed to copy rich text, falling back to plain text:", err);
-        navigator.clipboard.writeText(plainText).then(() => {
-            setIsCopied(true);
-            toast({ title: "Copied as plain text!" });
-            setTimeout(() => setIsCopied(false), 2000);
-        }, () => {
-            toast({ variant: "destructive", title: "Copy failed", description: "Could not write to clipboard." });
-        });
-    }
-  };
-
-
-  return (
-    <Button variant="ghost" size="icon" onClick={copy} aria-label="Copy text" className={className}>
-      {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-    </Button>
-  );
-}
-
-function GeneratedResponse({ 
-  initialValue, 
-  onValueChange, 
-  generationType, 
-  onRevision
-}: { 
-  initialValue: string;
-  onValueChange: (value: string) => void;
-  generationType: 'coverLetter';
-  onRevision: (data: ReviseResponseData) => Promise<void>;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [localValue, setLocalValue] = useState(initialValue);
-  const debouncedValue = useDebounce(initialValue, 500);
-
-  useEffect(() => {
-    setLocalValue(initialValue);
-  }, [initialValue]);
-
-  const handleSave = () => {
-    onValueChange(localValue);
-    setIsEditing(false);
-  };
-  
-  return (
-    <div className="relative">
-      {isEditing ? (
-        <>
-          <Textarea
-            value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
-            className="min-h-[250px] bg-background"
-            aria-label="Generated Response"
-          />
-           <Button variant="ghost" size="icon" onClick={handleSave} className="absolute top-2 right-2">
-            <Save className="h-4 w-4" />
-          </Button>
-        </>
-      ) : (
-        <div className="prose prose-sm max-w-none p-4 min-h-[150px] rounded-md border bg-background relative">
-          <Markdown>{localValue}</Markdown>
-          <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="absolute top-0 right-0">
-              <Edit className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-      <RevisionForm
-        currentResponse={debouncedValue}
-        generationType={generationType}
-        onRevision={onRevision}
-      />
-    </div>
-  );
-}
-
-
-function DeepAnalysisView({ deepAnalysis, onRevision }: { deepAnalysis: DeepAnalysisOutput, onRevision: (data: ReviseResponseData) => Promise<void> }) {
-  const renderRequirements = (items: typeof deepAnalysis.mustHaves) => {
-    if (!items || items.length === 0) {
-      return (
-        <p className="text-sm text-muted-foreground">No specific requirements were identified in this category.</p>
-      );
-    }
-    return (
-        <ul className="space-y-3">
-          {items.map((item, index) => (
-            <li key={index} className="flex items-start gap-3">
-                {item.isMet 
-                  ? <CheckCircle2 className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" /> 
-                  : <XCircle className="h-5 w-5 text-red-500 mt-1 flex-shrink-0" />
-                }
-                <span className="text-sm">{item.requirement}</span>
-            </li>
-          ))}
-        </ul>
-    );
-  };
-  
-  const renderImprovementAreas = (details?: string[]) => {
-    if (!details || details.length === 0) {
-      return null;
-    }
-    return (
-        <ul className="prose prose-sm max-w-none list-disc pl-5 space-y-2">
-          {details.map((item, index) => (
-            <li key={index} className="ml-5">
-                <Markdown components={{ p: Fragment }}>{item}</Markdown>
-            </li>
-          ))}
-        </ul>
-    );
-  };
-
-  return (
-    <div className="space-y-6">
-       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Briefcase className="h-6 w-6 text-primary" />
-            Job Summary
-          </CardTitle>
-          <CardDescription className="prose-sm">An expert summary of the role's core requirements.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="prose prose-sm max-w-none">
-            <Markdown>{deepAnalysis.jobSummary}</Markdown>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {deepAnalysis.qAndA && (
-          <QAndAView qAndA={deepAnalysis.qAndA} onRevision={onRevision} />
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-primary" />
-            <span>Must-Have Requirements</span>
-          </CardTitle>
-          <CardDescription className="prose-sm">Essential criteria for the role and your alignment.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {renderRequirements(deepAnalysis.mustHaves)}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-primary" />
-            <span>Preferred Qualifications</span>
-          </CardTitle>
-          <CardDescription className="prose-sm">"Nice-to-have" skills and your alignment.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {renderRequirements(deepAnalysis.preferred)}
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wand2 className="h-6 w-6 text-yellow-500" />
-            <span className="text-yellow-600">Improvement Areas</span>
-          </CardTitle>
-           <CardDescription className="prose-sm">Actionable advice to better present your experience.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {renderImprovementAreas(deepAnalysis.improvementAreas)}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function QAndAView({ 
-    qAndA, 
-    onRevision
-}: { 
-    qAndA: QAndAOutput;
-    onRevision: (data: ReviseResponseData) => Promise<void>;
-}) {
-  if (!qAndA || !qAndA.qaPairs || qAndA.qaPairs.length === 0) {
-    return (
-        <Card>
-            <CardContent className="p-4 text-center text-muted-foreground">
-                <p>No questions were provided to be answered.</p>
-            </CardContent>
-        </Card>
-    );
-  }
-
-  const allAnswers = qAndA.qaPairs.map(p => `Q: ${p.question}\nA: ${p.answer}`).join('\n\n');
-  const missingAnswersCount = qAndA.qaPairs.filter(p => p.answer === '[Answer not found in bio]').length;
-  const NOT_FOUND_STRING = '[Answer not found in bio]';
-
-  return (
-    <div>
-        <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex flex-col">
-                <CardTitle className="flex items-center gap-2">
-                    <MessageSquareMore className="h-6 w-6 text-primary" />
-                    Q&A
-                </CardTitle>
-                <CardDescription className="prose-sm">Answers to questions found in the job description.</CardDescription>
-            </div>
-            <CopyButton textToCopy={allAnswers} />
-        </CardHeader>
-        <CardContent className="space-y-6">
-            {missingAnswersCount > 0 && (
-            <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Missing Information</AlertTitle>
-                <AlertDescription className="prose-sm">
-                    {missingAnswersCount} question{missingAnswersCount > 1 ? 's' : ''} could not be answered based on your bio. These are highlighted below.
-                </AlertDescription>
-            </Alert>
-            )}
-            <div className="space-y-4">
-                {qAndA.qaPairs.map((pair, index) => (
-                    <div key={index} className="p-4 rounded-md border bg-muted/50 relative">
-                    <p className="font-semibold text-primary mb-2 pr-10 prose-sm">{pair.question}</p>
-                    <div className="prose prose-sm max-w-none">
-                        {pair.answer === NOT_FOUND_STRING ? (
-                            <span className="text-destructive">{pair.answer}</span>
-                        ) : (
-                            <Markdown>{pair.answer}</Markdown>
-                        )}
-                    </div>
-                    {pair.answer !== NOT_FOUND_STRING && <CopyButton textToCopy={pair.answer} className="absolute top-2 right-2" />}
-                    </div>
-                ))}
-            </div>
-        </CardContent>
-        </Card>
-        {qAndA && (
-            <RevisionForm
-                currentResponse={JSON.stringify(qAndA, null, 2)}
-                generationType="qAndA"
-                onRevision={onRevision}
-            />
-        )}
-    </div>
-  )
-}
-
-
-function FeedbackForm({ jobDescription, bio, lastGeneratedOutput, closeDialog }: { jobDescription: string; bio: string; lastGeneratedOutput: string, closeDialog: () => void; }) {
-    const [isSubmitting, startSubmitting] = useTransition();
-    const [isSubmitted, setIsSubmitted] = useState(false);
-    const { toast } = useToast();
-
-    const form = useForm<FeedbackData>({
-        resolver: zodResolver(FeedbackSchema),
-        defaultValues: {
-            name: '',
-            feedback: '',
-            jobDescription: jobDescription,
-            bio: bio,
-            lastGeneratedOutput: lastGeneratedOutput,
-            includeJD: true,
-            includeBio: true,
-        }
-    });
-
-    const onSubmit = (data: FeedbackData) => {
-        const payload: FeedbackData = {
-            name: data.name,
-            feedback: data.feedback,
-            lastGeneratedOutput: lastGeneratedOutput,
-            jobDescription: data.includeJD ? jobDescription : undefined,
-            bio: data.includeBio ? bio : undefined,
-        };
-
-        startSubmitting(async () => {
-            const result = await submitFeedbackAction(payload);
-            if (result.success) {
-                setIsSubmitted(true);
-                setTimeout(closeDialog, 2000); // Close dialog after 2 seconds
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Submission Failed",
-                    description: result.error || "Could not submit feedback.",
-                });
-            }
-        });
-    };
-
-    if (isSubmitted) {
-        return (
-            <div className="flex flex-col items-center justify-center p-8 text-center">
-                <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
-                <h3 className="text-xl font-semibold">Done!</h3>
-                <p className="text-muted-foreground">Your feedback has been submitted.</p>
-            </div>
-        )
-    }
-
-    return (
-        <FormProvider {...form}>
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-                    <div className="space-y-2">
-                        <FormField
-                            control={form.control}
-                            name="includeJD"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                    <FormControl>
-                                        <Checkbox
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                    <div className="space-y-1 leading-none">
-                                        <FormLabel>Include Job Description</FormLabel>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="includeBio"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                    <FormControl>
-                                        <Checkbox
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                    <div className="space-y-1 leading-none">
-                                        <FormLabel>Include Bio/Resume</FormLabel>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                     <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Name (Optional)</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Your name" {...field} />
-                                </FormControl>
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="feedback"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Feedback</FormLabel>
-                                <FormControl>
-                                    <Textarea placeholder="Your feedback is valuable!" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Submit Feedback
-                    </Button>
-                </form>
-            </Form>
-        </FormProvider>
-    );
-}
-
-
-export function JobSparkApp() {
+/**
+ * Main application component for JobSpark. It orchestrates the user interface,
+ * manages state for form inputs and AI-generated results, and handles the
+ * logic for calling server actions.
+ *
+ * @returns {JSX.Element} The rendered JobSpark application.
+ */
+export function JobSparkApp(): JSX.Element {
   const [isGenerating, startGenerating] = useTransition();
   const [activeView, setActiveView] = useState<ActiveView>('none');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
-  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const { toast } = useToast();
   
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
@@ -541,7 +73,10 @@ export function JobSparkApp() {
     return () => subscription.unsubscribe();
   }, [formMethods.watch]);
   
-
+  /**
+   * Handles the request to generate a new piece of content.
+   * @param {GenerationType} generationType - The type of content to generate.
+   */
   const handleGeneration = (generationType: GenerationType) => {
     formMethods.trigger(['jobDescription', 'bio']).then(isValid => {
         if (!isValid) {
@@ -559,7 +94,7 @@ export function JobSparkApp() {
         setActiveView(generationType);
         setGenerationError(null);
 
-        // Clear previous results for this type to force re-generation
+        // Optimistically clear previous results for this type to show loading skeleton
         setAllResults(prev => {
             const newResults = {...prev};
             delete newResults[generationType];
@@ -572,37 +107,15 @@ export function JobSparkApp() {
                 setAllResults(prev => ({...prev, [generationType]: response.data}));
             } else {
                 setGenerationError(response.error);
-                toast({ variant: "destructive", title: "Generation Failed", description: response.error });
+                // The error will be displayed in the OutputView component
             }
         });
     });
   }
   
-  const handleManualEdit = (newValue: string, generationType: 'coverLetter') => {
-      setAllResults(prev => {
-        if (!prev[generationType]) return prev;
-        const newResult = { ...prev[generationType]!, responses: newValue };
-        return { ...prev, [generationType]: newResult };
-      });
-  };
-
-  const handleRevision = async (data: ReviseResponseData) => {
-    const { generationType } = data;
-
-    const result = await reviseAction(data);
-
-    if (result.success) {
-        setAllResults(prev => ({ ...prev, [generationType]: result.data as any }));
-    } else {
-        toast({
-            variant: "destructive",
-            title: "Revision Failed",
-            description: result.error,
-        });
-    }
-  };
-
-
+  /**
+   * Clears all form inputs and generated results.
+   */
   const handleClear = () => {
     formMethods.reset({ jobDescription: "", bio: "", questions: "" });
     setAllResults({});
@@ -616,379 +129,61 @@ export function JobSparkApp() {
   };
   
   const { jobDescription, bio } = formMethods.getValues();
-  const coverLetterResponse = allResults.coverLetter?.responses ?? "";
 
-  const getLastGeneratedOutput = () => {
+  /**
+   * Gets the last generated output as a string for feedback submission.
+   * @returns {string} The stringified version of the last generated output.
+   */
+  const getLastGeneratedOutput = (): string => {
       if (activeView === 'none' || !allResults[activeView]) return "";
-      
-      const activeResult = allResults[activeView];
-      if (!activeResult) return "";
-      
-      if ('responses' in activeResult) { // CoverLetter
-          return activeResult.responses;
-      }
-      if ('sections' in activeResult) { // CV
-          return JSON.stringify(activeResult, null, 2);
-      }
-      if ('jobSummary' in activeResult) { // Deep Analysis
-          return JSON.stringify(activeResult, null, 2);
-      }
-      if ('qaPairs' in activeResult) { // Q&A
-          return JSON.stringify(activeResult, null, 2);
-      }
-      return "";
-  };
-
-
-  const renderActiveView = () => {
-      if (isGenerating && !allResults[activeView]) {
-        return <SectionSkeleton />;
-      }
-      if (generationError && activeView !== 'none' && !allResults[activeView]) {
-          return (
-             <Card>
-                <CardContent className="p-4">
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Generation Failed</AlertTitle>
-                        <AlertDescription>{generationError}</AlertDescription>
-                    </Alert>
-                </CardContent>
-             </Card>
-          );
-      }
-
-      switch (activeView) {
-          case 'coverLetter':
-            if (!allResults.coverLetter) return null;
-            return (
-                <div className="prose prose-sm max-w-none">
-                    <GeneratedResponse 
-                        initialValue={coverLetterResponse}
-                        onValueChange={(val) => handleManualEdit(val, 'coverLetter')} 
-                        generationType="coverLetter"
-                        onRevision={handleRevision}
-                    />
-                </div>
-            );
-          case 'cv':
-             if (!allResults.cv) return null;
-             return <CvView cvData={allResults.cv as CvOutput} />;
-          case 'deepAnalysis':
-            if (!allResults.deepAnalysis) return null;
-            return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} onRevision={handleRevision} />;
-          case 'qAndA':
-            if (!allResults.qAndA) return null;
-            return <QAndAView qAndA={allResults.qAndA as QAndAOutput} onRevision={handleRevision} />;
-          default:
-            return (
-                 <Card className="flex items-center justify-center min-h-[400px]">
-                    <CardContent className="p-4 text-center">
-                        <Sparkles className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                        <p className="mt-4 text-muted-foreground">Your generated content will appear here.</p>
-                    </CardContent>
-                </Card>
-            );
+      try {
+        return JSON.stringify(allResults[activeView], null, 2);
+      } catch {
+        return "";
       }
   };
 
-  const VIEW_CONFIG: Record<GenerationType, { title: string; icon: React.ReactNode }> = {
-      coverLetter: { title: "Cover Letter", icon: <FileText className="h-5 w-5" /> },
-      cv: { title: "Curriculum Vitae (CV)", icon: <Briefcase className="h-5 w-5" /> },
-      deepAnalysis: { title: "Deep Analysis", icon: <Lightbulb className="h-5 w-5" /> },
-      qAndA: { title: "Q & A", icon: <MessageSquareMore className="h-5 w-5" /> },
-  };
+  const renderInitialView = () => (
+    <Card className="flex min-h-[400px] items-center justify-center">
+      <CardContent className="p-4 text-center">
+        <Sparkles className="mx-auto h-12 w-12 text-muted-foreground/50" />
+        <p className="mt-4 text-muted-foreground">
+          Your generated content will appear here.
+        </p>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <FormProvider {...formMethods}>
-      <div className="grid md:grid-cols-2 gap-8 w-full p-4 sm:p-6 md:p-8">
+      <div className="grid w-full gap-8 p-4 md:grid-cols-2 sm:p-6 md:p-8">
         {/* Input Column */}
         <div className="flex flex-col gap-8">
-          <Card className="bg-card/80 backdrop-blur-sm sticky top-24">
-            <CardHeader>
-              <CardTitle>Your Information</CardTitle>
-              <CardDescription className="prose-sm">
-                Provide your info, then choose what to generate.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Form {...formMethods}>
-                    <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-                    <FormField
-                        control={formMethods.control}
-                        name="jobDescription"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Job Description</FormLabel>
-                            <FormControl>
-                            <Textarea
-                                placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
-                                className="min-h-[150px]"
-                                {...field}
-                            />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={formMethods.control}
-                        name="bio"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Your Bio / Resume</FormLabel>
-                            <FormControl>
-                            <Textarea
-                                placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
-                                className="min-h-[200px]"
-                                {...field}
-                            />
-                            </FormControl>
-                            <FormDescription className="prose-sm">
-                            This will be compared against the job description to find matches and gaps.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={formMethods.control}
-                        name="questions"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Specific Questions (Optional)</FormLabel>
-                            <FormControl>
-                            <Textarea
-                                placeholder="Have specific questions? Enter them here, one per line. The AI will answer them using your bio and the job description."
-                                className="min-h-[100px]"
-                                {...field}
-                            />
-                            </FormControl>
-                             <FormDescription className="prose-sm">
-                                Use this to answer questions like "Why are you interested in this role?". If left blank, the AI will try to find questions in the job description.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    </form>
-                </Form>
-            </CardContent>
-            <CardFooter className="flex-col items-start gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-                  {/* Application Materials */}
-                  <div className="space-y-2">
-                      <h3 className="font-semibold text-center text-sm text-muted-foreground">Application Materials</h3>
-                      <Button onClick={() => handleGeneration('coverLetter')} disabled={isGenerating} className="w-full">
-                          {isGenerating && activeView === 'coverLetter' ? <Loader2 className="animate-spin" /> : <FileText />}
-                          Generate Cover Letter
-                      </Button>
-                      <Button onClick={() => handleGeneration('cv')} disabled={isGenerating} className="w-full">
-                          {isGenerating && activeView === 'cv' ? <Loader2 className="animate-spin" /> : <Briefcase />}
-                          Generate CV Advice
-                      </Button>
-                  </div>
-                  {/* Job Insights */}
-                  <div className="space-y-2">
-                      <h3 className="font-semibold text-center text-sm text-muted-foreground">Job Insights</h3>
-                      <Button onClick={() => handleGeneration('deepAnalysis')} disabled={isGenerating} className="w-full">
-                          {isGenerating && activeView === 'deepAnalysis' ? <Loader2 className="animate-spin" /> : <Lightbulb />}
-                          Generate Analysis
-                      </Button>
-                       <Button onClick={() => handleGeneration('qAndA')} disabled={isGenerating} className="w-full">
-                          {isGenerating && activeView === 'qAndA' ? <Loader2 className="animate-spin" /> : <MessageSquareMore />}
-                          Answer Questions
-                      </Button>
-                  </div>
-              </div>
-              <Separator className="my-4" />
-              <div className="flex items-center gap-2 w-full">
-                <Button type="button" variant="outline" size="icon" onClick={handleClear}>
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Clear All</span>
-                </Button>
-                
-                <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="icon">
-                        <MessageSquareHeart className="h-4 w-4" />
-                        <span className="sr-only">Feedback</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Provide Feedback</DialogTitle>
-                      <DialogDescription>
-                        Your feedback helps us improve the AI. Tell us what you think!
-                      </DialogDescription>
-                    </DialogHeader>
-                    <FeedbackForm
-                      jobDescription={formMethods.getValues('jobDescription')}
-                      bio={formMethods.getValues('bio')}
-                      lastGeneratedOutput={getLastGeneratedOutput()}
-                      closeDialog={() => setIsFeedbackDialogOpen(false)}
-                    />
-                  </DialogContent>
-                </Dialog>
-
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" size="icon">
-                            <KeyRound className="h-4 w-4" />
-                            <span className="sr-only">API Key</span>
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                         <div className="grid gap-4">
-                            <div className="space-y-2">
-                                <h4 className="font-medium leading-none">Custom API Key</h4>
-                                <p className="text-sm text-muted-foreground">
-                                    Use your own Gemini API key for requests.
-                                </p>
-                            </div>
-                             <div className="grid gap-2">
-                                <Label htmlFor="apiKey">Gemini API Key</Label>
-                                <Input id="apiKey" type="password" placeholder="Enter your Gemini API key" />
-                             </div>
-                         </div>
-                    </PopoverContent>
-                </Popover>
-              </div>
-
-            </CardFooter>
-          </Card>
+          <InputForm
+            isGenerating={isGenerating}
+            activeView={activeView}
+            onGeneration={handleGeneration}
+            onClear={handleClear}
+            jobDescription={jobDescription}
+            bio={bio}
+            lastGeneratedOutput={getLastGeneratedOutput()}
+          />
         </div>
 
         {/* Output Column */}
         <div className="flex flex-col gap-4">
-          <Card>
-              <CardHeader>
-                  <div className="flex justify-between items-center">
-                      {activeView !== 'none' ? (
-                          <CardTitle className="flex items-center gap-2">{VIEW_CONFIG[activeView].icon} {VIEW_CONFIG[activeView].title}</CardTitle>
-                      ) : (
-                          <CardTitle>Output</CardTitle>
-                      )}
-                      <div className="flex items-center gap-1">
-                          {(Object.keys(allResults) as GenerationType[]).map(key => (
-                            allResults[key] && (
-                              <Button 
-                                  key={key}
-                                  variant={activeView === key ? 'default' : 'ghost'} 
-                                  size="icon"
-                                  onClick={() => setActiveView(key)}
-                                  aria-label={`View ${VIEW_CONFIG[key].title}`}
-                                  disabled={isGenerating && !allResults[key]}
-                              >
-                                  {VIEW_CONFIG[key].icon}
-                              </Button>
-                            )
-                          ))}
-                      </div>
-                  </div>
-              </CardHeader>
-              <CardContent>
-                  {renderActiveView()}
-              </CardContent>
-          </Card>
+          {activeView === 'none' ? renderInitialView() : (
+            <OutputView 
+              activeView={activeView}
+              setActiveView={setActiveView}
+              allResults={allResults}
+              setAllResults={setAllResults}
+              isGenerating={isGenerating}
+              generationError={generationError}
+            />
+          )}
         </div>
       </div>
     </FormProvider>
   );
-}
-
-function RevisionForm({ 
-    currentResponse, 
-    generationType, 
-    onRevision
-}: { 
-    currentResponse: string; 
-    generationType: 'coverLetter' | 'qAndA';
-    onRevision: (data: ReviseResponseData) => Promise<void>;
-}) {
-  const [isRevising, startRevising] = useTransition();
-  const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
-
-  const revisionForm = useForm<Omit<ReviseResponseData, 'jobDescription' | 'bio'>>({
-    resolver: zodResolver(ReviseResponseSchema.omit({ jobDescription: true, bio: true})),
-    defaultValues: {
-      revisionComments: "",
-      originalResponse: currentResponse,
-      generationType: generationType,
-    },
-  });
-  
-  useEffect(() => {
-    revisionForm.setValue('originalResponse', currentResponse);
-    revisionForm.setValue('generationType', generationType);
-  }, [currentResponse, generationType, revisionForm]);
-
-
-  async function onRevise(data: Omit<ReviseResponseData, 'jobDescription' | 'bio'>) {
-    const { jobDescription, bio } = formMethods.getValues();
-    const fullData: ReviseResponseData = {
-        ...data,
-        jobDescription,
-        bio,
-    };
-    
-    startRevising(async () => {
-        await onRevision(fullData);
-        revisionForm.reset({
-            ...revisionForm.getValues(),
-            revisionComments: "",
-        });
-    });
-  }
-  
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      revisionForm.handleSubmit(onRevise)();
-    }
-  };
-
-  return (
-    <Card className="mt-4 bg-muted/50">
-      <CardHeader>
-        <CardTitle className="text-xl">Revise Output</CardTitle>
-        <CardDescription className="prose-sm">Not quite right? Tell the AI how to improve the response.</CardDescription>
-      </CardHeader>
-      <CardContent>
-          <FormProvider {...revisionForm}>
-            <Form {...revisionForm}>
-                <form onSubmit={revisionForm.handleSubmit(onRevise)} className="space-y-4">
-                    <FormField
-                    control={revisionForm.control}
-                    name="revisionComments"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Your Feedback</FormLabel>
-                        <FormControl>
-                            <Textarea
-                            placeholder="e.g., 'Make it more formal.' or 'Emphasize my experience with project management tools.'"
-                            className="min-h-[100px] bg-background"
-                            {...field}
-                            onKeyDown={handleKeyDown}
-                            disabled={isRevising}
-                            />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <Button type="submit" disabled={isRevising || !revisionForm.formState.isDirty || !revisionForm.formState.isValid} className="w-full sm:w-auto">
-                    {isRevising ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                        <Wand2 className="mr-2 h-4 w-4" />
-                    )}
-                    Revise
-                    </Button>
-                </form>
-            </Form>
-          </FormProvider>
-      </CardContent>
-    </Card>
-  )
 }
