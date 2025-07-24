@@ -42,11 +42,13 @@ import {
 import { 
   JobApplicationSchema, 
   ReviseResponseSchema,
+  FeedbackSchema,
   type JobApplicationData, 
   type ReviseResponseData,
+  type FeedbackData,
   type QAndAOutput
 } from "@/lib/schemas";
-import { generateAction, reviseAction, AllGenerationResults } from "@/app/actions";
+import { generateAction, reviseAction, AllGenerationResults, submitFeedbackAction } from "@/app/actions";
 import { DeepAnalysisOutput, CvOutput } from "@/ai/flows";
 import { CvView } from './cv-view';
 import { Skeleton } from "./ui/skeleton";
@@ -365,54 +367,129 @@ function QAndAView({
 
 
 function FeedbackForm({ jobDescription, bio, lastGeneratedOutput, closeDialog }: { jobDescription: string; bio: string; lastGeneratedOutput: string, closeDialog: () => void; }) {
-    const [name, setName] = useState('');
-    const [feedback, setFeedback] = useState('');
-    const [includeJD, setIncludeJD] = useState(true);
-    const [includeBio, setIncludeBio] = useState(true);
+    const [isSubmitting, startSubmitting] = useTransition();
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    const { toast } = useToast();
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const baseUrl = "https://docs.google.com/forms/d/e/1FAIpQLSevlFVGQ1i4EBKiZLquITCGtCxFtetWpumNxKFLN9vGzd7aTw/viewform?usp=pp_url";
-        const entry_JD = "entry.685011891";
-        const entry_BIO = "entry.1458936165";
-        const entry_QNA = "entry.292295861";
-        const entry_COMMENT = "entry.1898597184";
-        const entry_NAME = "entry.145348937";
+    const form = useForm<FeedbackData>({
+        resolver: zodResolver(FeedbackSchema),
+        defaultValues: {
+            name: '',
+            feedback: '',
+            jobDescription: jobDescription,
+            bio: bio,
+            lastGeneratedOutput: lastGeneratedOutput,
+            includeJD: true,
+            includeBio: true,
+        }
+    });
 
-        const params = new URLSearchParams();
-        if (includeJD && jobDescription) params.append(entry_JD, jobDescription);
-        if (includeBio && bio) params.append(entry_BIO, bio);
-        if (lastGeneratedOutput) params.append(entry_QNA, lastGeneratedOutput);
-        if (feedback) params.append(entry_COMMENT, feedback);
-        if (name) params.append(entry_NAME, name);
-        
-        const url = `${baseUrl}&${params.toString()}`;
-        window.open(url, '_blank');
-        closeDialog();
+    const onSubmit = (data: FeedbackData) => {
+        const payload: FeedbackData = {
+            name: data.name,
+            feedback: data.feedback,
+            lastGeneratedOutput: lastGeneratedOutput,
+            jobDescription: data.includeJD ? jobDescription : undefined,
+            bio: data.includeBio ? bio : undefined,
+        };
+
+        startSubmitting(async () => {
+            const result = await submitFeedbackAction(payload);
+            if (result.success) {
+                setIsSubmitted(true);
+                setTimeout(closeDialog, 2000); // Close dialog after 2 seconds
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Submission Failed",
+                    description: result.error || "Could not submit feedback.",
+                });
+            }
+        });
     };
 
+    if (isSubmitted) {
+        return (
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+                <CheckCircle2 className="w-16 h-16 text-green-500 mb-4" />
+                <h3 className="text-xl font-semibold">Done!</h3>
+                <p className="text-muted-foreground">Your feedback has been submitted.</p>
+            </div>
+        )
+    }
+
     return (
-        <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-            <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                    <Checkbox id="includeJD" checked={includeJD} onCheckedChange={(checked) => setIncludeJD(Boolean(checked))} />
-                    <Label htmlFor="includeJD" className="text-sm font-normal">Include Job Description</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Checkbox id="includeBio" checked={includeBio} onCheckedChange={(checked) => setIncludeBio(Boolean(checked))} />
-                    <Label htmlFor="includeBio" className="text-sm font-normal">Include Bio/Resume</Label>
-                </div>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="feedbackName">Name (Optional)</Label>
-                <Input id="feedbackName" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="feedbackText">Feedback</Label>
-                <Textarea id="feedbackText" value={feedback} onChange={(e) => setFeedback(e.target.value)} required placeholder="Your feedback is valuable!" />
-            </div>
-            <Button type="submit" disabled={!feedback}>Submit Feedback</Button>
-        </form>
+        <FormProvider {...form}>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                        <FormField
+                            control={form.control}
+                            name="includeJD"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>Include Job Description</FormLabel>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="includeBio"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                    <FormControl>
+                                        <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>Include Bio/Resume</FormLabel>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                     <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Name (Optional)</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Your name" {...field} />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="feedback"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Feedback</FormLabel>
+                                <FormControl>
+                                    <Textarea placeholder="Your feedback is valuable!" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Submit Feedback
+                    </Button>
+                </form>
+            </Form>
+        </FormProvider>
     );
 }
 
@@ -832,30 +909,35 @@ function RevisionForm({
   const [isRevising, startRevising] = useTransition();
   const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
 
-  const revisionForm = useForm<ReviseResponseData>({
-    resolver: zodResolver(ReviseResponseSchema),
+  const revisionForm = useForm<Omit<ReviseResponseData, 'jobDescription' | 'bio'>>({
+    resolver: zodResolver(ReviseResponseSchema.omit({ jobDescription: true, bio: true})),
     defaultValues: {
       revisionComments: "",
+      originalResponse: currentResponse,
+      generationType: generationType,
     },
   });
   
-  // This effect ensures the form has the latest data for submission
   useEffect(() => {
-    revisionForm.reset({
-      revisionComments: revisionForm.getValues('revisionComments') || "",
-      jobDescription: formMethods.getValues('jobDescription'),
-      bio: formMethods.getValues('bio'),
-      originalResponse: currentResponse,
-      generationType: generationType,
-    });
-  }, [currentResponse, generationType, formMethods, revisionForm]);
+    revisionForm.setValue('originalResponse', currentResponse);
+    revisionForm.setValue('generationType', generationType);
+  }, [currentResponse, generationType, revisionForm]);
 
 
-  async function onRevise(data: ReviseResponseData) {
+  async function onRevise(data: Omit<ReviseResponseData, 'jobDescription' | 'bio'>) {
+    const { jobDescription, bio } = formMethods.getValues();
+    const fullData: ReviseResponseData = {
+        ...data,
+        jobDescription,
+        bio,
+    };
+    
     startRevising(async () => {
-        await onRevision(data);
-        // Clear just the revision comments field after submission
-        revisionForm.setValue('revisionComments', '');
+        await onRevision(fullData);
+        revisionForm.reset({
+            ...revisionForm.getValues(),
+            revisionComments: "",
+        });
     });
   }
   

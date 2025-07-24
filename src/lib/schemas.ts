@@ -14,19 +14,6 @@ export const ResponseSchema = z.object({
 });
 export type ResponseData = z.infer<typeof ResponseSchema>;
 
-
-// Schema for the revision flow
-export const ReviseResponseSchema = z.object({
-  jobDescription: z.string(),
-  bio: z.string(),
-  originalResponse: z.string().describe("The original AI-generated response that needs to be revised."),
-  revisionComments: z.string().min(5, { message: "Please provide some feedback to revise the response." }),
-  generationType: z.enum(['coverLetter', 'qAndA']),
-});
-
-export type ReviseResponseData = z.infer<typeof ReviseResponseSchema>;
-
-
 // Schemas for the Q&A flow
 export const QuestionAnswerPairSchema = z.object({
   question: z.string().describe('The verbatim question found in the job description.'),
@@ -37,3 +24,28 @@ export const QAndAOutputSchema = z.object({
   qaPairs: z.array(QuestionAnswerPairSchema).describe('A list of question and answer pairs.'),
 });
 export type QAndAOutput = z.infer<typeof QAndAOutputSchema>;
+
+
+// Schema for the revision flow
+export const ReviseResponseSchema = z.object({
+  jobDescription: z.string(),
+  bio: z.string(),
+  originalResponse: z.string().describe("The original AI-generated response that needs to be revised. For Q&A, this will be a stringified JSON of the QAndAOutputSchema."),
+  revisionComments: z.string().min(5, { message: "Please provide some feedback to revise the response." }),
+  generationType: z.enum(['coverLetter', 'qAndA']),
+});
+
+export type ReviseResponseData = z.infer<typeof ReviseResponseSchema>;
+
+
+export const FeedbackSchema = z.object({
+    name: z.string().optional(),
+    feedback: z.string().min(1, { message: "Feedback cannot be empty." }),
+    jobDescription: z.string().optional(),
+    bio: z.string().optional(),
+    lastGeneratedOutput: z.string().optional(),
+    includeJD: z.boolean().optional().default(true),
+    includeBio: z.boolean().optional().default(true),
+});
+
+export type FeedbackData = z.infer<typeof FeedbackSchema>;
