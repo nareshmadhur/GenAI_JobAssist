@@ -54,7 +54,9 @@ export function CvView({ cvData }: { cvData: CvOutput }) {
               <ul className="prose prose-sm max-w-none list-disc pl-5 space-y-2">
                 {section.advice.map((point, i) => (
                   <li key={i} className="ml-5">
-                    <Markdown components={{ p: Fragment }}>{point}</Markdown>
+                    <div className="prose prose-sm max-w-none">
+                        <Markdown components={{ p: Fragment }}>{point}</Markdown>
+                    </div>
                   </li>
                 ))}
               </ul>
