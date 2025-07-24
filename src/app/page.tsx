@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { JobApplicationData } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
 import { ActiveView, GenerationType } from '@/components/job-spark-app';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const LOCAL_STORAGE_KEY = 'jobspark_form_data';
 
@@ -142,14 +143,27 @@ export default function Home() {
 
   const renderInitialView = () => (
     <Card className="flex min-h-[400px] items-center justify-center">
-      <CardContent className="p-4 text-center">
-        <Sparkles className="mx-auto h-12 w-12 text-muted-foreground/50" />
-        <p className="mt-4 text-muted-foreground">
-          Your generated content will appear here.
-        </p>
-      </CardContent>
+        <CardContent className="p-4 text-center">
+            {isGenerating ? (
+                <div className="space-y-4 p-4">
+                    <Skeleton className="mb-4 h-8 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6" />
+                </div>
+            ) : (
+                <>
+                    <Sparkles className="mx-auto h-12 w-12 text-muted-foreground/50" />
+                    <p className="mt-4 text-muted-foreground">
+                        Your generated content will appear here.
+                    </p>
+                </>
+            )}
+        </CardContent>
     </Card>
-  );
+);
+
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/20">

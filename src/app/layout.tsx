@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'JobSpark',
@@ -22,6 +23,11 @@ export default function RootLayout({
       <body className="font-body antialiased">
         {children}
         <Toaster />
+        <footer className="w-full py-4 text-center text-sm text-muted-foreground">
+            <Link href="https://www.nareshmadhur.com" target="_blank" rel="noopener noreferrer" className="hover:underline">
+                Created with ❤️ by Naresh
+            </Link>
+        </footer>
       </body>
     </html>
   );
