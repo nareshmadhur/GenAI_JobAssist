@@ -9,7 +9,7 @@ import {
   MessageSquareMore,
   Trash2,
 } from 'lucide-react';
-import { useFormContext, FormProvider } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -72,7 +72,7 @@ export function InputForm({
   const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
 
   return (
-    <Card className="sticky top-24 bg-card/80 backdrop-blur-sm">
+    <Card className="bg-card/80 backdrop-blur-sm">
       <CardHeader>
         <CardTitle>Your Information</CardTitle>
         <CardDescription className="prose-sm">

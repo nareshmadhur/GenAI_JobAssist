@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'AI Job Assist',
+  title: 'JobSpark',
   description: 'Allow AI to boost your job application productivity',
 };
 

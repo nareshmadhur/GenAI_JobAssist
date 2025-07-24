@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useTransition, useEffect } from "react";
+import React, { useState, useTransition, useEffect, useRef } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Sparkles } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { 
   JobApplicationSchema, 
@@ -33,6 +33,7 @@ export function JobSparkApp(): JSX.Element {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
   const { toast } = useToast();
+  const outputRef = useRef<HTMLDivElement>(null);
   
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
     resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
@@ -93,6 +94,7 @@ export function JobSparkApp(): JSX.Element {
 
         setActiveView(generationType);
         setGenerationError(null);
+        outputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
         // Optimistically clear previous results for this type to show loading skeleton
         setAllResults(prev => {
@@ -156,22 +158,20 @@ export function JobSparkApp(): JSX.Element {
 
   return (
     <FormProvider {...formMethods}>
-      <div className="grid w-full gap-8 p-4 md:grid-cols-2 sm:p-6 md:p-8">
-        {/* Input Column */}
-        <div className="flex flex-col gap-8">
-          <InputForm
-            isGenerating={isGenerating}
-            activeView={activeView}
-            onGeneration={handleGeneration}
-            onClear={handleClear}
-            jobDescription={jobDescription}
-            bio={bio}
-            lastGeneratedOutput={getLastGeneratedOutput()}
-          />
-        </div>
+      <div className="flex flex-col gap-8">
+        {/* Input Section */}
+        <InputForm
+          isGenerating={isGenerating}
+          activeView={activeView}
+          onGeneration={handleGeneration}
+          onClear={handleClear}
+          jobDescription={jobDescription}
+          bio={bio}
+          lastGeneratedOutput={getLastGeneratedOutput()}
+        />
 
-        {/* Output Column */}
-        <div className="flex flex-col gap-4">
+        {/* Output Section */}
+        <div ref={outputRef}>
           {activeView === 'none' ? renderInitialView() : (
             <OutputView 
               activeView={activeView}
