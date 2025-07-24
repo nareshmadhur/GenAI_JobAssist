@@ -141,23 +141,6 @@ export default function Home() {
     }
   };
 
-  const renderInitialView = () => (
-    <Card className="flex min-h-[400px] items-center justify-center">
-        <CardContent className="p-4 text-center">
-            {isGenerating && (
-                <div className="space-y-4 p-4">
-                    <Skeleton className="mb-4 h-8 w-48" />
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-5/6" />
-                </div>
-            )}
-        </CardContent>
-    </Card>
-);
-
-
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/20">
       <header className="sticky top-0 z-10 w-full border-b border-primary-foreground/20 bg-primary px-4 py-4 sm:px-6 md:px-8">
@@ -226,9 +209,7 @@ export default function Home() {
           <div className="flex flex-col gap-8">
             <InputForm />
             <div ref={outputRef}>
-              {activeView === 'none' ? (
-                renderInitialView()
-              ) : (
+              {activeView !== 'none' && (
                 <OutputView
                   activeView={activeView}
                   setActiveView={setActiveView}
