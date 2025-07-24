@@ -198,7 +198,7 @@ function GeneratedResponse({
 }
 
 
-function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }) {
+function DeepAnalysisView({ deepAnalysis, jobDescription, bio, onRevision }: { deepAnalysis: DeepAnalysisOutput, jobDescription: string, bio: string, onRevision: (data: ReviseResponseData) => Promise<void> }) {
   const renderRequirements = (items: typeof deepAnalysis.mustHaves) => {
     if (!items || items.length === 0) {
       return (
@@ -253,7 +253,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
       </Card>
       
       {deepAnalysis.qAndA?.questionsFound && (
-          <QAndAView qAndA={deepAnalysis.qAndA} onRevision={() => {}} jobDescription={""} bio={""} />
+          <QAndAView qAndA={deepAnalysis.qAndA} onRevision={onRevision} jobDescription={jobDescription} bio={bio} />
       )}
 
       <Card>
@@ -519,35 +519,43 @@ export function JobSparkApp() {
 
   const handleRevision = async (data: ReviseResponseData) => {
       const { generationType } = data;
-      const result = await reviseAction(data);
 
-      if (result.success) {
-          let newResult;
+      try {
+        const result = await reviseAction(data);
 
-          if (generationType === 'qAndA') {
-              try {
-                  // The response is now a raw JSON string, so we parse it.
-                  newResult = JSON.parse(result.data.responses);
-              } catch (e) {
-                  console.error("Failed to parse revised Q&A JSON:", e);
-                  toast({ variant: "destructive", title: "Revision Failed", description: "The AI returned an invalid format for the Q&A."});
-                  return;
-              }
-          } else if (generationType === 'coverLetter') {
-              // The response is a markdown string.
-              newResult = { responses: result.data.responses };
-          }
+        if (result.success) {
+            let newResult;
 
-          if (newResult) {
-              setAllResults(prev => ({ ...prev, [generationType]: newResult as any }));
-          }
+            if (generationType === 'qAndA') {
+                try {
+                    newResult = JSON.parse(result.data.responses);
+                } catch (e) {
+                    console.error("Failed to parse revised Q&A JSON:", e);
+                    toast({ variant: "destructive", title: "Revision Failed", description: "The AI returned an invalid format for the Q&A."});
+                    return;
+                }
+            } else if (generationType === 'coverLetter') {
+                newResult = { responses: result.data.responses };
+            }
 
-      } else {
-          toast({
-              variant: "destructive",
-              title: "Revision Failed",
-              description: result.error,
-          });
+            if (newResult) {
+                setAllResults(prev => ({ ...prev, [generationType]: newResult as any }));
+            }
+
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Revision Failed",
+                description: result.error,
+            });
+        }
+      } catch(error) {
+        console.error('Revision submission failed', error);
+        toast({
+            variant: "destructive",
+            title: "Revision Failed",
+            description: error instanceof Error ? error.message : "An unknown error occurred.",
+        });
       }
   };
 
@@ -627,7 +635,7 @@ export function JobSparkApp() {
              return <CvView cvData={allResults.cv as CvOutput} />;
           case 'deepAnalysis':
             if (!allResults.deepAnalysis) return null;
-            return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} />;
+            return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} jobDescription={jobDescription} bio={bio} onRevision={handleRevision} />;
           case 'qAndA':
             if (!allResults.qAndA) return null;
             return <QAndAView qAndA={allResults.qAndA as QAndAOutput} onRevision={handleRevision} jobDescription={jobDescription} bio={bio} />;
