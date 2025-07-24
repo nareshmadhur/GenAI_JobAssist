@@ -4,7 +4,7 @@
 import React, { useState, useTransition, useEffect, useCallback, Fragment } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle, KeyRound } from "lucide-react";
+import { Loader2, Sparkles, Copy, Check, CheckCircle2, XCircle, Wand2, Edit, Save, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore, AlertTriangle, KeyRound, CheckSquare, Square } from "lucide-react";
 import Markdown from 'react-markdown';
 import { compiler } from 'markdown-to-jsx';
 import ReactDOMServer from 'react-dom/server';
@@ -42,7 +42,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { cn } from "@/lib/utils";
 
 const LOCAL_STORAGE_KEY = 'jobspark_form_data';
-const API_KEY_STORAGE_KEY = 'jobspark_api_key';
 
 type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis' | 'qAndA';
 type ActiveView = GenerationType | 'none';
@@ -187,12 +186,33 @@ function GeneratedResponse({
 
 
 function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }) {
-  const renderDetails = (details?: string[]) => {
+  const renderRequirements = (items: typeof deepAnalysis.mustHaves) => {
+    if (!items || items.length === 0) {
+      return (
+        <p className="text-sm text-muted-foreground">No specific requirements were identified in this category.</p>
+      );
+    }
+    return (
+        <ul className="space-y-3">
+          {items.map((item, index) => (
+            <li key={index} className="flex items-start gap-3">
+                {item.isMet 
+                  ? <CheckCircle2 className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" /> 
+                  : <XCircle className="h-5 w-5 text-red-500 mt-1 flex-shrink-0" />
+                }
+                <span className="text-sm">{item.requirement}</span>
+            </li>
+          ))}
+        </ul>
+    );
+  };
+  
+  const renderImprovementAreas = (details?: string[]) => {
     if (!details || details.length === 0) {
       return null;
     }
     return (
-        <ul className="prose max-w-none list-disc pl-5 space-y-2">
+        <ul className="prose prose-sm max-w-none list-disc pl-5 space-y-2">
           {details.map((item, index) => (
             <li key={index} className="ml-5">
                 <Markdown components={{ p: Fragment }}>{item}</Markdown>
@@ -226,26 +246,26 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-green-500" />
-            <span className="text-green-600">Key Strengths</span>
+            <CheckSquare className="h-6 w-6 text-primary" />
+            <span>Must-Have Requirements</span>
           </CardTitle>
-          <CardDescription className="prose-sm">How your bio aligns with the job requirements.</CardDescription>
+          <CardDescription className="prose-sm">Essential criteria for the role and your alignment.</CardDescription>
         </CardHeader>
         <CardContent>
-            {renderDetails(deepAnalysis.keyStrengths)}
+            {renderRequirements(deepAnalysis.mustHaves)}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <XCircle className="h-6 w-6 text-red-500" />
-            <span className="text-red-600">Gaps</span>
+            <Square className="h-6 w-6 text-primary" />
+            <span>Preferred Qualifications</span>
           </CardTitle>
-          <CardDescription className="prose-sm">Areas where your bio is missing required experience.</CardDescription>
+          <CardDescription className="prose-sm">"Nice-to-have" skills and your alignment.</CardDescription>
         </CardHeader>
         <CardContent>
-          {renderDetails(deepAnalysis.gaps)}
+          {renderRequirements(deepAnalysis.preferred)}
         </CardContent>
       </Card>
       
@@ -258,7 +278,7 @@ function DeepAnalysisView({ deepAnalysis }: { deepAnalysis: DeepAnalysisOutput }
            <CardDescription className="prose-sm">Actionable advice to better present your experience.</CardDescription>
         </CardHeader>
         <CardContent>
-          {renderDetails(deepAnalysis.improvementAreas)}
+          {renderImprovementAreas(deepAnalysis.improvementAreas)}
         </CardContent>
       </Card>
     </div>
@@ -328,7 +348,6 @@ export function JobSparkApp() {
   const [activeView, setActiveView] = useState<ActiveView>('none');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
-  const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
   
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
@@ -347,10 +366,6 @@ export function JobSparkApp() {
             bio: parsedData.bio || "",
             questions: parsedData.questions || ""
         });
-      }
-      const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-      if (savedApiKey) {
-        setApiKey(savedApiKey);
       }
     } catch (e) {
       console.error("Failed to load or parse data from localStorage", e);
@@ -374,13 +389,6 @@ export function JobSparkApp() {
     return () => subscription.unsubscribe();
   }, [formMethods.watch]);
   
-  useEffect(() => {
-    try {
-        localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
-    } catch (e) {
-        console.error("Failed to save API key to localStorage", e);
-    }
-  }, [apiKey]);
 
   const handleGeneration = (generationType: GenerationType) => {
     formMethods.trigger(['jobDescription', 'bio']).then(isValid => {
@@ -445,10 +453,8 @@ export function JobSparkApp() {
     setAllResults({});
     setActiveView('none');
     setGenerationError(null);
-    setApiKey('');
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
-      localStorage.removeItem(API_KEY_STORAGE_KEY);
     } catch (e) {
       console.error("Failed to clear data from localStorage", e);
     }
@@ -588,34 +594,6 @@ export function JobSparkApp() {
                         </FormItem>
                         )}
                     />
-                    <Accordion type="single" collapsible className="w-full">
-                      <AccordionItem value="api-key">
-                        <AccordionTrigger>
-                          <div className="flex items-center gap-2 text-sm">
-                            <KeyRound className="h-4 w-4" />
-                            <span>Use Custom Gemini API Key (Optional)</span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                            <div className="space-y-2 pt-2">
-                                <Label htmlFor="apiKey" className="text-xs">Gemini API Key</Label>
-                                <Input
-                                    id="apiKey"
-                                    type="password"
-                                    placeholder="Enter your Google AI Studio API key"
-                                    value={apiKey}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Your key is stored in your browser. Get your key from{' '}
-                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline">
-                                    Google AI Studio
-                                    </a>.
-                                </p>
-                            </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
                     </form>
                 </Form>
             </CardContent>
