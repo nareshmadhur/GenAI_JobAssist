@@ -75,6 +75,14 @@ export default function Home() {
     });
     return () => subscription.unsubscribe();
   }, [formMethods.watch]);
+  
+  // This effect handles scrolling to the output view when it becomes active.
+  // It runs after the component re-renders, ensuring the ref is attached.
+  useEffect(() => {
+    if (activeView !== 'none' && outputRef.current) {
+      outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [activeView]);
 
   const handleGeneration = (generationType: GenerationType) => {
     formMethods.trigger(['jobDescription', 'bio']).then((isValid) => {
@@ -95,10 +103,9 @@ export default function Home() {
       }
 
       const data = { ...formMethods.getValues(), generationType };
-
+      
       setActiveView(generationType);
       setGenerationError(null);
-      outputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       setAllResults((prev) => {
         const newResults = { ...prev };
