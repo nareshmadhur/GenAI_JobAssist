@@ -28,7 +28,7 @@ export function FloatingActionBar({
   onGeneration,
 }: FloatingActionBarProps) {
   const baseButtonClass =
-    'h-auto flex-col rounded-full py-2 text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground/90 data-[active=true]:bg-accent data-[active=true]:text-accent-foreground';
+    'h-auto flex-col rounded-full py-2 text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground/90 data-[active=true]:bg-primary-foreground data-[active=true]:text-primary data-[active=true]:hover:bg-primary-foreground/90';
 
   return (
     <footer className="fixed bottom-0 left-0 z-20 w-full p-4">
