@@ -13,7 +13,7 @@ import {
   FileDown,
   Loader2,
 } from 'lucide-react';
-import React, { useState, useTransition } from 'react';
+import React, { useState } from 'react';
 import type { CvOutput } from '@/lib/schemas';
 
 import { Button } from './ui/button';
@@ -37,7 +37,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { updateCvFieldAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { EditableCvField } from './editable-cv-field';
 
@@ -176,8 +175,8 @@ interface CvViewProps {
 }
 
 export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps) {
-  const [isUpdating, startUpdateTransition] = useTransition();
   const { toast } = useToast();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   if (!cvData) {
     return (
@@ -190,31 +189,51 @@ export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps)
   }
 
   const handleFieldUpdate = (fieldKey: string, newValue: string) => {
-    startUpdateTransition(async () => {
-      const result = await updateCvFieldAction({
-        existingCv: cvData,
-        fieldToUpdate: fieldKey,
-        newValue: newValue,
-      });
+    setIsUpdating(true);
+    
+    // Create a deep copy to avoid direct state mutation
+    const newCvData = JSON.parse(JSON.stringify(cvData));
 
-      if (result.success) {
-        onCvUpdate(result.data);
+    // A helper to set nested properties
+    const setProperty = (obj: any, path: string, value: any) => {
+        const keys = path.split('.');
+        let current = obj;
+        for (let i = 0; i < keys.length - 1; i++) {
+            const key = keys[i];
+            const nextKey = keys[i+1];
+            // If next key is a number, we are dealing with an array
+            if (!isNaN(parseInt(nextKey, 10))) {
+                if (!current[key]) current[key] = [];
+            } else {
+                 if (!current[key]) current[key] = {};
+            }
+            current = current[key];
+        }
+        current[keys[keys.length - 1]] = value;
+    }
+
+    try {
+        setProperty(newCvData, fieldKey, newValue);
+        onCvUpdate(newCvData);
         toast({
             title: 'CV Updated',
             description: 'The field has been successfully updated.',
         });
-      } else {
-        toast({
+    } catch (error) {
+         toast({
             variant: 'destructive',
             title: 'Update Failed',
-            description: result.error,
+            description: "Could not update the CV field.",
         });
-      }
-    });
+        console.error("Failed to update CV field:", error);
+    } finally {
+        // Use a short timeout to give the UI a "loading" feel and ensure re-render
+        setTimeout(() => setIsUpdating(false), 200);
+    }
   };
 
   return (
-    <div className="rounded-lg bg-white p-2 text-black relative">
+    <div className="relative rounded-lg bg-white p-2 text-black">
       {isUpdating && (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />

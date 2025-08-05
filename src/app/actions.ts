@@ -7,15 +7,13 @@ import type { DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
 import { generateDeepAnalysis } from '@/ai/flows/generate-deep-analysis';
 import { generateQAndA } from '@/ai/flows/generate-q-and-a';
 import { reviseResponse } from '@/ai/flows/revise-response';
-import { updateCvField } from '@/ai/flows/update-cv-field';
 import type {
   CvOutput,
   QAndAOutput,
   ReviseResponseData,
   ReviseResponseOutput,
-  UpdateCvFieldInput,
 } from '@/lib/schemas';
-import { JobApplicationSchema, ReviseResponseSchema, UpdateCvFieldInputSchema } from '@/lib/schemas';
+import { JobApplicationSchema, ReviseResponseSchema } from '@/lib/schemas';
 
 /**
  * Type union for a successful generation response.
@@ -48,13 +46,6 @@ type GenerateActionResponse =
  */
 type ReviseActionResponse =
   | { success: true; data: ReviseResponseOutput }
-  | { success: false; error: string };
-
-/**
- * A discriminated union for the result of updating a CV field.
- */
-type UpdateCvActionResponse =
-  | { success: true; data: CvOutput }
   | { success: false; error: string };
 
 
@@ -149,31 +140,4 @@ export async function reviseAction(
     success: true,
     data: response,
   };
-}
-
-
-/**
- * Server Action to update a single field in the CV.
- *
- * @param rawData - The raw input data for the CV field update.
- * @returns A promise that resolves to an `UpdateCvActionResponse`.
- */
-export async function updateCvFieldAction(rawData: unknown): Promise<UpdateCvActionResponse> {
-    const validationResult = UpdateCvFieldInputSchema.safeParse(rawData);
-    if (!validationResult.success) {
-        const errorMessage = validationResult.error.issues.map((issue) => issue.message).join(' ');
-        return { success: false, error: errorMessage || 'Invalid input for CV update.' };
-    }
-
-    try {
-        const response = await updateCvField(validationResult.data);
-        return { success: true, data: response };
-    } catch (error) {
-        console.error('Error in updateCvFieldAction:', error);
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-        return {
-            success: false,
-            error: `Failed to update CV field: ${errorMessage}.`,
-        };
-    }
 }
