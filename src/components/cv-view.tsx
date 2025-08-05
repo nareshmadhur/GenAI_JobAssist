@@ -106,7 +106,7 @@ function ExportButton({
 }) {
   const [isClient, setIsClient] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
-  const anchorRef = useRef<HTMLAnchorElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsClient(true);
