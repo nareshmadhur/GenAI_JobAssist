@@ -22,7 +22,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import type { JobApplicationData } from '@/lib/schemas';
 import { ExpandableTextarea } from './expandable-textarea';
-import { EditRequest } from '@/app/page';
+import type { EditRequest } from '@/app/page';
 
 interface InputFormProps {
   editRequest: EditRequest | null;

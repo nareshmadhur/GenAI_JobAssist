@@ -24,7 +24,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { JobApplicationData } from '@/lib/schemas';
-import { EditRequest } from '@/app/page';
+import type { EditRequest } from '@/app/page';
 
 interface ExpandableTextareaProps {
   field: ControllerRenderProps<Omit<JobApplicationData, 'generationType'>>;
@@ -53,7 +53,10 @@ export function ExpandableTextarea({
   useEffect(() => {
     if (editRequest && editRequest.field === fieldName) {
       const currentVal = field.value || '';
-      const newText = currentVal.endsWith('\n\n') ? currentVal : currentVal + '\n\n';
+      // Ensure there's space before appending new text
+      const newText = currentVal.trim().length > 0 && !currentVal.endsWith('\n\n') 
+        ? currentVal + '\n\n' 
+        : currentVal;
       setEditedValue(newText + editRequest.appendText);
       setIsOpen(true);
       onEditRequestProcessed();

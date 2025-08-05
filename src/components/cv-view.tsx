@@ -13,7 +13,7 @@ import {
   Wrench,
   FileDown,
 } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 
 import type { EditRequest } from '@/app/page';
 import { Button } from './ui/button';
@@ -25,6 +25,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
 
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
 const MISSING_NAME_PLACEHOLDER = '[Name not found in bio]';
@@ -39,7 +52,27 @@ const isMissing = (text: string | undefined | null): boolean => {
   );
 };
 
+
+const hasMissingInfo = (cvData: CvOutput): boolean => {
+  if (isMissing(cvData.fullName) || isMissing(cvData.email) || isMissing(cvData.phone) || isMissing(cvData.location) || isMissing(cvData.summary)) {
+    return true;
+  }
+  if (cvData.workExperience.some(job => isMissing(job.jobTitle) || isMissing(job.company) || isMissing(job.duration) || job.responsibilities.some(isMissing))) {
+    return true;
+  }
+  if (cvData.education.some(edu => isMissing(edu.degree) || isMissing(edu.institution) || isMissing(edu.year))) {
+    return true;
+  }
+  if (cvData.skills.some(isMissing)) {
+    return true;
+  }
+  return false;
+};
+
+
 const ExportButton = ({ cvData }: { cvData: CvOutput }) => {
+  const showsWarning = hasMissingInfo(cvData);
+
   const handleExport = () => {
     try {
       const jsonString = JSON.stringify(cvData);
@@ -51,6 +84,37 @@ const ExportButton = ({ cvData }: { cvData: CvOutput }) => {
       alert('An error occurred while preparing the CV for export.');
     }
   };
+
+  if (showsWarning) {
+    return (
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+           <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Export CV as PDF"
+            className="text-slate-600 hover:text-slate-900"
+          >
+            <FileDown className="h-4 w-4" />
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Incomplete CV</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your CV has missing sections. Are you sure you want to export it? It's recommended to fill out all details first.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExport}>
+              Continue Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  }
 
   return (
     <Button
@@ -128,7 +192,7 @@ export function CvView({ cvData, onEditRequest, isPrintView = false }: CvViewPro
   }
 
   const handleEditRequest = (fieldName: string) => {
-    onEditRequest({ field: 'bio', appendText: `\n${fieldName}: ` });
+    onEditRequest({ field: 'bio', appendText: `\n\n${fieldName}: ` });
   };
 
   return (
