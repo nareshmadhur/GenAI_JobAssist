@@ -17,6 +17,17 @@ import React, { useRef, useState } from 'react';
 
 import type { EditRequest } from '@/app/page';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -34,17 +45,49 @@ import { Separator } from './ui/separator';
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
 const MISSING_NAME_PLACEHOLDER = '[Name not found in bio]';
 
+const isMissing = (text: string | undefined | null): boolean => {
+  if (!text) return true;
+  return (
+    text.includes(MISSING_INFO_PLACEHOLDER) ||
+    text.includes(MISSING_NAME_PLACEHOLDER)
+  );
+};
+
 function ExportButton({
   elementToExport,
   className,
+  cvData,
 }: {
   elementToExport: React.RefObject<HTMLDivElement>;
   className?: string;
+  cvData: CvOutput;
 }) {
   const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
-  const handleExportToPdf = async () => {
+  const hasMissingInfo = () => {
+    if (
+      isMissing(cvData.fullName) ||
+      isMissing(cvData.email) ||
+      isMissing(cvData.phone) ||
+      isMissing(cvData.location) ||
+      isMissing(cvData.summary)
+    ) {
+      return true;
+    }
+    if (cvData.workExperience.some(j => isMissing(j.jobTitle) || isMissing(j.company) || isMissing(j.duration) || j.responsibilities.some(r => isMissing(r)))) {
+        return true;
+    }
+    if (cvData.education.some(e => isMissing(e.degree) || isMissing(e.institution) || isMissing(e.year))) {
+        return true;
+    }
+    if (cvData.skills.some(s => isMissing(s))) {
+        return true;
+    }
+    return false;
+  };
+
+  const exportToPdf = async () => {
     if (!elementToExport.current) {
       toast({
         variant: 'destructive',
@@ -54,9 +97,16 @@ function ExportButton({
       return;
     }
     setIsExporting(true);
+
+    // Temporarily hide elements with missing info
+    const elementsToHide = elementToExport.current.querySelectorAll(
+      '[data-missing="true"]'
+    );
+    elementsToHide.forEach((el) => el.classList.add('hidden'));
+
     try {
       const canvas = await html2canvas(elementToExport.current, {
-        scale: 2, // Higher scale for better quality
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
       });
@@ -72,13 +122,13 @@ function ExportButton({
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
       const ratio = canvasWidth / canvasHeight;
-      const width = pdfWidth;
-      const height = width / ratio;
+      let width = pdfWidth;
+      let height = width / ratio;
 
       if (height > pdfHeight) {
-        // Simple case if content is too long, it will be clipped.
-        // For multi-page, a more complex solution is needed.
         console.warn('CV content is longer than a single A4 page.');
+        // Simple clipping, for multi-page a more complex solution is needed
+        height = pdfHeight; 
       }
 
       pdf.addImage(imgData, 'PNG', 0, 0, width, height);
@@ -93,39 +143,68 @@ function ExportButton({
         description: 'An unexpected error occurred during PDF generation.',
       });
     } finally {
+      // Show the elements again
+      elementsToHide.forEach((el) => el.classList.remove('hidden'));
       setIsExporting(false);
     }
   };
+  
+  const triggerButton = (
+     <Button
+        variant="ghost"
+        size="icon"
+        disabled={isExporting}
+        aria-label="Export CV as PDF"
+        className={cn('text-slate-600 hover:text-slate-900', className)}
+      >
+        {isExporting ? (
+          <Check className="h-4 w-4" />
+        ) : (
+          <FileDown className="h-4 w-4" />
+        )}
+      </Button>
+  );
+
+  if (!hasMissingInfo()) {
+      return (
+        <div onClick={exportToPdf}>
+            {triggerButton}
+        </div>
+      )
+  }
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={handleExportToPdf}
-      disabled={isExporting}
-      aria-label="Export CV as PDF"
-      className={cn('text-slate-600 hover:text-slate-900', className)}
-    >
-      {isExporting ? (
-        <Check className="h-4 w-4" />
-      ) : (
-        <FileDown className="h-4 w-4" />
-      )}
-    </Button>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        {triggerButton}
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Incomplete CV</AlertDialogTitle>
+          <AlertDialogDescription>
+            Your CV has missing information. Sections with missing details will
+            be skipped in the exported PDF. Do you want to continue?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={exportToPdf}>Continue Anyway</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
-const isMissing = (text: string) =>
-  text.includes(MISSING_INFO_PLACEHOLDER) ||
-  text.includes(MISSING_NAME_PLACEHOLDER);
 
 const MissingInfo = ({
   text,
   onEditRequest,
   fieldName,
+  isBlock,
 }: {
   text: string;
   onEditRequest?: () => void;
   fieldName?: string;
+  isBlock?: boolean;
 }) => {
   if (!isMissing(text)) {
     return <>{text}</>;
@@ -135,18 +214,21 @@ const MissingInfo = ({
     e.preventDefault();
     onEditRequest?.();
   };
+  
+  const Wrapper = isBlock ? 'div': 'span';
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span
+          <Wrapper
             className="cursor-pointer font-semibold text-red-600 hover:underline"
             onClick={handleClick}
+            data-missing="true"
           >
             <AlertTriangle className="mr-1 inline-block h-4 w-4" />
             {fieldName}
-          </span>
+          </Wrapper>
         </TooltipTrigger>
         <TooltipContent className="bg-slate-800 text-white">
           <p>This information was not found in your bio.</p>
@@ -185,11 +267,14 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
         <Card className="font-sans bg-white text-black shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-slate-800">Mockup CV</CardTitle>
-            <ExportButton elementToExport={cvRef} />
+            <ExportButton
+              elementToExport={cvRef}
+              cvData={cvData}
+            />
           </CardHeader>
           <CardContent className="p-6 text-sm">
             {/* Header Section */}
-            <div className="mb-6 text-center">
+            <div className="mb-6 text-center" data-missing={isMissing(cvData.fullName)}>
               <h1 className="text-3xl font-bold text-slate-900">
                 {isMissing(cvData.fullName) ? (
                   <MissingInfo
@@ -202,7 +287,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
                 )}
               </h1>
               <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-slate-500">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" data-missing={isMissing(cvData.email)}>
                   <Mail className="h-4 w-4" />
                   {isMissing(cvData.email) ? (
                     <MissingInfo
@@ -214,7 +299,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
                     cvData.email
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" data-missing={isMissing(cvData.phone)}>
                   <Phone className="h-4 w-4" />
                   {isMissing(cvData.phone) ? (
                     <MissingInfo
@@ -226,7 +311,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
                     cvData.phone
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" data-missing={isMissing(cvData.location)}>
                   <MapPin className="h-4 w-4" />
                   {isMissing(cvData.location) ? (
                     <MissingInfo
@@ -244,7 +329,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
             <Separator className="my-6 bg-slate-200" />
 
             {/* Summary Section */}
-            <div>
+            <div data-missing={isMissing(cvData.summary)}>
               <h2 className="mb-2 flex items-center gap-2 text-xl font-semibold text-slate-800">
                 <User className="h-5 w-5" /> Professional Summary
               </h2>
@@ -254,6 +339,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
                     text={cvData.summary}
                     fieldName="Summary"
                     onEditRequest={() => handleEditRequest('Professional Summary')}
+                    isBlock
                   />
                 ) : (
                   <p>{cvData.summary}</p>
@@ -270,7 +356,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
               </h2>
               <div className="space-y-6">
                 {cvData.workExperience.map((job, index) => (
-                  <div key={index}>
+                  <div key={index} data-missing={isMissing(job.jobTitle) || isMissing(job.company) || isMissing(job.duration)}>
                     <div className="flex items-baseline justify-between">
                       <h3 className="text-lg font-semibold text-slate-800">
                         {isMissing(job.jobTitle) ? (
@@ -308,7 +394,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
                     </h4>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-600">
                       {job.responsibilities.map((responsibility, i) => (
-                        <li key={i}>
+                        <li key={i} data-missing={isMissing(responsibility)}>
                           {isMissing(responsibility) ? (
                             <MissingInfo
                               text={responsibility}
@@ -337,7 +423,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
               </h2>
               <div className="space-y-2">
                 {cvData.education.map((edu, index) => (
-                  <div key={index} className="flex items-baseline justify-between">
+                  <div key={index} className="flex items-baseline justify-between" data-missing={isMissing(edu.degree) || isMissing(edu.institution) || isMissing(edu.year)}>
                     <div>
                       <h3 className="text-lg font-semibold text-slate-800">
                         {isMissing(edu.degree) ? (
@@ -363,14 +449,14 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
                       </div>
                     </div>
                     <div className="text-sm text-slate-500">
-                      {edu.year && !isMissing(edu.year) ? (
-                        edu.year
-                      ) : (
-                        <MissingInfo
+                      {isMissing(edu.year) ? (
+                         <MissingInfo
                           text={edu.year || ''}
                           fieldName="Year"
                           onEditRequest={() => handleEditRequest('Year')}
                         />
+                      ) : (
+                        edu.year
                       )}
                     </div>
                   </div>
@@ -390,6 +476,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
                   <div
                     key={index}
                     className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700"
+                    data-missing={isMissing(skill)}
                   >
                     {isMissing(skill) ? (
                       <MissingInfo
@@ -410,3 +497,5 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
     </div>
   );
 }
+
+    
