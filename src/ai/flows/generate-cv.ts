@@ -31,10 +31,10 @@ const EducationSchema = z.object({
 });
 
 const CvOutputSchema = z.object({
-    fullName: z.string().describe("The user's full name, extracted from the bio."),
-    email: z.string().describe("The user's email address, extracted from the bio."),
-    phone: z.string().describe("The user's phone number, extracted from the bio."),
-    location: z.string().describe("The user's location (e.g., 'City, State'), extracted from the bio."),
+    fullName: z.string().describe("The user's full name. If not found, return '[Name not found in bio]'."),
+    email: z.string().describe("The user's email address. If not found, return '[Information not found in bio]'."),
+    phone: z.string().describe("The user's phone number. If not found, return '[Information not found in bio]'."),
+    location: z.string().describe("The user's location (e.g., 'City, State'). If not found, return '[Information not found in bio]'."),
     summary: z.string().describe("A 2-4 sentence professional summary, tailored to the job description."),
     workExperience: z.array(WorkExperienceSchema).describe("A list of the user's professional roles."),
     education: z.array(EducationSchema).describe("A list of the user's educational qualifications."),
@@ -53,11 +53,11 @@ const prompt = ai.definePrompt({
   output: {schema: CvOutputSchema},
   prompt: `You are an expert CV writer. Your task is to analyze a user's bio and a job description, then generate a complete, professional CV in a structured format.
 
-**Crucially, you must only use information explicitly present in the User Bio. Do not invent or exaggerate details. If contact information like email, phone, or location is not present, return an empty string for those fields.**
+**Crucially, you must only use information explicitly present in the User Bio. Do not invent or exaggerate details. If contact information like full name, email, phone, or location is not present, you MUST return the specific placeholder strings as described in the output schema.**
 
 Based on the user's bio and the job description, generate the following sections:
 
-1.  **Contact Info**: Extract the user's full name, email, phone number, and location.
+1.  **Contact Info**: Extract the user's full name, email, phone number, and location. Use placeholders for any missing information.
 2.  **Summary**: Write a powerful, 2-4 sentence professional summary that highlights the user's most relevant qualifications for the target job.
 3.  **Work Experience**: For each job mentioned in the bio, extract the job title, company, duration of employment, and create a list of 3-5 bullet points describing key responsibilities and achievements. Tailor the language to match keywords from the job description.
 4.  **Education**: Extract all educational qualifications, including degree, institution, and year of graduation.
@@ -83,4 +83,3 @@ const generateCvFlow = ai.defineFlow(
     return output!;
   }
 );
-
