@@ -51,20 +51,27 @@ export function ExpandableTextarea({
   const [editedValue, setEditedValue] = useState(field.value || '');
 
   useEffect(() => {
+    // This effect should ONLY run when a new edit request comes in.
+    // It should not depend on field.value, otherwise subsequent clicks on
+    // different warnings won't trigger it if the bio hasn't changed.
     if (editRequest && editRequest.field === fieldName) {
-      const currentVal = field.value || '';
-      // Ensure there's space before appending new text
+      const currentVal = editedValue || field.value || '';
+      
       const newText = currentVal.trim().length > 0 && !currentVal.endsWith('\n\n') 
         ? currentVal + '\n\n' 
         : currentVal;
+
       setEditedValue(newText + editRequest.appendText);
-      setIsOpen(true);
-      onEditRequestProcessed();
+      setIsOpen(true); // Open the dialog to show the change
+      onEditRequestProcessed(); // Reset the request so it doesn't fire again
     }
-  }, [editRequest, fieldName, field.value, onEditRequestProcessed]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editRequest, fieldName, onEditRequestProcessed]);
 
 
   useEffect(() => {
+    // This effect ensures that if the dialog is opened manually,
+    // it shows the latest value from the form state.
     if (isOpen) {
       setEditedValue(field.value || '');
     }
