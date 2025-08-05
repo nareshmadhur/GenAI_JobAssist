@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -213,206 +214,204 @@ export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps)
   };
 
   return (
-    <div className="rounded-lg bg-white p-2 text-black">
+    <div className="rounded-lg bg-white p-2 text-black relative">
       {isUpdating && (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       )}
-      <div>
-        <Card className="font-sans bg-white text-black shadow-lg relative">
-          {!isPrintView && (
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-foreground">Mockup CV</CardTitle>
-              <ExportButton cvData={cvData} />
-            </CardHeader>
-          )}
-          <CardContent className="p-6 text-sm">
-            {/* Header Section */}
-            <div className="mb-6 text-center" data-missing={isMissing(cvData.fullName)}>
-              <h1 className="text-3xl font-bold text-slate-900">
-                <EditableCvField
-                    value={cvData.fullName}
-                    onSave={(newValue) => handleFieldUpdate('fullName', newValue)}
-                    fieldName="Full Name"
-                    isMissing={isMissing(cvData.fullName)}
-                    className="text-3xl font-bold"
-                 />
-              </h1>
-              <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-slate-500">
-                <div className="flex items-center gap-2" data-missing={isMissing(cvData.email)}>
-                  <Mail className="h-4 w-4" />
-                   <EditableCvField
-                    value={cvData.email}
-                    onSave={(newValue) => handleFieldUpdate('email', newValue)}
-                    fieldName="Email"
-                    isMissing={isMissing(cvData.email)}
-                  />
-                </div>
-                <div className="flex items-center gap-2" data-missing={isMissing(cvData.phone)}>
-                  <Phone className="h-4 w-4" />
-                   <EditableCvField
-                    value={cvData.phone}
-                    onSave={(newValue) => handleFieldUpdate('phone', newValue)}
-                    fieldName="Phone"
-                    isMissing={isMissing(cvData.phone)}
-                  />
-                </div>
-                <div className="flex items-center gap-2" data-missing={isMissing(cvData.location)}>
-                  <MapPin className="h-4 w-4" />
+      <Card className="font-sans bg-white text-black shadow-lg">
+        {!isPrintView && (
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-foreground">Mockup CV</CardTitle>
+            <ExportButton cvData={cvData} />
+          </CardHeader>
+        )}
+        <CardContent className="p-6 text-sm">
+          {/* Header Section */}
+          <div className="mb-6 text-center" data-missing={isMissing(cvData.fullName)}>
+            <h1 className="text-3xl font-bold text-slate-900">
+              <EditableCvField
+                  value={cvData.fullName}
+                  onSave={(newValue) => handleFieldUpdate('fullName', newValue)}
+                  fieldName="Full Name"
+                  isMissing={isMissing(cvData.fullName)}
+                  className="text-3xl font-bold"
+                />
+            </h1>
+            <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-slate-500">
+              <div className="flex items-center gap-2" data-missing={isMissing(cvData.email)}>
+                <Mail className="h-4 w-4" />
                   <EditableCvField
-                    value={cvData.location}
-                    onSave={(newValue) => handleFieldUpdate('location', newValue)}
-                    fieldName="Location"
-                    isMissing={isMissing(cvData.location)}
-                  />
-                </div>
+                  value={cvData.email}
+                  onSave={(newValue) => handleFieldUpdate('email', newValue)}
+                  fieldName="Email"
+                  isMissing={isMissing(cvData.email)}
+                />
               </div>
-            </div>
-
-            <Separator className="my-6 bg-slate-200" />
-
-            {/* Summary Section */}
-            <div data-missing={isMissing(cvData.summary)}>
-              <h2 className="mb-2 flex items-center gap-2 text-xl font-semibold text-slate-800">
-                <User className="h-5 w-5" /> Professional Summary
-              </h2>
-              <div className="text-slate-600">
+              <div className="flex items-center gap-2" data-missing={isMissing(cvData.phone)}>
+                <Phone className="h-4 w-4" />
+                  <EditableCvField
+                  value={cvData.phone}
+                  onSave={(newValue) => handleFieldUpdate('phone', newValue)}
+                  fieldName="Phone"
+                  isMissing={isMissing(cvData.phone)}
+                />
+              </div>
+              <div className="flex items-center gap-2" data-missing={isMissing(cvData.location)}>
+                <MapPin className="h-4 w-4" />
                 <EditableCvField
-                    value={cvData.summary}
-                    onSave={(newValue) => handleFieldUpdate('summary', newValue)}
-                    fieldName="Summary"
-                    isMissing={isMissing(cvData.summary)}
-                    isBlock
-                    multiline
-                  />
+                  value={cvData.location}
+                  onSave={(newValue) => handleFieldUpdate('location', newValue)}
+                  fieldName="Location"
+                  isMissing={isMissing(cvData.location)}
+                />
               </div>
             </div>
+          </div>
 
-            <Separator className="my-6 bg-slate-200" />
+          <Separator className="my-6 bg-slate-200" />
 
-            {/* Work Experience Section */}
-            <div>
-              <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-slate-800">
-                <Briefcase className="h-5 w-5" /> Work Experience
-              </h2>
-              <div className="space-y-6">
-                {cvData.workExperience.map((job, index) => (
-                  <div key={index} data-missing={isMissing(job.jobTitle) || isMissing(job.company) || isMissing(job.duration)}>
-                    <div className="flex items-baseline justify-between">
-                      <h3 className="text-lg font-semibold text-slate-800">
-                         <EditableCvField
-                            value={job.jobTitle}
-                            onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.jobTitle`, newValue)}
-                            fieldName="Job Title"
-                            isMissing={isMissing(job.jobTitle)}
-                            className="text-lg font-semibold"
-                        />
-                      </h3>
-                      <div className="text-sm text-slate-500">
-                        <EditableCvField
-                            value={job.duration}
-                            onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.duration`, newValue)}
-                            fieldName="Duration"
-                            isMissing={isMissing(job.duration)}
-                            className="text-sm"
-                        />
-                      </div>
-                    </div>
-                    <h4 className="text-md font-medium text-slate-700">
-                       <EditableCvField
-                            value={job.company}
-                            onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.company`, newValue)}
-                            fieldName="Company"
-                            isMissing={isMissing(job.company)}
-                            className="text-md font-medium"
-                        />
-                    </h4>
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-600">
-                      {job.responsibilities.map((responsibility, i) => (
-                        <li key={i} data-missing={isMissing(responsibility)}>
-                          <EditableCvField
-                            value={responsibility}
-                            onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.responsibilities.${i}`, newValue)}
-                            fieldName="Responsibility"
-                            isMissing={isMissing(responsibility)}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
+          {/* Summary Section */}
+          <div data-missing={isMissing(cvData.summary)}>
+            <h2 className="mb-2 flex items-center gap-2 text-xl font-semibold text-slate-800">
+              <User className="h-5 w-5" /> Professional Summary
+            </h2>
+            <div className="text-slate-600">
+              <EditableCvField
+                  value={cvData.summary}
+                  onSave={(newValue) => handleFieldUpdate('summary', newValue)}
+                  fieldName="Summary"
+                  isMissing={isMissing(cvData.summary)}
+                  isBlock
+                  multiline
+                />
             </div>
+          </div>
 
-            <Separator className="my-6 bg-slate-200" />
+          <Separator className="my-6 bg-slate-200" />
 
-            {/* Education Section */}
-            <div>
-              <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-slate-800">
-                <GraduationCap className="h-5 w-5" /> Education
-              </h2>
-              <div className="space-y-2">
-                {cvData.education.map((edu, index) => (
-                  <div key={index} className="flex items-baseline justify-between" data-missing={isMissing(edu.degree) || isMissing(edu.institution) || isMissing(edu.year)}>
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-800">
-                         <EditableCvField
-                            value={edu.degree}
-                            onSave={(newValue) => handleFieldUpdate(`education.${index}.degree`, newValue)}
-                            fieldName="Degree"
-                            isMissing={isMissing(edu.degree)}
-                            className="text-lg font-semibold"
-                        />
-                      </h3>
-                      <div className="text-md text-slate-600">
+          {/* Work Experience Section */}
+          <div>
+            <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-slate-800">
+              <Briefcase className="h-5 w-5" /> Work Experience
+            </h2>
+            <div className="space-y-6">
+              {cvData.workExperience.map((job, index) => (
+                <div key={index} data-missing={isMissing(job.jobTitle) || isMissing(job.company) || isMissing(job.duration)}>
+                  <div className="flex items-baseline justify-between">
+                    <h3 className="text-lg font-semibold text-slate-800">
                         <EditableCvField
-                            value={edu.institution}
-                            onSave={(newValue) => handleFieldUpdate(`education.${index}.institution`, newValue)}
-                            fieldName="Institution"
-                            isMissing={isMissing(edu.institution)}
-                            className="text-md"
-                        />
-                      </div>
-                    </div>
+                          value={job.jobTitle}
+                          onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.jobTitle`, newValue)}
+                          fieldName="Job Title"
+                          isMissing={isMissing(job.jobTitle)}
+                          className="text-lg font-semibold"
+                      />
+                    </h3>
                     <div className="text-sm text-slate-500">
                       <EditableCvField
-                            value={edu.year || ''}
-                            onSave={(newValue) => handleFieldUpdate(`education.${index}.year`, newValue)}
-                            fieldName="Year"
-                            isMissing={isMissing(edu.year)}
-                            className="text-sm"
-                        />
+                          value={job.duration}
+                          onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.duration`, newValue)}
+                          fieldName="Duration"
+                          isMissing={isMissing(job.duration)}
+                          className="text-sm"
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
+                  <h4 className="text-md font-medium text-slate-700">
+                      <EditableCvField
+                          value={job.company}
+                          onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.company`, newValue)}
+                          fieldName="Company"
+                          isMissing={isMissing(job.company)}
+                          className="text-md font-medium"
+                      />
+                  </h4>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-600">
+                    {job.responsibilities.map((responsibility, i) => (
+                      <li key={i} data-missing={isMissing(responsibility)}>
+                        <EditableCvField
+                          value={responsibility}
+                          onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.responsibilities.${i}`, newValue)}
+                          fieldName="Responsibility"
+                          isMissing={isMissing(responsibility)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
+          </div>
 
-            <Separator className="my-6 bg-slate-200" />
+          <Separator className="my-6 bg-slate-200" />
 
-            {/* Skills Section */}
-            <div>
-              <h2 className="mb-2 flex items-center gap-2 text-xl font-semibold text-slate-800">
-                <Wrench className="h-5 w-5" /> Skills
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {cvData.skills.map((skill, index) => (
-                   <div key={index} className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700" data-missing={isMissing(skill)}>
-                     <EditableCvField
-                        value={skill}
-                        onSave={(newValue) => handleFieldUpdate(`skills.${index}`, newValue)}
-                        fieldName="Skill"
-                        isMissing={isMissing(skill)}
-                        className="text-sm"
-                    />
+          {/* Education Section */}
+          <div>
+            <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-slate-800">
+              <GraduationCap className="h-5 w-5" /> Education
+            </h2>
+            <div className="space-y-2">
+              {cvData.education.map((edu, index) => (
+                <div key={index} className="flex items-baseline justify-between" data-missing={isMissing(edu.degree) || isMissing(edu.institution) || isMissing(edu.year)}>
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-800">
+                        <EditableCvField
+                          value={edu.degree}
+                          onSave={(newValue) => handleFieldUpdate(`education.${index}.degree`, newValue)}
+                          fieldName="Degree"
+                          isMissing={isMissing(edu.degree)}
+                          className="text-lg font-semibold"
+                      />
+                    </h3>
+                    <div className="text-md text-slate-600">
+                      <EditableCvField
+                          value={edu.institution}
+                          onSave={(newValue) => handleFieldUpdate(`education.${index}.institution`, newValue)}
+                          fieldName="Institution"
+                          isMissing={isMissing(edu.institution)}
+                          className="text-md"
+                      />
+                    </div>
                   </div>
-                ))}
-              </div>
+                  <div className="text-sm text-slate-500">
+                    <EditableCvField
+                          value={edu.year || ''}
+                          onSave={(newValue) => handleFieldUpdate(`education.${index}.year`, newValue)}
+                          fieldName="Year"
+                          isMissing={isMissing(edu.year)}
+                          className="text-sm"
+                      />
+                  </div>
+                </div>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          <Separator className="my-6 bg-slate-200" />
+
+          {/* Skills Section */}
+          <div>
+            <h2 className="mb-2 flex items-center gap-2 text-xl font-semibold text-slate-800">
+              <Wrench className="h-5 w-5" /> Skills
+            </h2>
+            <div className="flex flex-wrap gap-2">
+              {cvData.skills.map((skill, index) => (
+                  <div key={index} className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700" data-missing={isMissing(skill)}>
+                    <EditableCvField
+                      value={skill}
+                      onSave={(newValue) => handleFieldUpdate(`skills.${index}`, newValue)}
+                      fieldName="Skill"
+                      isMissing={isMissing(skill)}
+                      className="text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
