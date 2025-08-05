@@ -205,9 +205,9 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
                     <h3 className="text-lg font-semibold text-slate-800">
                         {isMissing(job.jobTitle) ? <MissingInfo text={job.jobTitle} fieldName="Job Title" onEditRequest={() => handleEditRequest('Job Title')} /> : job.jobTitle}
                     </h3>
-                    <p className="text-sm text-slate-500">
+                    <div className="text-sm text-slate-500">
                         {isMissing(job.duration) ? <MissingInfo text={job.duration} fieldName="Duration" onEditRequest={() => handleEditRequest('Duration')} /> : job.duration}
-                    </p>
+                    </div>
                 </div>
                 <h4 className="text-md font-medium text-slate-700">
                     {isMissing(job.company) ? <MissingInfo text={job.company} fieldName="Company" onEditRequest={() => handleEditRequest('Company')} /> : job.company}
@@ -238,13 +238,13 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
                     <h3 className="text-lg font-semibold text-slate-800">
                         {isMissing(edu.degree) ? <MissingInfo text={edu.degree} fieldName="Degree" onEditRequest={() => handleEditRequest('Degree')} /> : edu.degree}
                     </h3>
-                    <p className="text-md text-slate-600">
+                    <div className="text-md text-slate-600">
                         {isMissing(edu.institution) ? <MissingInfo text={edu.institution} fieldName="Institution" onEditRequest={() => handleEditRequest('Institution')} /> : edu.institution}
-                    </p>
+                    </div>
                 </div>
-                <p className="text-sm text-slate-500">
+                <div className="text-sm text-slate-500">
                     {edu.year && !isMissing(edu.year) ? edu.year : <MissingInfo text={edu.year || ''} fieldName="Year" onEditRequest={() => handleEditRequest('Year')} />}
-                </p>
+                </div>
               </div>
             ))}
           </div>
