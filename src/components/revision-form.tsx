@@ -124,6 +124,7 @@ export function RevisionForm({
               />
               <Button
                 type="submit"
+                variant="outline"
                 disabled={
                   isRevising ||
                   !revisionForm.formState.isDirty ||
