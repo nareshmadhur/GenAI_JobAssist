@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -52,6 +53,7 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { CircularProgress } from './circular-progress';
+import { EditRequest } from '@/app/page';
 
 interface OutputViewProps {
   activeView: ActiveView;
@@ -60,6 +62,7 @@ interface OutputViewProps {
   setAllResults: React.Dispatch<React.SetStateAction<AllGenerationResults>>;
   isGenerating: boolean;
   generationError: string | null;
+  onEditRequest: (request: EditRequest) => void;
 }
 
 const VIEW_CONFIG: Record<
@@ -493,6 +496,7 @@ export function OutputView({
   setAllResults,
   isGenerating,
   generationError,
+  onEditRequest,
 }: OutputViewProps): JSX.Element {
   const { toast } = useToast();
 
@@ -557,7 +561,7 @@ export function OutputView({
         );
       case 'cv':
         if (!allResults.cv) return null;
-        return <CvView cvData={allResults.cv as CvOutput} />;
+        return <CvView cvData={allResults.cv as CvOutput} onEditRequest={onEditRequest} />;
       case 'deepAnalysis':
         if (!allResults.deepAnalysis) return null;
         return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} />;

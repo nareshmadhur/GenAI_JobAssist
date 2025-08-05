@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -23,11 +24,15 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { JobApplicationData } from '@/lib/schemas';
+import { EditRequest } from '@/app/page';
 
 interface ExpandableTextareaProps {
   field: ControllerRenderProps<Omit<JobApplicationData, 'generationType'>>;
   label: string;
   placeholder: string;
+  editRequest: EditRequest | null;
+  onEditRequestProcessed: () => void;
+  fieldName: 'bio' | 'jobDescription';
 }
 
 /**
@@ -38,9 +43,23 @@ export function ExpandableTextarea({
   field,
   label,
   placeholder,
+  editRequest,
+  onEditRequestProcessed,
+  fieldName,
 }: ExpandableTextareaProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [editedValue, setEditedValue] = useState(field.value || '');
+
+  useEffect(() => {
+    if (editRequest && editRequest.field === fieldName) {
+      const currentVal = field.value || '';
+      const newText = currentVal.endsWith('\n\n') ? currentVal : currentVal + '\n\n';
+      setEditedValue(newText + editRequest.appendText);
+      setIsOpen(true);
+      onEditRequestProcessed();
+    }
+  }, [editRequest, fieldName, field.value, onEditRequestProcessed]);
+
 
   useEffect(() => {
     if (isOpen) {

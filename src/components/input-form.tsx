@@ -22,6 +22,12 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import type { JobApplicationData } from '@/lib/schemas';
 import { ExpandableTextarea } from './expandable-textarea';
+import { EditRequest } from '@/app/page';
+
+interface InputFormProps {
+  editRequest: EditRequest | null;
+  onEditRequestProcessed: () => void;
+}
 
 /**
  * A component that renders the main input form for the application, including
@@ -29,7 +35,7 @@ import { ExpandableTextarea } from './expandable-textarea';
  *
  * @returns {JSX.Element} The rendered input form.
  */
-export function InputForm(): JSX.Element {
+export function InputForm({ editRequest, onEditRequestProcessed }: InputFormProps): JSX.Element {
   const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
 
   return (
@@ -54,6 +60,9 @@ export function InputForm(): JSX.Element {
                   field={field}
                   label="Job Description"
                   placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
+                  editRequest={editRequest}
+                  onEditRequestProcessed={onEditRequestProcessed}
+                  fieldName="jobDescription"
                 />
               )}
             />
@@ -65,6 +74,9 @@ export function InputForm(): JSX.Element {
                   field={field}
                   label="Your Bio / Resume"
                   placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
+                  editRequest={editRequest}
+                  onEditRequestProcessed={onEditRequestProcessed}
+                  fieldName="bio"
                 />
               )}
             />

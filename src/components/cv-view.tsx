@@ -8,6 +8,7 @@ import { Separator } from './ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { cn } from '@/lib/utils';
+import { EditRequest } from '@/app/page';
 
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
 const MISSING_NAME_PLACEHOLDER = '[Name not found in bio]';
@@ -76,32 +77,48 @@ const formatCvToText = (cvData: CvOutput): string => {
   return text;
 };
 
-const MissingInfo = ({ text }: { text: string }) => {
-  const isMissing = text.includes(MISSING_INFO_PLACEHOLDER) || text.includes(MISSING_NAME_PLACEHOLDER);
-  if (!isMissing) {
+const isMissing = (text: string) => 
+  text.includes(MISSING_INFO_PLACEHOLDER) || text.includes(MISSING_NAME_PLACEHOLDER);
+
+
+const MissingInfo = ({ text, onEditRequest, fieldName }: { text: string; onEditRequest?: () => void; fieldName?: string; }) => {
+  if (!isMissing(text)) {
     return <>{text}</>;
   }
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onEditRequest?.();
+  };
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="text-red-600 font-semibold cursor-help flex items-center gap-1">
+          <span
+            className="text-red-600 font-semibold cursor-pointer hover:underline flex items-center gap-1"
+            onClick={handleClick}
+          >
             <AlertTriangle className="h-4 w-4" />
-            {text}
+            {fieldName}
           </span>
         </TooltipTrigger>
         <TooltipContent className="bg-slate-800 text-white">
           <p>This information was not found in your bio.</p>
-          <p>Please add it to your bio for a complete CV.</p>
+          <p>Click to add it to your bio.</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
 };
 
+interface CvViewProps {
+  cvData: CvOutput;
+  onEditRequest: (request: EditRequest) => void;
+}
 
-export function CvView({ cvData }: { cvData: CvOutput }) {
+
+export function CvView({ cvData, onEditRequest }: CvViewProps) {
   if (!cvData) {
     return (
       <Card>
@@ -113,6 +130,11 @@ export function CvView({ cvData }: { cvData: CvOutput }) {
   }
   
   const plainTextCv = formatCvToText(cvData);
+  
+  const handleEditRequest = (fieldName: string) => {
+    onEditRequest({ field: 'bio', appendText: `\n${fieldName}: ` });
+  };
+
 
   return (
     <div className="bg-white dark:bg-white text-black p-2 rounded-lg">
@@ -124,11 +146,38 @@ export function CvView({ cvData }: { cvData: CvOutput }) {
       <CardContent className="p-6 text-sm">
         {/* Header Section */}
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-slate-900"><MissingInfo text={cvData.fullName} /></h1>
+            <h1 className="text-3xl font-bold text-slate-900">
+                {isMissing(cvData.fullName) ? (
+                    <MissingInfo text={cvData.fullName} onEditRequest={() => handleEditRequest('Full Name')} fieldName="Full Name"/>
+                ) : (
+                    cvData.fullName
+                )}
+            </h1>
           <div className="mt-2 flex justify-center items-center gap-x-4 gap-y-1 text-slate-500 flex-wrap">
-            <div className="flex items-center gap-2"><Mail className="h-4 w-4" /><MissingInfo text={cvData.email} /></div>
-            <div className="flex items-center gap-2"><Phone className="h-4 w-4" /><MissingInfo text={cvData.phone} /></div>
-            <div className="flex items-center gap-2"><MapPin className="h-4 w-4" /><MissingInfo text={cvData.location} /></div>
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                {isMissing(cvData.email) ? (
+                    <MissingInfo text={cvData.email} onEditRequest={() => handleEditRequest('Email')} fieldName="Email"/>
+                ) : (
+                    cvData.email
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                {isMissing(cvData.phone) ? (
+                    <MissingInfo text={cvData.phone} onEditRequest={() => handleEditRequest('Phone')} fieldName="Phone"/>
+                ) : (
+                    cvData.phone
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                {isMissing(cvData.location) ? (
+                    <MissingInfo text={cvData.location} onEditRequest={() => handleEditRequest('Location')} fieldName="Location"/>
+                ) : (
+                    cvData.location
+                )}
+              </div>
           </div>
         </div>
 
@@ -153,13 +202,21 @@ export function CvView({ cvData }: { cvData: CvOutput }) {
             {cvData.workExperience.map((job, index) => (
               <div key={index}>
                 <div className="flex justify-between items-baseline">
-                  <h3 className="text-lg font-semibold text-slate-800">{job.jobTitle}</h3>
-                  <p className="text-sm text-slate-500">{job.duration}</p>
+                    <h3 className="text-lg font-semibold text-slate-800">
+                        {isMissing(job.jobTitle) ? <MissingInfo text={job.jobTitle} fieldName="Job Title" onEditRequest={() => handleEditRequest('Job Title')} /> : job.jobTitle}
+                    </h3>
+                    <p className="text-sm text-slate-500">
+                        {isMissing(job.duration) ? <MissingInfo text={job.duration} fieldName="Duration" onEditRequest={() => handleEditRequest('Duration')} /> : job.duration}
+                    </p>
                 </div>
-                <h4 className="text-md font-medium text-slate-700">{job.company}</h4>
+                <h4 className="text-md font-medium text-slate-700">
+                    {isMissing(job.company) ? <MissingInfo text={job.company} fieldName="Company" onEditRequest={() => handleEditRequest('Company')} /> : job.company}
+                </h4>
                 <ul className="mt-2 list-disc pl-5 space-y-1 text-slate-600">
                   {job.responsibilities.map((responsibility, i) => (
-                    <li key={i}>{responsibility}</li>
+                    <li key={i}>
+                        {isMissing(responsibility) ? <MissingInfo text={responsibility} fieldName="Responsibility" onEditRequest={() => handleEditRequest('Responsibility')} /> : responsibility}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -178,10 +235,16 @@ export function CvView({ cvData }: { cvData: CvOutput }) {
             {cvData.education.map((edu, index) => (
               <div key={index} className="flex justify-between items-baseline">
                 <div>
-                    <h3 className="text-lg font-semibold text-slate-800">{edu.degree}</h3>
-                    <p className="text-md text-slate-600">{edu.institution}</p>
+                    <h3 className="text-lg font-semibold text-slate-800">
+                        {isMissing(edu.degree) ? <MissingInfo text={edu.degree} fieldName="Degree" onEditRequest={() => handleEditRequest('Degree')} /> : edu.degree}
+                    </h3>
+                    <p className="text-md text-slate-600">
+                        {isMissing(edu.institution) ? <MissingInfo text={edu.institution} fieldName="Institution" onEditRequest={() => handleEditRequest('Institution')} /> : edu.institution}
+                    </p>
                 </div>
-                <p className="text-sm text-slate-500">{edu.year}</p>
+                <p className="text-sm text-slate-500">
+                    {edu.year && !isMissing(edu.year) ? edu.year : <MissingInfo text={edu.year || ''} fieldName="Year" onEditRequest={() => handleEditRequest('Year')} />}
+                </p>
               </div>
             ))}
           </div>
@@ -197,7 +260,7 @@ export function CvView({ cvData }: { cvData: CvOutput }) {
           <div className="flex flex-wrap gap-2">
             {cvData.skills.map((skill, index) => (
               <div key={index} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm">
-                {skill}
+                 {isMissing(skill) ? <MissingInfo text={skill} fieldName="Skill" onEditRequest={() => handleEditRequest('Skill')} /> : skill}
               </div>
             ))}
           </div>
