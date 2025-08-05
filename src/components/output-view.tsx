@@ -193,7 +193,7 @@ function GeneratedResponseView({
           </Button>
         </>
       ) : (
-        <div className="prose prose-sm relative min-h-[150px] max-w-none rounded-md border bg-background p-4 dark:prose-invert">
+        <div className="prose prose-sm relative min-h-[150px] max-w-none rounded-md border bg-background p-4 dark:prose-invert whitespace-pre-wrap">
           <ReactMarkdown>{localValue}</ReactMarkdown>
           <Button
             variant="ghost"
