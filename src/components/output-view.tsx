@@ -192,7 +192,7 @@ function GeneratedResponseView({
           </Button>
         </>
       ) : (
-        <div className="prose prose-sm relative min-h-[150px] max-w-none rounded-md border bg-background p-4">
+        <div className="prose prose-sm relative min-h-[150px] max-w-none rounded-md border bg-background p-4 dark:prose-invert">
           <Markdown>{localValue}</Markdown>
           <Button
             variant="ghost"
@@ -250,10 +250,10 @@ function QAndAView({
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex flex-col">
             <CardTitle className="flex items-center gap-2">
-              <MessageSquareMore className="h-6 w-6 text-primary" />
+              <MessageSquareMore className="h-6 w-6 text-foreground" />
               Q&A
             </CardTitle>
-            <CardDescription className="prose-sm">
+            <CardDescription className="prose-sm dark:prose-invert">
               Answers to questions found in the job description.
             </CardDescription>
           </div>
@@ -264,7 +264,7 @@ function QAndAView({
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Missing Information</AlertTitle>
-              <AlertDescription className="prose-sm">
+              <AlertDescription className="prose-sm dark:prose-invert">
                 {missingAnswersCount} question
                 {missingAnswersCount > 1 ? 's' : ''} could not be answered
                 based on your bio. These are highlighted below.
@@ -277,12 +277,12 @@ function QAndAView({
                 key={index}
                 className="relative rounded-md border bg-muted/50 p-4"
               >
-                <p className="prose-sm pr-10 font-semibold text-primary mb-2">
+                <p className="prose-sm dark:prose-invert pr-10 font-semibold text-primary dark:text-primary-foreground mb-2">
                   {pair.question}
                 </p>
-                <div className="prose prose-sm max-w-none">
+                <div className="prose prose-sm max-w-none dark:prose-invert">
                   {pair.answer === NOT_FOUND_STRING ? (
-                    <span className="text-destructive">{pair.answer}</span>
+                    <span className="text-red-600 dark:text-red-400">{pair.answer}</span>
                   ) : (
                     <Markdown>{pair.answer}</Markdown>
                   )}
@@ -342,7 +342,7 @@ function DeepAnalysisView({
       return null;
     }
     return (
-      <ul className="prose prose-sm max-w-none list-disc space-y-2 pl-5">
+      <ul className="prose prose-sm max-w-none dark:prose-invert list-disc space-y-2 pl-5">
         {details.map((item, index) => (
           <li key={index} className="ml-5">
             <Markdown components={{ p: Fragment }}>{item}</Markdown>
@@ -357,15 +357,15 @@ function DeepAnalysisView({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Briefcase className="h-6 w-6 text-primary" />
+            <Briefcase className="h-6 w-6 text-foreground" />
             Job Summary
           </CardTitle>
-          <CardDescription className="prose-sm">
+          <CardDescription className="prose-sm dark:prose-invert">
             An expert summary of the role's core requirements.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="prose prose-sm max-w-none">
+          <div className="prose prose-sm max-w-none dark:prose-invert">
             <Markdown>{deepAnalysis.jobSummary}</Markdown>
           </div>
           <div className="mt-6 rounded-lg border bg-muted/50 p-4">
@@ -389,10 +389,10 @@ function DeepAnalysisView({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-6 w-6 text-primary" />
+            <CheckCircle2 className="h-6 w-6 text-foreground" />
             <span>Requirement Analysis</span>
           </CardTitle>
-          <CardDescription className="prose-sm">
+          <CardDescription className="prose-sm dark:prose-invert">
             How your bio aligns with the job's key requirements.
           </CardDescription>
         </CardHeader>
@@ -442,7 +442,7 @@ function DeepAnalysisView({
             <Wand2 className="h-6 w-6 text-yellow-500" />
             <span className="text-yellow-600">Improvement Areas</span>
           </CardTitle>
-          <CardDescription className="prose-sm">
+          <CardDescription className="prose-sm dark:prose-invert">
             Actionable advice to better present your experience.
           </CardDescription>
         </CardHeader>

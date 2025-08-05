@@ -5,22 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, BookOpen, Wrench, GraduationCap, Lightbulb, Star, Award, User } from 'lucide-react';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
-  'summary': <User className="h-6 w-6 text-primary" />,
-  'personal statement': <User className="h-6 w-6 text-primary" />,
-  'work experience': <Briefcase className="h-6 w-6 text-primary" />,
-  'education': <GraduationCap className="h-6 w-6 text-primary" />,
-  'skills': <Wrench className="h-6 w-6 text-primary" />,
-  'projects': <Lightbulb className="h-6 w-6 text-primary" />,
-  'awards': <Award className="h-6 w-6 text-primary" />,
-  'presentations': <BookOpen className="h-6 w-6 text-primary" />,
-  'contact information': <User className="h-6 w-6 text-primary" />,
-  'hobbies and interests': <Star className="h-6 w-6 text-primary" />,
-  'professional affiliations': <Briefcase className="h-6 w-6 text-primary" />,
+  'summary': <User className="h-6 w-6 text-foreground" />,
+  'personal statement': <User className="h-6 w-6 text-foreground" />,
+  'work experience': <Briefcase className="h-6 w-6 text-foreground" />,
+  'education': <GraduationCap className="h-6 w-6 text-foreground" />,
+  'skills': <Wrench className="h-6 w-6 text-foreground" />,
+  'projects': <Lightbulb className="h-6 w-6 text-foreground" />,
+  'awards': <Award className="h-6 w-6 text-foreground" />,
+  'presentations': <BookOpen className="h-6 w-6 text-foreground" />,
+  'contact information': <User className="h-6 w-6 text-foreground" />,
+  'hobbies and interests': <Star className="h-6 w-6 text-foreground" />,
+  'professional affiliations': <Briefcase className="h-6 w-6 text-foreground" />,
 };
 
 function getIcon(title: string): React.ReactNode {
     const lowerCaseTitle = title.toLowerCase();
-    return ICON_MAP[lowerCaseTitle] || <Briefcase className="h-6 w-6 text-primary" />;
+    return ICON_MAP[lowerCaseTitle] || <Briefcase className="h-6 w-6 text-foreground" />;
 }
 
 export function CvView({ cvData }: { cvData: CvOutput }) {
@@ -46,15 +46,15 @@ export function CvView({ cvData }: { cvData: CvOutput }) {
           </CardHeader>
           <CardContent>
             {section.content && (
-              <div className="prose prose-sm max-w-none">
+              <div className="prose prose-sm max-w-none dark:prose-invert">
                 <Markdown>{section.content}</Markdown>
               </div>
             )}
             {section.advice && section.advice.length > 0 && (
-              <ul className="prose prose-sm max-w-none list-disc pl-5 space-y-2">
+              <ul className="prose prose-sm max-w-none dark:prose-invert list-disc pl-5 space-y-2">
                 {section.advice.map((point, i) => (
                   <li key={i} className="ml-5">
-                    <div className="prose prose-sm max-w-none">
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
                         <Markdown components={{ p: Fragment }}>{point}</Markdown>
                     </div>
                   </li>
