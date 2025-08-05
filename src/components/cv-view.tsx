@@ -44,14 +44,22 @@ import { Skeleton } from './ui/skeleton';
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
 const MISSING_NAME_PLACEHOLDER = '[Name not found in bio]';
 
-// Dynamically import the client-only PDF component.
+// Dynamically import the client-only PDF components.
 const PdfDownloadClient = dynamic(
   () => import('./pdf-download-client').then((mod) => mod.PdfDownloadClient),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="h-10 w-[140px]" />,
+  }
+);
+const DirectPdfDownloadButton = dynamic(
+  () => import('./pdf-download-client').then((mod) => mod.DirectPdfDownloadButton),
   {
     ssr: false,
     loading: () => <Skeleton className="h-10 w-10" />,
   }
 );
+
 
 const isMissing = (text: string | undefined | null): boolean => {
   if (!text) return true;
@@ -136,7 +144,7 @@ function ExportButton({
   }
 
   // If no missing info, render the download link directly
-  return <PdfDownloadClient cvData={cvData} className={className} />;
+  return <DirectPdfDownloadButton cvData={cvData} className={className} />;
 }
 
 
