@@ -32,19 +32,19 @@
   }
 
   .dark {
-    --background: 217 48% 12%;
-    --foreground: 0 0% 93%;
-    --card: 217 48% 15%;
+    --background: 217 30% 12%; /* Dark Slate Blue */
+    --foreground: 0 0% 93%; /* Light Gray */
+    --card: 217 30% 15%; /* Darker Slate Blue */
     --card-foreground: 0 0% 93%;
-    --popover: 217 48% 15%;
+    --popover: 217 30% 15%;
     --popover-foreground: 0 0% 93%;
-    --primary: 0 0% 93%;
-    --primary-foreground: 217 48% 12%;
+    --primary: 217 30% 20%; /* Even Darker Slate Blue for Header */
+    --primary-foreground: 0 0% 93%; /* Light Gray Text */
     --secondary: 217 30% 25%;
     --secondary-foreground: 0 0% 93%;
     --muted: 217 30% 25%;
     --muted-foreground: 0 0% 60%;
-    --accent: 38 90% 51%;
+    --accent: 38 90% 51%; /* Yellow-Orange */
     --accent-foreground: 217 48% 12%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
