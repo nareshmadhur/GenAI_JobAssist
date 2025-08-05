@@ -6,7 +6,7 @@ import { AlertTriangle, FileDown, Loader2 } from 'lucide-react';
 import React from 'react';
 
 import type { CvOutput } from '@/ai/flows/generate-cv';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { CvPdfDocument } from './cv-pdf-document';
 import { cn } from '@/lib/utils';
 
@@ -24,19 +24,12 @@ export function PdfDownloadClient({ cvData, className }: { cvData: CvOutput, cla
     <PDFDownloadLink
       document={<CvPdfDocument cvData={cvData} />}
       fileName="cv.pdf"
-      className={cn(
-        // Default styling for the button, can be overridden
-        'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2',
-        // Specific variant styles
-        'bg-primary text-primary-foreground hover:bg-primary/90',
-        // Allow external class names to override
-        className
-      )}
+      className={cn(buttonVariants({ variant: 'default' }), className)}
     >
       {({ loading }) =>
         loading ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             <span>Generating...</span>
           </>
         ) : (

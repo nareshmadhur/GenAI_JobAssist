@@ -13,7 +13,7 @@ import {
   Wrench,
   FileDown,
 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 
 import type { EditRequest } from '@/app/page';
@@ -134,7 +134,9 @@ function ExportButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <PdfDownloadClient cvData={cvData} />
+            <AlertDialogAction asChild>
+               <PdfDownloadClient cvData={cvData} />
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
