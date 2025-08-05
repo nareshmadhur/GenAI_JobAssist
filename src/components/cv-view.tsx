@@ -132,14 +132,10 @@ function ExportButton({
     setShowDialog(false);
   };
 
-  if (!isClient) {
-    return <Skeleton className="h-10 w-10 rounded-full" />;
-  }
-
   return (
     <>
       <div ref={anchorRef} style={{ display: 'none' }}>
-         <PdfDownloadClient cvData={cvData} />
+         {isClient && <PdfDownloadClient cvData={cvData} />}
       </div>
 
       <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
