@@ -172,12 +172,9 @@ export default function Home() {
               <h1 className="font-headline text-2xl font-bold text-primary-foreground md:text-3xl">
                 JobSpark
               </h1>
-              <p className="text-xs text-primary-foreground/80">
+              <div className="text-xs text-primary-foreground/80">
                 Allow AI to boost your job application productivity
-              </p>
-              <Link href="https://www.nareshmadhur.com" target="_blank" rel="noopener noreferrer" className="text-xs text-primary-foreground/60 hover:underline mt-1">
-                Created with ❤️ by Naresh
-              </Link>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">

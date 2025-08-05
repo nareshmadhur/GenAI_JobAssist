@@ -5,16 +5,16 @@ import type { CvOutput } from '@/ai/flows/generate-cv';
 import {
   AlertTriangle,
   Briefcase,
-  Check,
-  FileDown,
   GraduationCap,
   Mail,
   MapPin,
   Phone,
   User,
   Wrench,
+  FileDown,
 } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 
 import type { EditRequest } from '@/app/page';
 import {
@@ -35,16 +35,25 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-import { usePDF } from '@react-pdf/renderer';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
-import { CvPdfDocument } from './cv-pdf-document';
 import { cn } from '@/lib/utils';
 import { Skeleton } from './ui/skeleton';
 
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
 const MISSING_NAME_PLACEHOLDER = '[Name not found in bio]';
+
+// Dynamically import the client-only PDF component.
+// This is the key to preventing the server-side rendering crash.
+const PdfDownloadClient = dynamic(
+  () => import('./pdf-download-client').then((mod) => mod.PdfDownloadClient),
+  {
+    ssr: false, // Ensure this component NEVER renders on the server
+    loading: () => <Skeleton className="h-10 w-10 rounded-full" />,
+  }
+);
+
 
 const isMissing = (text: string | undefined | null): boolean => {
   if (!text) return true;
@@ -88,48 +97,6 @@ const hasMissingInfo = (cvData: CvOutput): boolean => {
   return false;
 };
 
-// This component is rendered only on the client
-function PdfDownloadClient({ cvData }: { cvData: CvOutput }) {
-  const [instance, updateInstance] = usePDF({
-    document: <CvPdfDocument cvData={cvData} />,
-  });
-
-  useEffect(() => {
-    updateInstance();
-  }, [cvData, updateInstance]);
-
-  if (instance.loading) {
-    return (
-      <Button variant="ghost" size="icon" disabled>
-        <FileDown className="h-4 w-4 animate-spin" />
-      </Button>
-    );
-  }
-
-  if (instance.error) {
-    console.error('Error generating PDF:', instance.error);
-    return (
-      <Button variant="ghost" size="icon" disabled>
-        <AlertTriangle className="h-4 w-4 text-destructive" />
-      </Button>
-    );
-  }
-
-  return (
-    <a href={instance.url!} download="cv.pdf">
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label="Export CV as PDF"
-        className="text-slate-600 hover:text-slate-900"
-      >
-        <FileDown className="h-4 w-4" />
-      </Button>
-    </a>
-  );
-}
-
-
 function ExportButton({
   cvData,
   className,
@@ -138,32 +105,51 @@ function ExportButton({
   className?: string;
 }) {
   const [isClient, setIsClient] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
   const anchorRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  const handleExportClick = () => {
+    if (hasMissingInfo(cvData)) {
+      setShowDialog(true);
+    } else {
+      // Find the anchor and click it
+      const anchor = anchorRef.current?.querySelector('a');
+      if (anchor) {
+        anchor.click();
+      }
+    }
+  };
+  
+  const handleContinue = () => {
+    const anchor = anchorRef.current?.querySelector('a');
+    if (anchor) {
+      anchor.click();
+    }
+    setShowDialog(false);
+  };
+
   if (!isClient) {
     return <Skeleton className="h-10 w-10 rounded-full" />;
   }
-  
-  const handleContinue = () => {
-    if (anchorRef.current) {
-      anchorRef.current.click();
-    }
-  };
 
+  return (
+    <>
+      <div ref={anchorRef} style={{ display: 'none' }}>
+         <PdfDownloadClient cvData={cvData} />
+      </div>
 
-  if (hasMissingInfo(cvData)) {
-    return (
-      <AlertDialog>
+      <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
         <AlertDialogTrigger asChild>
            <Button
               variant="ghost"
               size="icon"
               aria-label="Export CV as PDF"
               className={cn('text-slate-600 hover:text-slate-900', className)}
+              onClick={handleExportClick}
             >
               <FileDown className="h-4 w-4" />
             </Button>
@@ -177,19 +163,14 @@ function ExportButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-             <AlertDialogAction asChild>
-                <div onClick={handleContinue}>
-                    <PdfDownloadClient cvData={cvData} />
-                    <span className="sr-only">Continue Anyway</span>
-                </div>
+             <AlertDialogAction onClick={handleContinue}>
+               Continue Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    );
-  }
-
-  return <PdfDownloadClient cvData={cvData} />;
+    </>
+  );
 }
 
 
@@ -229,8 +210,8 @@ const MissingInfo = ({
           </Wrapper>
         </TooltipTrigger>
         <TooltipContent className="bg-slate-800 text-white">
-          <p>This information was not found in your bio.</p>
-          <p>Click to add it to your bio.</p>
+          <div>This information was not found in your bio.</div>
+          <div>Click to add it to your bio.</div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -243,8 +224,6 @@ interface CvViewProps {
 }
 
 export function CvView({ cvData, onEditRequest }: CvViewProps) {
-  const cvRef = useRef<HTMLDivElement>(null);
-
   if (!cvData) {
     return (
       <Card>
@@ -261,7 +240,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
 
   return (
     <div className="rounded-lg bg-white p-2 text-black">
-      <div ref={cvRef}>
+      <div>
         <Card className="font-sans bg-white text-black shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-foreground">Mockup CV</CardTitle>
@@ -339,7 +318,7 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
                     isBlock
                   />
                 ) : (
-                  <p>{cvData.summary}</p>
+                  <div>{cvData.summary}</div>
                 )}
               </div>
             </div>
