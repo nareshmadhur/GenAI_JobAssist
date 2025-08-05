@@ -1,18 +1,19 @@
 // This entire component is a client-side boundary.
 'use client';
 
-import { usePDF, PDFDownloadLink } from '@react-pdf/renderer';
-import { AlertTriangle, FileDown } from 'lucide-react';
-import React, { useEffect } from 'react';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { AlertTriangle, FileDown, Loader2 } from 'lucide-react';
+import React from 'react';
 
 import type { CvOutput } from '@/ai/flows/generate-cv';
 import { Button } from '@/components/ui/button';
 import { CvPdfDocument } from './cv-pdf-document';
+import { cn } from '@/lib/utils';
 
 /**
  * A client-only component that handles the logic for generating and
- * downloading a text-based PDF from CV data. It uses the `usePDF`
- * hook, which can only run in the browser.
+ * downloading a text-based PDF from CV data. It uses the `PDFDownloadLink`
+ * component, which can only run in the browser.
  *
  * @param {{ cvData: CvOutput }} props - The component props.
  * @returns {JSX.Element | null} The rendered download link or status indicator.
@@ -28,7 +29,7 @@ export function PdfDownloadClient({ cvData }: { cvData: CvOutput }): JSX.Element
         if (loading) {
           return (
             <Button variant="ghost" size="icon" disabled>
-              <FileDown className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             </Button>
           );
         }
