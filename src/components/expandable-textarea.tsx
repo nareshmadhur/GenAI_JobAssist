@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { ControllerRenderProps } from 'react-hook-form';
+import { Edit } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -15,7 +16,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  FormDescription,
   FormItem,
   FormLabel,
   FormMessage,
@@ -28,31 +28,26 @@ interface ExpandableTextareaProps {
   field: ControllerRenderProps<Omit<JobApplicationData, 'generationType'>>;
   label: string;
   placeholder: string;
-  description: string;
 }
 
 /**
  * A component that displays a preview of a text area and opens a dialog
- * for full editing.
+ * for full editing. It shows an edit icon on hover for better UX.
  */
 export function ExpandableTextarea({
   field,
   label,
   placeholder,
-  description,
 }: ExpandableTextareaProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [editedValue, setEditedValue] = useState(field.value || '');
 
-  // This effect syncs the dialog's internal state with the form's state
-  // whenever the dialog is opened. This fixes the bug where the initial
-  // content was sometimes missing.
   useEffect(() => {
     if (isOpen) {
       setEditedValue(field.value || '');
     }
   }, [isOpen, field.value]);
-  
+
   const handleSave = () => {
     field.onChange(editedValue);
     setIsOpen(false);
@@ -72,16 +67,16 @@ export function ExpandableTextarea({
           <div
             role="button"
             className={cn(
-              'flex w-full cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background',
+              'group relative flex w-full cursor-pointer rounded-md border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background transition-colors hover:border-primary/50',
               !hasValue && 'text-muted-foreground'
             )}
           >
-            <p className="line-clamp-3 w-full whitespace-pre-wrap">
+            <p className="line-clamp-3 w-full whitespace-pre-wrap opacity-70">
               {hasValue ? field.value : placeholder}
             </p>
+            <Edit className="absolute right-2 top-2 h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
         </DialogTrigger>
-        <FormDescription className="prose-sm">{description}</FormDescription>
         <FormMessage />
       </FormItem>
 
