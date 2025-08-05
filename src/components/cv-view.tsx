@@ -31,9 +31,11 @@ const MISSING_NAME_PLACEHOLDER = '[Name not found in bio]';
 
 const isMissing = (text: string | undefined | null): boolean => {
   if (!text) return true;
+  const lowerText = text.toLowerCase();
   return (
-    text.includes(MISSING_INFO_PLACEHOLDER) ||
-    text.includes(MISSING_NAME_PLACEHOLDER)
+    lowerText.includes(MISSING_INFO_PLACEHOLDER.toLowerCase()) ||
+    lowerText.includes(MISSING_NAME_PLACEHOLDER.toLowerCase()) ||
+    lowerText === 'unknown'
   );
 };
 

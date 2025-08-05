@@ -53,11 +53,16 @@ const prompt = ai.definePrompt({
   output: {schema: CvOutputSchema},
   prompt: `You are an expert CV writer. Your task is to analyze a user's bio and a job description, then generate a complete, professional CV in a structured format.
 
-**Crucially, you must only use information explicitly present in the User Bio. Do not invent or exaggerate details. If contact information like full name, email, phone, or location is not present, you MUST return the specific placeholder strings as described in the output schema.**
+**CRITICAL INSTRUCTIONS:**
+- You must ONLY use information explicitly present in the User Bio. Do not invent, infer, or exaggerate details.
+- If any piece of information cannot be found in the bio (including names, contact details, job titles, companies, durations, etc.), you MUST return one of the placeholder strings as described in the output schema.
+- For a missing full name, use '[Name not found in bio]'.
+- For ALL other missing fields (email, phone, location, job title, company, summary, etc.), use the exact string '[Information not found in bio]'.
+- DO NOT use words like "Unknown" or "N/A". Only use the specified placeholders.
 
 Based on the user's bio and the job description, generate the following sections:
 
-1.  **Contact Info**: Extract the user's full name, email, phone number, and location. Use placeholders for any missing information.
+1.  **Contact Info**: Extract the user's full name, email, phone number, and location.
 2.  **Summary**: Write a powerful, 2-4 sentence professional summary that highlights the user's most relevant qualifications for the target job.
 3.  **Work Experience**: For each job mentioned in the bio, extract the job title, company, duration of employment, and create a list of 3-5 bullet points describing key responsibilities and achievements. Tailor the language to match keywords from the job description.
 4.  **Education**: Extract all educational qualifications, including degree, institution, and year of graduation.
