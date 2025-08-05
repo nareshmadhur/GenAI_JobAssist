@@ -134,9 +134,7 @@ function ExportButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction asChild>
-               <PdfDownloadClient cvData={cvData} />
-            </AlertDialogAction>
+            <PdfDownloadClient cvData={cvData} />
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
