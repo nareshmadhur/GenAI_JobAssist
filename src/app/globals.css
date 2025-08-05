@@ -70,3 +70,20 @@
     text-wrap: balance;
   }
 }
+
+@media print {
+  body, .print-container {
+    background: white !important;
+    color: black !important;
+  }
+  header, footer, .no-print {
+    display: none !important;
+  }
+  .print-container {
+    padding: 0;
+    margin: 0;
+  }
+  .print-container .shadow-lg {
+    box-shadow: none !important;
+  }
+}

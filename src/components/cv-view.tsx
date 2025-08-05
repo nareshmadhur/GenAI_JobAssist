@@ -14,20 +14,11 @@ import {
   FileDown,
 } from 'lucide-react';
 import React from 'react';
-import dynamic from 'next/dynamic';
 
 import type { EditRequest } from '@/app/page';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Separator } from './ui/separator';
 import {
   Tooltip,
   TooltipContent,
@@ -35,31 +26,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Separator } from './ui/separator';
-import { cn } from '@/lib/utils';
-import { Skeleton } from './ui/skeleton';
-
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
 const MISSING_NAME_PLACEHOLDER = '[Name not found in bio]';
-
-// Dynamically import the client-only PDF components.
-const PdfDownloadClient = dynamic(
-  () => import('./pdf-download-client').then((mod) => mod.PdfDownloadClient),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-10 w-[140px]" />,
-  }
-);
-const DirectPdfDownloadButton = dynamic(
-  () => import('./pdf-download-client').then((mod) => mod.DirectPdfDownloadButton),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-10 w-10" />,
-  }
-);
-
 
 const isMissing = (text: string | undefined | null): boolean => {
   if (!text) return true;
@@ -69,83 +37,31 @@ const isMissing = (text: string | undefined | null): boolean => {
   );
 };
 
-const hasMissingInfo = (cvData: CvOutput): boolean => {
-  if (
-    isMissing(cvData.fullName) ||
-    isMissing(cvData.email) ||
-    isMissing(cvData.phone) ||
-    isMissing(cvData.location) ||
-    isMissing(cvData.summary)
-  ) {
-    return true;
-  }
-  if (
-    cvData.workExperience.some(
-      (j) =>
-        isMissing(j.jobTitle) ||
-        isMissing(j.company) ||
-        isMissing(j.duration) ||
-        j.responsibilities.some((r) => isMissing(r))
-    )
-  ) {
-    return true;
-  }
-  if (
-    cvData.education.some(
-      (e) => isMissing(e.degree) || isMissing(e.institution)
-    )
-  ) {
-    return true;
-  }
-  if (cvData.skills.some((s) => isMissing(s))) {
-    return true;
-  }
-  return false;
+const ExportButton = ({ cvData }: { cvData: CvOutput }) => {
+  const handleExport = () => {
+    try {
+      const jsonString = JSON.stringify(cvData);
+      const base64String = btoa(jsonString);
+      const url = `/cv/print?data=${encodeURIComponent(base64String)}`;
+      window.open(url, '_blank');
+    } catch (error) {
+      console.error('Failed to serialize CV data for printing:', error);
+      alert('An error occurred while preparing the CV for export.');
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label="Export CV as PDF"
+      className="text-slate-600 hover:text-slate-900"
+      onClick={handleExport}
+    >
+      <FileDown className="h-4 w-4" />
+    </Button>
+  );
 };
-
-function ExportButton({
-  cvData,
-  className,
-}: {
-  cvData: CvOutput;
-  className?: string;
-}) {
-  if (hasMissingInfo(cvData)) {
-    return (
-       <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Export CV as PDF"
-            className={cn('text-slate-600 hover:text-slate-900', className)}
-          >
-            <FileDown className="h-4 w-4" />
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Incomplete CV</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your CV has missing information. Sections with missing details
-              will be skipped in the PDF. We recommend filling them in for a
-              better result.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction asChild>
-               <PdfDownloadClient cvData={cvData} />
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    );
-  }
-
-  // If no missing info, render the download link directly
-  return <DirectPdfDownloadButton cvData={cvData} className={className} />;
-}
 
 
 const MissingInfo = ({
@@ -195,9 +111,10 @@ const MissingInfo = ({
 interface CvViewProps {
   cvData: CvOutput;
   onEditRequest: (request: EditRequest) => void;
+  isPrintView?: boolean;
 }
 
-export function CvView({ cvData, onEditRequest }: CvViewProps) {
+export function CvView({ cvData, onEditRequest, isPrintView = false }: CvViewProps) {
   if (!cvData) {
     return (
       <Card>
@@ -216,12 +133,12 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
     <div className="rounded-lg bg-white p-2 text-black">
       <div>
         <Card className="font-sans bg-white text-black shadow-lg">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-foreground">Mockup CV</CardTitle>
-            <ExportButton
-              cvData={cvData}
-            />
-          </CardHeader>
+          {!isPrintView && (
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-foreground">Mockup CV</CardTitle>
+              <ExportButton cvData={cvData} />
+            </CardHeader>
+          )}
           <CardContent className="p-6 text-sm">
             {/* Header Section */}
             <div className="mb-6 text-center" data-missing={isMissing(cvData.fullName)}>
