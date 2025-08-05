@@ -60,7 +60,7 @@ export function FloatingActionBar({
           ) : (
             <Briefcase />
           )}
-          <span className="text-xs">CV Advice</span>
+          <span className="text-xs">CV</span>
         </Button>
 
         <Button
