@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useFormContext } from 'react-hook-form';
@@ -20,6 +21,7 @@ import {
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import type { JobApplicationData } from '@/lib/schemas';
+import { ExpandableTextarea } from './expandable-textarea';
 
 /**
  * A component that renders the main input form for the application, including
@@ -48,38 +50,24 @@ export function InputForm(): JSX.Element {
               control={formMethods.control}
               name="jobDescription"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Job Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
-                      className="min-h-[150px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+                <ExpandableTextarea
+                  field={field}
+                  label="Job Description"
+                  placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
+                  description="The AI will analyze this to find key requirements."
+                />
               )}
             />
             <FormField
               control={formMethods.control}
               name="bio"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Your Bio / Resume</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
-                      className="min-h-[200px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription className="prose-sm">
-                    This will be compared against the job description to find
-                    matches and gaps.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
+                <ExpandableTextarea
+                  field={field}
+                  label="Your Bio / Resume"
+                  placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
+                  description="This will be compared against the job description to find matches and gaps."
+                />
               )}
             />
             <FormField

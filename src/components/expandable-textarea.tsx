@@ -1,0 +1,105 @@
+
+'use client';
+
+import React, { useState } from 'react';
+import type { ControllerRenderProps } from 'react-hook-form';
+
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  FormDescription,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import type { JobApplicationData } from '@/lib/schemas';
+
+interface ExpandableTextareaProps {
+  field: ControllerRenderProps<Omit<JobApplicationData, 'generationType'>>;
+  label: string;
+  placeholder: string;
+  description: string;
+}
+
+/**
+ * A component that displays a preview of a text area and opens a dialog
+ * for full editing.
+ */
+export function ExpandableTextarea({
+  field,
+  label,
+  placeholder,
+  description,
+}: ExpandableTextareaProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [editedValue, setEditedValue] = useState(field.value || '');
+
+  const handleSave = () => {
+    field.onChange(editedValue);
+    setIsOpen(false);
+  };
+
+  const handleCancel = () => {
+    setEditedValue(field.value || ''); // Reset to original value on cancel
+    setIsOpen(false);
+  };
+
+  const hasValue = field.value && field.value.length > 0;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <FormItem>
+        <FormLabel>{label}</FormLabel>
+        <DialogTrigger asChild>
+          <div
+            role="button"
+            className={cn(
+              'flex w-full cursor-pointer rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background',
+              !hasValue && 'text-muted-foreground'
+            )}
+          >
+            <p className="line-clamp-3 w-full whitespace-pre-wrap">
+              {hasValue ? field.value : placeholder}
+            </p>
+          </div>
+        </DialogTrigger>
+        <FormDescription className="prose-sm">{description}</FormDescription>
+        <FormMessage />
+      </FormItem>
+
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{label}</DialogTitle>
+          <DialogDescription>
+            View and edit the content below. Click save when you're done.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4">
+          <Textarea
+            value={editedValue}
+            onChange={(e) => setEditedValue(e.target.value)}
+            placeholder={placeholder}
+            className="h-96 min-h-96"
+            aria-label={label}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleCancel}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
