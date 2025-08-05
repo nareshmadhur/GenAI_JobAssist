@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   Briefcase,
   Check,
-  Copy,
   FileDown,
   GraduationCap,
   Mail,
@@ -13,7 +12,7 @@ import {
   User,
   Wrench,
 } from 'lucide-react';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import type { EditRequest } from '@/app/page';
 import {
@@ -34,13 +33,14 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
+import { PDFDownloadLink } from '@react-pdf/renderer';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
+import { CvPdfDocument } from './cv-pdf-document';
+import { cn } from '@/lib/utils';
+import { Skeleton } from './ui/skeleton';
 
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
 const MISSING_NAME_PLACEHOLDER = '[Name not found in bio]';
@@ -53,147 +53,117 @@ const isMissing = (text: string | undefined | null): boolean => {
   );
 };
 
+const hasMissingInfo = (cvData: CvOutput): boolean => {
+  if (
+    isMissing(cvData.fullName) ||
+    isMissing(cvData.email) ||
+    isMissing(cvData.phone) ||
+    isMissing(cvData.location) ||
+    isMissing(cvData.summary)
+  ) {
+    return true;
+  }
+  if (
+    cvData.workExperience.some(
+      (j) =>
+        isMissing(j.jobTitle) ||
+        isMissing(j.company) ||
+        isMissing(j.duration) ||
+        j.responsibilities.some((r) => isMissing(r))
+    )
+  ) {
+    return true;
+  }
+  if (
+    cvData.education.some(
+      (e) => isMissing(e.degree) || isMissing(e.institution) || isMissing(e.year)
+    )
+  ) {
+    return true;
+  }
+  if (cvData.skills.some((s) => isMissing(s))) {
+    return true;
+  }
+  return false;
+};
+
 function ExportButton({
-  elementToExport,
-  className,
   cvData,
+  className,
 }: {
-  elementToExport: React.RefObject<HTMLDivElement>;
-  className?: string;
   cvData: CvOutput;
+  className?: string;
 }) {
-  const [isExporting, setIsExporting] = useState(false);
-  const { toast } = useToast();
+  const [isClient, setIsClient] = useState(false);
 
-  const hasMissingInfo = () => {
-    if (
-      isMissing(cvData.fullName) ||
-      isMissing(cvData.email) ||
-      isMissing(cvData.phone) ||
-      isMissing(cvData.location) ||
-      isMissing(cvData.summary)
-    ) {
-      return true;
-    }
-    if (cvData.workExperience.some(j => isMissing(j.jobTitle) || isMissing(j.company) || isMissing(j.duration) || j.responsibilities.some(r => isMissing(r)))) {
-        return true;
-    }
-    if (cvData.education.some(e => isMissing(e.degree) || isMissing(e.institution) || isMissing(e.year))) {
-        return true;
-    }
-    if (cvData.skills.some(s => isMissing(s))) {
-        return true;
-    }
-    return false;
-  };
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-  const exportToPdf = async () => {
-    if (!elementToExport.current) {
-      toast({
-        variant: 'destructive',
-        title: 'Export Failed',
-        description: 'Could not find the CV element to export.',
-      });
-      return;
-    }
-    setIsExporting(true);
-
-    // Temporarily hide elements with missing info
-    const elementsToHide = elementToExport.current.querySelectorAll(
-      '[data-missing="true"]'
-    );
-    elementsToHide.forEach((el) => el.classList.add('hidden'));
-
-    try {
-      const canvas = await html2canvas(elementToExport.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      const ratio = canvasWidth / canvasHeight;
-      let width = pdfWidth;
-      let height = width / ratio;
-
-      if (height > pdfHeight) {
-        console.warn('CV content is longer than a single A4 page.');
-        // Simple clipping, for multi-page a more complex solution is needed
-        height = pdfHeight; 
-      }
-
-      pdf.addImage(imgData, 'PNG', 0, 0, width, height);
-      pdf.save('cv.pdf');
-
-      toast({ title: 'CV successfully exported as PDF!' });
-    } catch (error) {
-      console.error('Failed to export PDF:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Export Failed',
-        description: 'An unexpected error occurred during PDF generation.',
-      });
-    } finally {
-      // Show the elements again
-      elementsToHide.forEach((el) => el.classList.remove('hidden'));
-      setIsExporting(false);
-    }
-  };
-  
   const triggerButton = (
-     <Button
-        variant="ghost"
-        size="icon"
-        disabled={isExporting}
-        aria-label="Export CV as PDF"
-        className={cn('text-slate-600 hover:text-slate-900', className)}
-      >
-        {isExporting ? (
-          <Check className="h-4 w-4" />
-        ) : (
-          <FileDown className="h-4 w-4" />
-        )}
-      </Button>
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label="Export CV as PDF"
+      className={cn('text-slate-600 hover:text-slate-900', className)}
+    >
+      <FileDown className="h-4 w-4" />
+    </Button>
   );
 
-  if (!hasMissingInfo()) {
-      return (
-        <div onClick={exportToPdf}>
-            {triggerButton}
-        </div>
-      )
+  if (!isClient) {
+    return <Skeleton className="h-10 w-10 rounded-full" />;
+  }
+
+  if (hasMissingInfo(cvData)) {
+    return (
+      <AlertDialog>
+        <AlertDialogTrigger asChild>{triggerButton}</AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Incomplete CV</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your CV has missing information. While you can still download it,
+              we recommend filling in the missing details for a better result.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <PDFDownloadLink
+                document={<CvPdfDocument cvData={cvData} />}
+                fileName="cv.pdf"
+                className={cn(
+                  'inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
+                )}
+              >
+                Continue Anyway
+              </PDFDownloadLink>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
   }
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        {triggerButton}
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Incomplete CV</AlertDialogTitle>
-          <AlertDialogDescription>
-            Your CV has missing information. Sections with missing details will
-            be skipped in the exported PDF. Do you want to continue?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={exportToPdf}>Continue Anyway</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <PDFDownloadLink
+      document={<CvPdfDocument cvData={cvData} />}
+      fileName="cv.pdf"
+    >
+      {({ loading }) =>
+        loading ? (
+          <Button variant="ghost" size="icon" disabled>
+            <Check className="h-4 w-4" />
+          </Button>
+        ) : (
+          triggerButton
+        )
+      }
+    </PDFDownloadLink>
   );
 }
+
 
 const MissingInfo = ({
   text,
@@ -266,9 +236,8 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
       <div ref={cvRef}>
         <Card className="font-sans bg-white text-black shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-slate-800">Mockup CV</CardTitle>
+            <CardTitle className="text-foreground">Mockup CV</CardTitle>
             <ExportButton
-              elementToExport={cvRef}
               cvData={cvData}
             />
           </CardHeader>
@@ -497,5 +466,3 @@ export function CvView({ cvData, onEditRequest }: CvViewProps) {
     </div>
   );
 }
-
-    
