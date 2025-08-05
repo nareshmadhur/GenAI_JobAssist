@@ -32,7 +32,7 @@ interface ExpandableTextareaProps {
 
 /**
  * A component that displays a preview of a text area and opens a dialog
- * for full editing. It shows an edit icon on hover for better UX.
+ * for full editing. It shows a persistent edit icon for better UX on all devices.
  */
 export function ExpandableTextarea({
   field,
@@ -67,14 +67,14 @@ export function ExpandableTextarea({
           <div
             role="button"
             className={cn(
-              'group relative flex w-full cursor-pointer rounded-md border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background transition-colors hover:border-primary/50',
+              'relative flex w-full cursor-pointer rounded-md border border-input bg-background/50 px-3 py-2 text-sm ring-offset-background transition-colors hover:border-primary/50',
               !hasValue && 'text-muted-foreground'
             )}
           >
-            <p className="line-clamp-3 w-full whitespace-pre-wrap opacity-70">
+            <p className="line-clamp-3 w-full whitespace-pre-wrap pr-6 opacity-70">
               {hasValue ? field.value : placeholder}
             </p>
-            <Edit className="absolute right-2 top-2 h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+            <Edit className="absolute right-2 top-2 h-4 w-4 text-muted-foreground" />
           </div>
         </DialogTrigger>
         <FormMessage />
