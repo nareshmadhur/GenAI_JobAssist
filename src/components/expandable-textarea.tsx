@@ -51,17 +51,16 @@ export function ExpandableTextarea({
   const [editedValue, setEditedValue] = useState(field.value || '');
 
   useEffect(() => {
-    // This effect should ONLY run when a new edit request comes in.
-    // It should not depend on field.value, otherwise subsequent clicks on
-    // different warnings won't trigger it if the bio hasn't changed.
+    // This effect handles appending text when a user clicks a "missing info" warning.
     if (editRequest && editRequest.field === fieldName) {
-      const currentVal = editedValue || field.value || '';
+      // Always get the latest value from the form state to avoid using stale local state.
+      const currentVal = field.value || '';
       
-      const newText = currentVal.trim().length > 0 && !currentVal.endsWith('\n\n') 
-        ? currentVal + '\n\n' 
-        : currentVal;
+      // Ensure there's a double newline before appending the new text,
+      // unless the current value is empty.
+      const separator = currentVal.trim().length > 0 ? '\n\n' : '';
 
-      setEditedValue(newText + editRequest.appendText);
+      setEditedValue(currentVal + separator + editRequest.appendText);
       setIsOpen(true); // Open the dialog to show the change
       onEditRequestProcessed(); // Reset the request so it doesn't fire again
     }
