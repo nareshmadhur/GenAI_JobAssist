@@ -195,14 +195,16 @@ function GeneratedResponseView({
       ) : (
         <div className="prose prose-sm relative min-h-[150px] max-w-none rounded-md border bg-background p-4 dark:prose-invert whitespace-pre-wrap">
           <ReactMarkdown>{localValue}</ReactMarkdown>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsEditing(true)}
-            className="absolute right-0 top-0"
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
+          <div className="absolute right-0 top-0 flex">
+            <CopyButton textToCopy={localValue} />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsEditing(true)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
       <RevisionForm
