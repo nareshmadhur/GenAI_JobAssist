@@ -13,7 +13,7 @@ import {
   Wrench,
   FileDown,
 } from 'lucide-react';
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 
 import type { EditRequest } from '@/app/page';
@@ -45,15 +45,13 @@ const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
 const MISSING_NAME_PLACEHOLDER = '[Name not found in bio]';
 
 // Dynamically import the client-only PDF component.
-// This is the key to preventing the server-side rendering crash.
 const PdfDownloadClient = dynamic(
   () => import('./pdf-download-client').then((mod) => mod.PdfDownloadClient),
   {
-    ssr: false, // Ensure this component NEVER renders on the server
-    loading: () => <Skeleton className="h-10 w-10 rounded-full" />,
+    ssr: false,
+    loading: () => <Skeleton className="h-10 w-10" />,
   }
 );
-
 
 const isMissing = (text: string | undefined | null): boolean => {
   if (!text) return true;
@@ -104,64 +102,41 @@ function ExportButton({
   cvData: CvOutput;
   className?: string;
 }) {
-  const [showDialog, setShowDialog] = useState(false);
-  const anchorRef = useRef<HTMLDivElement>(null);
-
-  const handleExportClick = () => {
-    if (hasMissingInfo(cvData)) {
-      setShowDialog(true);
-    } else {
-      // Find the anchor and click it
-      const anchor = anchorRef.current?.querySelector('a');
-      if (anchor) {
-        anchor.click();
-      }
-    }
-  };
-  
-  const handleContinue = () => {
-    const anchor = anchorRef.current?.querySelector('a');
-    if (anchor) {
-      anchor.click();
-    }
-    setShowDialog(false);
-  };
-
-  return (
-    <>
-      <div ref={anchorRef} style={{ display: 'none' }}>
-         <PdfDownloadClient cvData={cvData} />
-      </div>
-
-      <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
+  if (hasMissingInfo(cvData)) {
+    return (
+       <AlertDialog>
         <AlertDialogTrigger asChild>
-           <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Export CV as PDF"
-              className={cn('text-slate-600 hover:text-slate-900', className)}
-              onClick={handleExportClick}
-            >
-              <FileDown className="h-4 w-4" />
-            </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Export CV as PDF"
+            className={cn('text-slate-600 hover:text-slate-900', className)}
+          >
+            <FileDown className="h-4 w-4" />
+          </Button>
         </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Incomplete CV</AlertDialogTitle>
             <AlertDialogDescription>
-              Your CV has missing information. Sections with missing details will be skipped in the PDF. We recommend filling them in for a better result.
+              Your CV has missing information. Sections with missing details
+              will be skipped in the PDF. We recommend filling them in for a
+              better result.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-             <AlertDialogAction onClick={handleContinue}>
-               Continue Anyway
+            <AlertDialogAction asChild>
+               <PdfDownloadClient cvData={cvData} />
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
-  );
+    );
+  }
+
+  // If no missing info, render the download link directly
+  return <PdfDownloadClient cvData={cvData} className={className} />;
 }
 
 
