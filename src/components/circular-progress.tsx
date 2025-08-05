@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface CircularProgressProps {
@@ -36,7 +37,7 @@ export function CircularProgress({
           fill="transparent"
         />
         <circle
-          className="text-primary"
+          className="text-accent"
           cx={size / 2}
           cy={size / 2}
           r={radius}

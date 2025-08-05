@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -15,7 +16,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import React, { Fragment, useEffect, useState } from 'react';
-import Markdown from 'react-markdown';
+import ReactMarkdown from 'react-markdown';
 import { compiler } from 'markdown-to-jsx';
 import ReactDOMServer from 'react-dom/server';
 
@@ -193,7 +194,7 @@ function GeneratedResponseView({
         </>
       ) : (
         <div className="prose prose-sm relative min-h-[150px] max-w-none rounded-md border bg-background p-4 dark:prose-invert">
-          <Markdown>{localValue}</Markdown>
+          <ReactMarkdown>{localValue}</ReactMarkdown>
           <Button
             variant="ghost"
             size="icon"
@@ -284,7 +285,7 @@ function QAndAView({
                   {pair.answer === NOT_FOUND_STRING ? (
                     <span className="text-red-600 dark:text-red-400">{pair.answer}</span>
                   ) : (
-                    <Markdown>{pair.answer}</Markdown>
+                    <ReactMarkdown>{pair.answer}</ReactMarkdown>
                   )}
                 </div>
                 {pair.answer !== NOT_FOUND_STRING && (
@@ -345,7 +346,7 @@ function DeepAnalysisView({
       <ul className="prose prose-sm max-w-none dark:prose-invert list-disc space-y-2 pl-5">
         {details.map((item, index) => (
           <li key={index} className="ml-5">
-            <Markdown components={{ p: Fragment }}>{item}</Markdown>
+            <ReactMarkdown components={{ p: Fragment }}>{item}</ReactMarkdown>
           </li>
         ))}
       </ul>
@@ -366,7 +367,7 @@ function DeepAnalysisView({
         </CardHeader>
         <CardContent>
           <div className="prose prose-sm max-w-none dark:prose-invert">
-            <Markdown>{deepAnalysis.jobSummary}</Markdown>
+            <ReactMarkdown>{deepAnalysis.jobSummary}</ReactMarkdown>
           </div>
           <div className="mt-6 rounded-lg border bg-muted/50 p-4">
             <h4 className="mb-4 text-center text-sm font-semibold text-muted-foreground">
@@ -421,9 +422,9 @@ function DeepAnalysisView({
                   <TableCell className="py-2 px-4">{item.requirement}</TableCell>
                   <TableCell className="py-2 px-4 text-center">
                     {item.isMet ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-600 fill-green-100 inline-block" />
+                      <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400 inline-block" />
                     ) : (
-                      <XCircle className="h-5 w-5 text-red-600 fill-red-100 inline-block" />
+                      <XCircle className="h-5 w-5 text-destructive inline-block" />
                     )}
                   </TableCell>
                   <TableCell className="py-2 px-4 text-sm">

@@ -89,10 +89,10 @@ export function RevisionForm({
   };
 
   return (
-    <Card className="mt-4 bg-muted/50">
+    <Card className="mt-4 bg-background">
       <CardHeader>
         <CardTitle className="text-xl">Revise Output</CardTitle>
-        <CardDescription className="prose-sm">
+        <CardDescription className="prose-sm dark:prose-invert">
           Not quite right? Tell the AI how to improve the response.
         </CardDescription>
       </CardHeader>
