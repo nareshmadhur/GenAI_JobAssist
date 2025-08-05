@@ -89,7 +89,7 @@ export function RevisionForm({
   };
 
   return (
-    <Card className="mt-4 bg-background">
+    <Card className="mt-4 bg-muted/50">
       <CardHeader>
         <CardTitle className="text-xl">Revise Output</CardTitle>
         <CardDescription className="prose-sm dark:prose-invert">

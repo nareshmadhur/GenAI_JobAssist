@@ -440,8 +440,8 @@ function DeepAnalysisView({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Wand2 className="h-6 w-6 text-yellow-500" />
-            <span className="text-yellow-600">Improvement Areas</span>
+            <Wand2 className="h-6 w-6 text-foreground" />
+            <span className="text-foreground">Improvement Areas</span>
           </CardTitle>
           <CardDescription className="prose-sm dark:prose-invert">
             Actionable advice to better present your experience.
