@@ -54,7 +54,7 @@ export function InputForm(): JSX.Element {
                   field={field}
                   label="Job Description"
                   placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
-                  description="The AI will analyze this to find key requirements."
+                  description="The AI will analyze this to find key requirements. Click the box to view and edit."
                 />
               )}
             />
@@ -66,7 +66,7 @@ export function InputForm(): JSX.Element {
                   field={field}
                   label="Your Bio / Resume"
                   placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
-                  description="This will be compared against the job description to find matches and gaps."
+                  description="This will be compared against the job description to find matches and gaps. Click the box to view and edit."
                 />
               )}
             />

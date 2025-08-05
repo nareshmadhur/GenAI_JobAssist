@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ControllerRenderProps } from 'react-hook-form';
 
 import { Button } from '@/components/ui/button';
@@ -44,13 +44,21 @@ export function ExpandableTextarea({
   const [isOpen, setIsOpen] = useState(false);
   const [editedValue, setEditedValue] = useState(field.value || '');
 
+  // This effect syncs the dialog's internal state with the form's state
+  // whenever the dialog is opened. This fixes the bug where the initial
+  // content was sometimes missing.
+  useEffect(() => {
+    if (isOpen) {
+      setEditedValue(field.value || '');
+    }
+  }, [isOpen, field.value]);
+  
   const handleSave = () => {
     field.onChange(editedValue);
     setIsOpen(false);
   };
 
   const handleCancel = () => {
-    setEditedValue(field.value || ''); // Reset to original value on cancel
     setIsOpen(false);
   };
 
