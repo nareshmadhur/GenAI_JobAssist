@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { PDFDownloadLink, usePDF } from '@react-pdf/renderer';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
@@ -76,7 +76,7 @@ const hasMissingInfo = (cvData: CvOutput): boolean => {
   }
   if (
     cvData.education.some(
-      (e) => isMissing(e.degree) || isMissing(e.institution) || isMissing(e.year)
+      (e) => isMissing(e.degree) || isMissing(e.institution)
     )
   ) {
     return true;
@@ -95,10 +95,17 @@ function ExportButton({
   className?: string;
 }) {
   const [isClient, setIsClient] = useState(false);
+  const [instance, updateInstance] = usePDF({ document: <CvPdfDocument cvData={cvData} /> });
+  const anchorRef = useRef<HTMLAnchorElement>(null);
+
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    updateInstance();
+  }, [cvData, updateInstance]);
 
   const triggerButton = (
     <Button
@@ -114,6 +121,13 @@ function ExportButton({
   if (!isClient) {
     return <Skeleton className="h-10 w-10 rounded-full" />;
   }
+  
+  const handleContinue = () => {
+    if (anchorRef.current) {
+      anchorRef.current.click();
+    }
+  };
+
 
   if (hasMissingInfo(cvData)) {
     return (
@@ -123,22 +137,13 @@ function ExportButton({
           <AlertDialogHeader>
             <AlertDialogTitle>Incomplete CV</AlertDialogTitle>
             <AlertDialogDescription>
-              Your CV has missing information. While you can still download it,
-              we recommend filling in the missing details for a better result.
+              Your CV has missing information. Sections with missing details will be skipped in the PDF. We recommend filling them in for a better result.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction asChild>
-              <PDFDownloadLink
-                document={<CvPdfDocument cvData={cvData} />}
-                fileName="cv.pdf"
-                className={cn(
-                  'inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50'
-                )}
-              >
-                Continue Anyway
-              </PDFDownloadLink>
+             <AlertDialogAction onClick={handleContinue}>
+              Continue Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -147,20 +152,20 @@ function ExportButton({
   }
 
   return (
-    <PDFDownloadLink
-      document={<CvPdfDocument cvData={cvData} />}
-      fileName="cv.pdf"
+    <a 
+      href={instance.url!} 
+      download="cv.pdf" 
+      ref={anchorRef} 
+      aria-label="Export CV as PDF"
     >
-      {({ loading }) =>
-        loading ? (
-          <Button variant="ghost" size="icon" disabled>
-            <Check className="h-4 w-4" />
-          </Button>
-        ) : (
-          triggerButton
-        )
-      }
-    </PDFDownloadLink>
+      {instance.loading ? (
+         <Button variant="ghost" size="icon" disabled>
+           <Check className="h-4 w-4" />
+         </Button>
+      ) : (
+        triggerButton
+      )}
+    </a>
   );
 }
 
