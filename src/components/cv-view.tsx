@@ -1,4 +1,6 @@
 
+'use client';
+
 import type { CvOutput } from '@/ai/flows/generate-cv';
 import {
   AlertTriangle,
@@ -86,6 +88,48 @@ const hasMissingInfo = (cvData: CvOutput): boolean => {
   return false;
 };
 
+// This component is rendered only on the client
+function PdfDownloadClient({ cvData }: { cvData: CvOutput }) {
+  const [instance, updateInstance] = usePDF({
+    document: <CvPdfDocument cvData={cvData} />,
+  });
+
+  useEffect(() => {
+    updateInstance();
+  }, [cvData, updateInstance]);
+
+  if (instance.loading) {
+    return (
+      <Button variant="ghost" size="icon" disabled>
+        <FileDown className="h-4 w-4 animate-spin" />
+      </Button>
+    );
+  }
+
+  if (instance.error) {
+    console.error('Error generating PDF:', instance.error);
+    return (
+      <Button variant="ghost" size="icon" disabled>
+        <AlertTriangle className="h-4 w-4 text-destructive" />
+      </Button>
+    );
+  }
+
+  return (
+    <a href={instance.url!} download="cv.pdf">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Export CV as PDF"
+        className="text-slate-600 hover:text-slate-900"
+      >
+        <FileDown className="h-4 w-4" />
+      </Button>
+    </a>
+  );
+}
+
+
 function ExportButton({
   cvData,
   className,
@@ -94,28 +138,11 @@ function ExportButton({
   className?: string;
 }) {
   const [isClient, setIsClient] = useState(false);
-  const [instance, updateInstance] = usePDF({ document: <CvPdfDocument cvData={cvData} /> });
   const anchorRef = useRef<HTMLAnchorElement>(null);
-
 
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  useEffect(() => {
-    updateInstance();
-  }, [cvData, updateInstance]);
-
-  const triggerButton = (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label="Export CV as PDF"
-      className={cn('text-slate-600 hover:text-slate-900', className)}
-    >
-      <FileDown className="h-4 w-4" />
-    </Button>
-  );
 
   if (!isClient) {
     return <Skeleton className="h-10 w-10 rounded-full" />;
@@ -131,7 +158,16 @@ function ExportButton({
   if (hasMissingInfo(cvData)) {
     return (
       <AlertDialog>
-        <AlertDialogTrigger asChild>{triggerButton}</AlertDialogTrigger>
+        <AlertDialogTrigger asChild>
+           <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Export CV as PDF"
+              className={cn('text-slate-600 hover:text-slate-900', className)}
+            >
+              <FileDown className="h-4 w-4" />
+            </Button>
+        </AlertDialogTrigger>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Incomplete CV</AlertDialogTitle>
@@ -141,8 +177,11 @@ function ExportButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-             <AlertDialogAction onClick={handleContinue}>
-              Continue Anyway
+             <AlertDialogAction asChild>
+                <div onClick={handleContinue}>
+                    <PdfDownloadClient cvData={cvData} />
+                    <span className="sr-only">Continue Anyway</span>
+                </div>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -150,22 +189,7 @@ function ExportButton({
     );
   }
 
-  return (
-    <a 
-      href={instance.url!} 
-      download="cv.pdf" 
-      ref={anchorRef} 
-      aria-label="Export CV as PDF"
-    >
-      {instance.loading ? (
-         <Button variant="ghost" size="icon" disabled>
-           <Check className="h-4 w-4" />
-         </Button>
-      ) : (
-        triggerButton
-      )}
-    </a>
-  );
+  return <PdfDownloadClient cvData={cvData} />;
 }
 
 
