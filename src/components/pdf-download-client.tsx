@@ -5,7 +5,7 @@ import { PDFDownloadLink } from '@react-pdf/renderer';
 import { AlertTriangle, FileDown, Loader2 } from 'lucide-react';
 import React from 'react';
 
-import type { CvOutput } from '@/ai/flows/generate-cv';
+import type { CvOutput } from '@/lib/schemas';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { CvPdfDocument } from './cv-pdf-document';
 import { cn } from '@/lib/utils';

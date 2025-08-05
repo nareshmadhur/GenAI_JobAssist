@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -24,15 +22,11 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { JobApplicationData } from '@/lib/schemas';
-import type { EditRequest } from '@/app/page';
 
 interface ExpandableTextareaProps {
   field: ControllerRenderProps<Omit<JobApplicationData, 'generationType'>>;
   label: string;
   placeholder: string;
-  editRequest: EditRequest | null;
-  onEditRequestProcessed: () => void;
-  fieldName: 'bio' | 'jobDescription';
 }
 
 /**
@@ -43,30 +37,9 @@ export function ExpandableTextarea({
   field,
   label,
   placeholder,
-  editRequest,
-  onEditRequestProcessed,
-  fieldName,
 }: ExpandableTextareaProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [editedValue, setEditedValue] = useState(field.value || '');
-
-  useEffect(() => {
-    // This effect handles appending text when a user clicks a "missing info" warning.
-    if (editRequest && editRequest.field === fieldName) {
-      // Always get the latest value from the form state to avoid using stale local state.
-      const currentVal = field.value || '';
-      
-      // Ensure there's a double newline before appending the new text,
-      // unless the current value is empty.
-      const separator = currentVal.trim().length > 0 ? '\n\n' : '';
-
-      setEditedValue(currentVal + separator + editRequest.appendText);
-      setIsOpen(true); // Open the dialog to show the change
-      onEditRequestProcessed(); // Reset the request so it doesn't fire again
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editRequest, fieldName, onEditRequestProcessed]);
-
 
   useEffect(() => {
     // This effect ensures that if the dialog is opened manually,

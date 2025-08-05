@@ -10,7 +10,7 @@ import {
   StyleSheet,
   Font,
 } from '@react-pdf/renderer';
-import type { CvOutput } from '@/ai/flows/generate-cv';
+import type { CvOutput } from '@/lib/schemas';
 
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
 const MISSING_NAME_PLACEHOLDER = '[Name not found in bio]';

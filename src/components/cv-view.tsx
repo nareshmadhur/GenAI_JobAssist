@@ -1,7 +1,5 @@
-
 'use client';
 
-import type { CvOutput } from '@/ai/flows/generate-cv';
 import {
   AlertTriangle,
   Briefcase,
@@ -12,10 +10,11 @@ import {
   User,
   Wrench,
   FileDown,
+  Loader2,
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useTransition } from 'react';
+import type { CvOutput } from '@/lib/schemas';
 
-import type { EditRequest } from '@/app/page';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
@@ -37,6 +36,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { updateCvFieldAction } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
+import { EditableCvField } from './editable-cv-field';
 
 
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
@@ -132,23 +134,16 @@ const ExportButton = ({ cvData }: { cvData: CvOutput }) => {
 
 const MissingInfo = ({
   text,
-  onEditRequest,
   fieldName,
   isBlock,
 }: {
   text: string;
-  onEditRequest?: () => void;
   fieldName?: string;
   isBlock?: boolean;
 }) => {
   if (!isMissing(text)) {
     return <>{text}</>;
   }
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    onEditRequest?.();
-  };
   
   const Wrapper = isBlock ? 'div': 'span';
 
@@ -157,8 +152,7 @@ const MissingInfo = ({
       <Tooltip>
         <TooltipTrigger asChild>
           <Wrapper
-            className="cursor-pointer font-semibold text-red-600 hover:underline"
-            onClick={handleClick}
+            className="font-semibold text-red-600"
             data-missing="true"
           >
             <AlertTriangle className="mr-1 inline-block h-4 w-4" />
@@ -167,7 +161,7 @@ const MissingInfo = ({
         </TooltipTrigger>
         <TooltipContent className="bg-slate-800 text-white">
           <div>This information was not found in your bio.</div>
-          <div>Click to add it to your bio.</div>
+          <div>Click to edit it directly.</div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -176,11 +170,14 @@ const MissingInfo = ({
 
 interface CvViewProps {
   cvData: CvOutput;
-  onEditRequest: (request: EditRequest) => void;
+  onCvUpdate: (newCvData: CvOutput) => void;
   isPrintView?: boolean;
 }
 
-export function CvView({ cvData, onEditRequest, isPrintView = false }: CvViewProps) {
+export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps) {
+  const [isUpdating, startUpdateTransition] = useTransition();
+  const { toast } = useToast();
+
   if (!cvData) {
     return (
       <Card>
@@ -191,14 +188,39 @@ export function CvView({ cvData, onEditRequest, isPrintView = false }: CvViewPro
     );
   }
 
-  const handleEditRequest = (fieldName: string) => {
-    onEditRequest({ field: 'bio', appendText: `\n\n${fieldName}: ` });
+  const handleFieldUpdate = (fieldKey: string, newValue: string) => {
+    startUpdateTransition(async () => {
+      const result = await updateCvFieldAction({
+        existingCv: cvData,
+        fieldToUpdate: fieldKey,
+        newValue: newValue,
+      });
+
+      if (result.success) {
+        onCvUpdate(result.data);
+        toast({
+            title: 'CV Updated',
+            description: 'The field has been successfully updated.',
+        });
+      } else {
+        toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: result.error,
+        });
+      }
+    });
   };
 
   return (
     <div className="rounded-lg bg-white p-2 text-black">
+      {isUpdating && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/70">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
       <div>
-        <Card className="font-sans bg-white text-black shadow-lg">
+        <Card className="font-sans bg-white text-black shadow-lg relative">
           {!isPrintView && (
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-foreground">Mockup CV</CardTitle>
@@ -209,52 +231,41 @@ export function CvView({ cvData, onEditRequest, isPrintView = false }: CvViewPro
             {/* Header Section */}
             <div className="mb-6 text-center" data-missing={isMissing(cvData.fullName)}>
               <h1 className="text-3xl font-bold text-slate-900">
-                {isMissing(cvData.fullName) ? (
-                  <MissingInfo
-                    text={cvData.fullName}
-                    onEditRequest={() => handleEditRequest('Full Name')}
+                <EditableCvField
+                    value={cvData.fullName}
+                    onSave={(newValue) => handleFieldUpdate('fullName', newValue)}
                     fieldName="Full Name"
-                  />
-                ) : (
-                  cvData.fullName
-                )}
+                    isMissing={isMissing(cvData.fullName)}
+                    className="text-3xl font-bold"
+                 />
               </h1>
               <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-slate-500">
                 <div className="flex items-center gap-2" data-missing={isMissing(cvData.email)}>
                   <Mail className="h-4 w-4" />
-                  {isMissing(cvData.email) ? (
-                    <MissingInfo
-                      text={cvData.email}
-                      onEditRequest={() => handleEditRequest('Email')}
-                      fieldName="Email"
-                    />
-                  ) : (
-                    cvData.email
-                  )}
+                   <EditableCvField
+                    value={cvData.email}
+                    onSave={(newValue) => handleFieldUpdate('email', newValue)}
+                    fieldName="Email"
+                    isMissing={isMissing(cvData.email)}
+                  />
                 </div>
                 <div className="flex items-center gap-2" data-missing={isMissing(cvData.phone)}>
                   <Phone className="h-4 w-4" />
-                  {isMissing(cvData.phone) ? (
-                    <MissingInfo
-                      text={cvData.phone}
-                      onEditRequest={() => handleEditRequest('Phone')}
-                      fieldName="Phone"
-                    />
-                  ) : (
-                    cvData.phone
-                  )}
+                   <EditableCvField
+                    value={cvData.phone}
+                    onSave={(newValue) => handleFieldUpdate('phone', newValue)}
+                    fieldName="Phone"
+                    isMissing={isMissing(cvData.phone)}
+                  />
                 </div>
                 <div className="flex items-center gap-2" data-missing={isMissing(cvData.location)}>
                   <MapPin className="h-4 w-4" />
-                  {isMissing(cvData.location) ? (
-                    <MissingInfo
-                      text={cvData.location}
-                      onEditRequest={() => handleEditRequest('Location')}
-                      fieldName="Location"
-                    />
-                  ) : (
-                    cvData.location
-                  )}
+                  <EditableCvField
+                    value={cvData.location}
+                    onSave={(newValue) => handleFieldUpdate('location', newValue)}
+                    fieldName="Location"
+                    isMissing={isMissing(cvData.location)}
+                  />
                 </div>
               </div>
             </div>
@@ -267,16 +278,14 @@ export function CvView({ cvData, onEditRequest, isPrintView = false }: CvViewPro
                 <User className="h-5 w-5" /> Professional Summary
               </h2>
               <div className="text-slate-600">
-                {isMissing(cvData.summary) ? (
-                  <MissingInfo
-                    text={cvData.summary}
+                <EditableCvField
+                    value={cvData.summary}
+                    onSave={(newValue) => handleFieldUpdate('summary', newValue)}
                     fieldName="Summary"
-                    onEditRequest={() => handleEditRequest('Professional Summary')}
+                    isMissing={isMissing(cvData.summary)}
                     isBlock
+                    multiline
                   />
-                ) : (
-                  <div>{cvData.summary}</div>
-                )}
               </div>
             </div>
 
@@ -292,53 +301,42 @@ export function CvView({ cvData, onEditRequest, isPrintView = false }: CvViewPro
                   <div key={index} data-missing={isMissing(job.jobTitle) || isMissing(job.company) || isMissing(job.duration)}>
                     <div className="flex items-baseline justify-between">
                       <h3 className="text-lg font-semibold text-slate-800">
-                        {isMissing(job.jobTitle) ? (
-                          <MissingInfo
-                            text={job.jobTitle}
+                         <EditableCvField
+                            value={job.jobTitle}
+                            onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.jobTitle`, newValue)}
                             fieldName="Job Title"
-                            onEditRequest={() => handleEditRequest('Job Title')}
-                          />
-                        ) : (
-                          job.jobTitle
-                        )}
+                            isMissing={isMissing(job.jobTitle)}
+                            className="text-lg font-semibold"
+                        />
                       </h3>
                       <div className="text-sm text-slate-500">
-                        {isMissing(job.duration) ? (
-                          <MissingInfo
-                            text={job.duration}
+                        <EditableCvField
+                            value={job.duration}
+                            onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.duration`, newValue)}
                             fieldName="Duration"
-                            onEditRequest={() => handleEditRequest('Duration')}
-                          />
-                        ) : (
-                          job.duration
-                        )}
+                            isMissing={isMissing(job.duration)}
+                            className="text-sm"
+                        />
                       </div>
                     </div>
                     <h4 className="text-md font-medium text-slate-700">
-                      {isMissing(job.company) ? (
-                        <MissingInfo
-                          text={job.company}
-                          fieldName="Company"
-                          onEditRequest={() => handleEditRequest('Company')}
+                       <EditableCvField
+                            value={job.company}
+                            onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.company`, newValue)}
+                            fieldName="Company"
+                            isMissing={isMissing(job.company)}
+                            className="text-md font-medium"
                         />
-                      ) : (
-                        job.company
-                      )}
                     </h4>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-600">
                       {job.responsibilities.map((responsibility, i) => (
                         <li key={i} data-missing={isMissing(responsibility)}>
-                          {isMissing(responsibility) ? (
-                            <MissingInfo
-                              text={responsibility}
-                              fieldName="Responsibility"
-                              onEditRequest={() =>
-                                handleEditRequest('Responsibility/Achievement')
-                              }
-                            />
-                          ) : (
-                            responsibility
-                          )}
+                          <EditableCvField
+                            value={responsibility}
+                            onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.responsibilities.${i}`, newValue)}
+                            fieldName="Responsibility"
+                            isMissing={isMissing(responsibility)}
+                          />
                         </li>
                       ))}
                     </ul>
@@ -359,38 +357,32 @@ export function CvView({ cvData, onEditRequest, isPrintView = false }: CvViewPro
                   <div key={index} className="flex items-baseline justify-between" data-missing={isMissing(edu.degree) || isMissing(edu.institution) || isMissing(edu.year)}>
                     <div>
                       <h3 className="text-lg font-semibold text-slate-800">
-                        {isMissing(edu.degree) ? (
-                          <MissingInfo
-                            text={edu.degree}
+                         <EditableCvField
+                            value={edu.degree}
+                            onSave={(newValue) => handleFieldUpdate(`education.${index}.degree`, newValue)}
                             fieldName="Degree"
-                            onEditRequest={() => handleEditRequest('Degree')}
-                          />
-                        ) : (
-                          edu.degree
-                        )}
+                            isMissing={isMissing(edu.degree)}
+                            className="text-lg font-semibold"
+                        />
                       </h3>
                       <div className="text-md text-slate-600">
-                        {isMissing(edu.institution) ? (
-                          <MissingInfo
-                            text={edu.institution}
+                        <EditableCvField
+                            value={edu.institution}
+                            onSave={(newValue) => handleFieldUpdate(`education.${index}.institution`, newValue)}
                             fieldName="Institution"
-                            onEditRequest={() => handleEditRequest('Institution')}
-                          />
-                        ) : (
-                          edu.institution
-                        )}
+                            isMissing={isMissing(edu.institution)}
+                            className="text-md"
+                        />
                       </div>
                     </div>
                     <div className="text-sm text-slate-500">
-                      {isMissing(edu.year) ? (
-                         <MissingInfo
-                          text={edu.year || ''}
-                          fieldName="Year"
-                          onEditRequest={() => handleEditRequest('Year')}
+                      <EditableCvField
+                            value={edu.year || ''}
+                            onSave={(newValue) => handleFieldUpdate(`education.${index}.year`, newValue)}
+                            fieldName="Year"
+                            isMissing={isMissing(edu.year)}
+                            className="text-sm"
                         />
-                      ) : (
-                        edu.year
-                      )}
                     </div>
                   </div>
                 ))}
@@ -406,20 +398,14 @@ export function CvView({ cvData, onEditRequest, isPrintView = false }: CvViewPro
               </h2>
               <div className="flex flex-wrap gap-2">
                 {cvData.skills.map((skill, index) => (
-                  <div
-                    key={index}
-                    className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700"
-                    data-missing={isMissing(skill)}
-                  >
-                    {isMissing(skill) ? (
-                      <MissingInfo
-                        text={skill}
+                   <div key={index} className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700" data-missing={isMissing(skill)}>
+                     <EditableCvField
+                        value={skill}
+                        onSave={(newValue) => handleFieldUpdate(`skills.${index}`, newValue)}
                         fieldName="Skill"
-                        onEditRequest={() => handleEditRequest('Skill')}
-                      />
-                    ) : (
-                      skill
-                    )}
+                        isMissing={isMissing(skill)}
+                        className="text-sm"
+                    />
                   </div>
                 ))}
               </div>

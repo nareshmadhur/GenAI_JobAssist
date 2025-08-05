@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFormContext } from 'react-hook-form';
@@ -22,12 +21,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import type { JobApplicationData } from '@/lib/schemas';
 import { ExpandableTextarea } from './expandable-textarea';
-import type { EditRequest } from '@/app/page';
-
-interface InputFormProps {
-  editRequest: EditRequest | null;
-  onEditRequestProcessed: () => void;
-}
 
 /**
  * A component that renders the main input form for the application, including
@@ -35,7 +28,7 @@ interface InputFormProps {
  *
  * @returns {JSX.Element} The rendered input form.
  */
-export function InputForm({ editRequest, onEditRequestProcessed }: InputFormProps): JSX.Element {
+export function InputForm(): JSX.Element {
   const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
 
   return (
@@ -60,9 +53,6 @@ export function InputForm({ editRequest, onEditRequestProcessed }: InputFormProp
                   field={field}
                   label="Job Description"
                   placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
-                  editRequest={editRequest}
-                  onEditRequestProcessed={onEditRequestProcessed}
-                  fieldName="jobDescription"
                 />
               )}
             />
@@ -74,9 +64,6 @@ export function InputForm({ editRequest, onEditRequestProcessed }: InputFormProp
                   field={field}
                   label="Your Bio / Resume"
                   placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
-                  editRequest={editRequest}
-                  onEditRequestProcessed={onEditRequestProcessed}
-                  fieldName="bio"
                 />
               )}
             />

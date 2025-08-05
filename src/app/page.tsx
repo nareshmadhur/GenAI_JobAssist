@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,11 +30,6 @@ import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
 const LOCAL_STORAGE_KEY = 'jobspark_form_data';
 
-export type EditRequest = {
-  field: 'bio';
-  appendText: string;
-};
-
 export default function Home() {
   const [isGenerating, startGenerating] = useTransition();
   const [activeView, setActiveView] = useState<ActiveView>('none');
@@ -44,8 +37,6 @@ export default function Home() {
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
-  const [editRequest, setEditRequest] = useState<EditRequest | null>(null);
-
 
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
     resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
@@ -158,10 +149,6 @@ export default function Home() {
     }
   };
 
-  const handleEditRequest = (request: EditRequest) => {
-    setEditRequest(request);
-  };
-
   return (
     <div className="flex w-full flex-col bg-muted/20 flex-1">
       <header className="sticky top-0 z-10 w-full border-b border-b-accent bg-primary px-4 py-4 sm:px-6 md:px-8">
@@ -229,10 +216,7 @@ export default function Home() {
       <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-32 sm:p-6 md:p-8">
         <FormProvider {...formMethods}>
           <div className="flex flex-col gap-8">
-            <InputForm
-              editRequest={editRequest}
-              onEditRequestProcessed={() => setEditRequest(null)}
-            />
+            <InputForm />
             <div ref={outputRef}>
               {activeView !== 'none' && (
                 <OutputView
@@ -242,7 +226,6 @@ export default function Home() {
                   setAllResults={setAllResults}
                   isGenerating={isGenerating}
                   generationError={generationError}
-                  onEditRequest={handleEditRequest}
                 />
               )}
             </div>

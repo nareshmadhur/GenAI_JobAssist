@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CvView } from '@/components/cv-view';
-import type { CvOutput } from '@/ai/flows/generate-cv';
+import type { CvOutput } from '@/lib/schemas';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function CvPrintPage() {
@@ -50,12 +50,12 @@ function CvPrintPage() {
     );
   }
 
-  // A dummy onEditRequest function as it's not needed on the print page.
-  const handleEditRequest = () => {};
+  // A dummy onCvUpdate function as it's not needed on the print page.
+  const handleCvUpdate = () => {};
 
   return (
     <div className="print-container bg-white">
-      <CvView cvData={cvData} onEditRequest={handleEditRequest} isPrintView />
+      <CvView cvData={cvData} onCvUpdate={handleCvUpdate} isPrintView />
     </div>
   );
 }

@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import {
@@ -22,7 +20,6 @@ import { compiler } from 'markdown-to-jsx';
 import ReactDOMServer from 'react-dom/server';
 
 import type { DeepAnalysisOutput } from '@/ai/flows';
-import type { CvOutput } from '@/ai/flows/generate-cv';
 import { reviseAction } from '@/app/actions';
 import {
   Card,
@@ -41,7 +38,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import type { QAndAOutput, ReviseResponseData } from '@/lib/schemas';
+import type { CvOutput, QAndAOutput, ReviseResponseData } from '@/lib/schemas';
 import type { AllGenerationResults, GenerationType } from './job-spark-app';
 import { Button } from './ui/button';
 import { CvView } from './cv-view';
@@ -53,7 +50,6 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { CircularProgress } from './circular-progress';
-import { EditRequest } from '@/app/page';
 
 interface OutputViewProps {
   activeView: ActiveView;
@@ -62,7 +58,6 @@ interface OutputViewProps {
   setAllResults: React.Dispatch<React.SetStateAction<AllGenerationResults>>;
   isGenerating: boolean;
   generationError: string | null;
-  onEditRequest: (request: EditRequest) => void;
 }
 
 const VIEW_CONFIG: Record<
@@ -496,7 +491,6 @@ export function OutputView({
   setAllResults,
   isGenerating,
   generationError,
-  onEditRequest,
 }: OutputViewProps): JSX.Element {
   const { toast } = useToast();
 
@@ -535,6 +529,11 @@ export function OutputView({
     });
   };
 
+  const handleCvUpdate = (newCvData: CvOutput) => {
+    setAllResults(prev => ({ ...prev, cv: newCvData }));
+  };
+
+
   const renderActiveView = () => {
     if (isGenerating && !allResults[activeView as GenerationType]) {
       return <SectionSkeleton />;
@@ -561,7 +560,7 @@ export function OutputView({
         );
       case 'cv':
         if (!allResults.cv) return null;
-        return <CvView cvData={allResults.cv as CvOutput} onEditRequest={onEditRequest} />;
+        return <CvView cvData={allResults.cv} onCvUpdate={handleCvUpdate} />;
       case 'deepAnalysis':
         if (!allResults.deepAnalysis) return null;
         return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} />;
