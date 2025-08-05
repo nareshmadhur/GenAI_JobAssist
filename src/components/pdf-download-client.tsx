@@ -1,7 +1,7 @@
 // This entire component is a client-side boundary.
 'use client';
 
-import { usePDF } from '@react-pdf/renderer';
+import { usePDF, PDFDownloadLink } from '@react-pdf/renderer';
 import { AlertTriangle, FileDown } from 'lucide-react';
 import React, { useEffect } from 'react';
 
@@ -18,47 +18,45 @@ import { CvPdfDocument } from './cv-pdf-document';
  * @returns {JSX.Element | null} The rendered download link or status indicator.
  */
 export function PdfDownloadClient({ cvData }: { cvData: CvOutput }): JSX.Element | null {
-  const [instance, updateInstance] = usePDF({
-    document: <CvPdfDocument cvData={cvData} />,
-  });
+  // The PDFDownloadLink component is a simpler and more direct way to handle downloads.
+  return (
+    <PDFDownloadLink
+      document={<CvPdfDocument cvData={cvData} />}
+      fileName="cv.pdf"
+    >
+      {({ blob, url, loading, error }) => {
+        if (loading) {
+          return (
+            <Button variant="ghost" size="icon" disabled>
+              <FileDown className="h-4 w-4 animate-spin" />
+            </Button>
+          );
+        }
 
-  // The PDF document needs to be re-rendered whenever the data changes.
-  useEffect(() => {
-    updateInstance();
-  }, [cvData, updateInstance]);
+        if (error) {
+          console.error('Error generating PDF:', error);
+          return (
+            <Button variant="ghost" size="icon" disabled>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </Button>
+          );
+        }
 
-  if (instance.loading) {
-    return (
-      <Button variant="ghost" size="icon" disabled>
-        <FileDown className="h-4 w-4 animate-spin" />
-      </Button>
-    );
-  }
-
-  if (instance.error) {
-    console.error('Error generating PDF:', instance.error);
-    return (
-      <Button variant="ghost" size="icon" disabled>
-        <AlertTriangle className="h-4 w-4 text-destructive" />
-      </Button>
-    );
-  }
-
-  // The `instance.url` will be a blob URL for the generated PDF.
-  if (instance.url) {
-    return (
-      <a href={instance.url} download="cv.pdf">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Export CV as PDF"
-          className="text-slate-600 hover:text-slate-900"
-        >
-          <FileDown className="h-4 w-4" />
-        </Button>
-      </a>
-    );
-  }
-
-  return null;
+        return (
+          // We render a standard button, but the parent `a` tag from PDFDownloadLink handles the click.
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Export CV as PDF"
+            className="text-slate-600 hover:text-slate-900"
+            asChild // Ensures the button doesn't have nested interactive elements
+          >
+            <div>
+              <FileDown className="h-4 w-4" />
+            </div>
+          </Button>
+        );
+      }}
+    </PDFDownloadLink>
+  );
 }

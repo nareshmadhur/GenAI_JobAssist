@@ -104,13 +104,8 @@ function ExportButton({
   cvData: CvOutput;
   className?: string;
 }) {
-  const [isClient, setIsClient] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   const handleExportClick = () => {
     if (hasMissingInfo(cvData)) {
@@ -135,7 +130,7 @@ function ExportButton({
   return (
     <>
       <div ref={anchorRef} style={{ display: 'none' }}>
-         {isClient && <PdfDownloadClient cvData={cvData} />}
+         <PdfDownloadClient cvData={cvData} />
       </div>
 
       <AlertDialog open={showDialog} onOpenChange={setShowDialog}>
