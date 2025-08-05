@@ -69,7 +69,7 @@ export function EditableCvField({
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setCurrentValue(e.target.value),
       onBlur: handleSave,
       onKeyDown: handleKeyDown,
-      className: cn('h-auto p-1 text-sm bg-background/80', multiline ? 'min-h-[60px]' : '', className),
+      className: cn('h-auto p-1 text-sm bg-slate-100', multiline ? 'min-h-[60px]' : '', className),
     };
     return (
       <div className={cn('flex w-full items-center gap-2', isBlock ? 'flex-col items-start' : '')}>
