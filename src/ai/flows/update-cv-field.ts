@@ -9,14 +9,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { CvOutputSchema, type CvOutput } from '@/lib/schemas';
+import { CvOutputSchema, type CvOutput, UpdateCvFieldInputSchema, type UpdateCvFieldInput } from '@/lib/schemas';
 
-export const UpdateCvFieldInputSchema = z.object({
-  existingCv: CvOutputSchema.describe('The existing CV data structure as a JSON object.'),
-  fieldToUpdate: z.string().describe('The key of the field to update (e.g., "email", "jobTitle.0.company").'),
-  newValue: z.string().describe('The new value for the specified field.'),
-});
-export type UpdateCvFieldInput = z.infer<typeof UpdateCvFieldInputSchema>;
 
 export async function updateCvField(input: UpdateCvFieldInput): Promise<CvOutput> {
   return updateCvFieldFlow(input);

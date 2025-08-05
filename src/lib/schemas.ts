@@ -84,3 +84,10 @@ export const CvOutputSchema = z.object({
   skills: z.array(z.string()).describe("A list of key skills relevant to the job description."),
 });
 export type CvOutput = z.infer<typeof CvOutputSchema>;
+
+export const UpdateCvFieldInputSchema = z.object({
+  existingCv: CvOutputSchema.describe('The existing CV data structure as a JSON object.'),
+  fieldToUpdate: z.string().describe('The key of the field to update (e.g., "email", "jobTitle.0.company").'),
+  newValue: z.string().describe('The new value for the specified field.'),
+});
+export type UpdateCvFieldInput = z.infer<typeof UpdateCvFieldInputSchema>;

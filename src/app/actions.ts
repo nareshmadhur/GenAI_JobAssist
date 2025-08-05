@@ -7,15 +7,15 @@ import type { DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
 import { generateDeepAnalysis } from '@/ai/flows/generate-deep-analysis';
 import { generateQAndA } from '@/ai/flows/generate-q-and-a';
 import { reviseResponse } from '@/ai/flows/revise-response';
-import type { UpdateCvFieldInput } from '@/ai/flows/update-cv-field';
-import { updateCvField, UpdateCvFieldInputSchema } from '@/ai/flows/update-cv-field';
+import { updateCvField } from '@/ai/flows/update-cv-field';
 import type {
   CvOutput,
   QAndAOutput,
   ReviseResponseData,
   ReviseResponseOutput,
+  UpdateCvFieldInput,
 } from '@/lib/schemas';
-import { JobApplicationSchema, ReviseResponseSchema } from '@/lib/schemas';
+import { JobApplicationSchema, ReviseResponseSchema, UpdateCvFieldInputSchema } from '@/lib/schemas';
 
 /**
  * Type union for a successful generation response.
