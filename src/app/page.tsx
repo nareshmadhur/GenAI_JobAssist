@@ -28,6 +28,7 @@ import type { JobApplicationData } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
 import { ActiveView, GenerationType } from '@/components/job-spark-app';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
 const LOCAL_STORAGE_KEY = 'jobspark_form_data';
 
@@ -169,6 +170,7 @@ export default function Home() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+             <ThemeToggleButton />
             <Button
               type="button"
               variant="outline"
