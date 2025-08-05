@@ -16,11 +16,7 @@ export async function updateCvField(input: UpdateCvFieldInput): Promise<CvOutput
   return updateCvFieldFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'updateCvFieldPrompt',
-  input: { schema: UpdateCvFieldInputSchema },
-  output: { schema: CvOutputSchema },
-  prompt: `You are an intelligent CV editor. Your task is to update a single field in an existing CV and then return the entire, complete, and valid CV data structure.
+const promptTemplate = `You are an intelligent CV editor. Your task is to update a single field in an existing CV and then return the entire, complete, and valid CV data structure.
 
 **CRITICAL INSTRUCTIONS:**
 1.  You will be given an 'existingCv' as a JSON object, a 'fieldToUpdate' key, and a 'newValue'.
@@ -31,14 +27,14 @@ const prompt = ai.definePrompt({
 
 Existing CV Data:
 \`\`\`json
-{{{jsonStringify existingCv}}}
+__EXISTING_CV_JSON__
 \`\`\`
 
 Field to Update: "{{fieldToUpdate}}"
 New Value: "{{newValue}}"
 
-Generate the complete, updated CV JSON object now.`,
-});
+Generate the complete, updated CV JSON object now.`;
+
 
 const updateCvFieldFlow = ai.defineFlow(
   {
@@ -47,16 +43,16 @@ const updateCvFieldFlow = ai.defineFlow(
     outputSchema: CvOutputSchema,
   },
   async (input) => {
-    // The Handlebars helper for JSON stringify is not available, so we do it here.
-    const customPrompt = (await prompt.render({
-      ...input,
-      // @ts-ignore
-      jsonStringify: (obj: any) => JSON.stringify(obj, null, 2),
-    })) as any;
-
+    // Manually stringify the CV object and inject it into the prompt.
+    const cvJsonString = JSON.stringify(input.existingCv, null, 2);
+    const finalPrompt = promptTemplate
+        .replace('__EXISTING_CV_JSON__', cvJsonString)
+        .replace('{{fieldToUpdate}}', input.fieldToUpdate)
+        .replace('{{newValue}}', input.newValue);
+        
     const { output } = await ai.generate({
-      prompt: customPrompt.prompt,
-      model: prompt.model,
+      prompt: finalPrompt,
+      model: 'googleai/gemini-2.0-flash',
       output: { schema: CvOutputSchema },
     });
 
