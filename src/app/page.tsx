@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
 export default function WelcomePage() {
   return (
@@ -26,6 +27,7 @@ export default function WelcomePage() {
               </div>
             </div>
           </div>
+           <ThemeToggleButton />
         </div>
       </header>
       <main className="flex flex-1 items-center justify-center p-4">

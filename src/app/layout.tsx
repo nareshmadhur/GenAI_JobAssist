@@ -3,6 +3,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'JobSpark',
@@ -28,8 +29,30 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-          {children}
+          <div className='flex-1 flex flex-col'>
+            {children}
+          </div>
           <Toaster />
+          <footer className="w-full p-4 bg-muted/40 border-t">
+            <div className="mx-auto w-full max-w-7xl flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground gap-2">
+               <p>
+                Created by{' '}
+                <a
+                  href="https://nareshmadhur.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium underline hover:text-accent"
+                >
+                  Naresh
+                </a>
+              </p>
+              <div className="flex items-center gap-4">
+                <Link href="/privacy" className="underline hover:text-accent">
+                  Privacy Policy
+                </Link>
+              </div>
+            </div>
+          </footer>
         </ThemeProvider>
       </body>
     </html>

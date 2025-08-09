@@ -2,7 +2,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound, Sparkles, Trash2, Plus, List, Loader2, AlertTriangle } from 'lucide-react';
+import { KeyRound, Sparkles, Trash2, Save, List, Loader2, AlertTriangle } from 'lucide-react';
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import Link from 'next/link';
@@ -96,6 +96,7 @@ export default function JobMatcherPage() {
           jobDescription: value.jobDescription,
           bio: value.bio,
           questions: value.questions,
+          allResults: allResults, // Persist results with form data
         };
         localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify(dataToSave));
       } catch (e) {
@@ -103,7 +104,7 @@ export default function JobMatcherPage() {
       }
     });
     return () => subscription.unsubscribe();
-  }, [formMethods, formMethods.watch]);
+  }, [formMethods, formMethods.watch, allResults]);
   
   // This effect handles scrolling to the output view when it becomes active.
   // It runs after the component re-renders, ensuring the ref is attached.
@@ -234,7 +235,7 @@ export default function JobMatcherPage() {
     setAllResults(job.allResults);
     setActiveView(Object.keys(job.allResults)[0] as ActiveView || 'none');
      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify(job.formData));
+        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify({ ...job.formData, allResults: job.allResults }));
       } catch (e) {
         console.error('Failed to save loaded data to localStorage', e);
       }
@@ -310,7 +311,7 @@ export default function JobMatcherPage() {
               disabled={isSaving}
               aria-label="Save Job"
             >
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             </Button>
             
             <SavedJobsSheet
