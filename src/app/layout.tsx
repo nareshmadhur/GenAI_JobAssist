@@ -31,8 +31,8 @@ export default function RootLayout({
           >
           <div className='flex-1 flex flex-col'>
             {children}
+            <Toaster />
           </div>
-          <Toaster />
           <footer className="w-full p-4 bg-muted/40 border-t">
             <div className="mx-auto w-full max-w-7xl flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground gap-2">
                <p>

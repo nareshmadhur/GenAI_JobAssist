@@ -83,6 +83,9 @@ export default function JobMatcherPage() {
           bio: parsedData.bio || '',
           questions: parsedData.questions || '',
         });
+        if (parsedData.allResults) {
+          setAllResults(parsedData.allResults);
+        }
       }
     } catch (e) {
       console.error('Failed to load or parse data from localStorage', e);
