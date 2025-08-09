@@ -332,7 +332,7 @@ export default function JobMatcherPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl p-4 pb-32 sm:p-6 md:p-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-32 sm:p-6 md:p-8">
         <FormProvider {...formMethods}>
           <div className="flex flex-col gap-8">
             <InputForm />

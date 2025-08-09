@@ -44,6 +44,7 @@ import { SavedBiosSheet } from '@/components/saved-bios-sheet';
 
 const LOCAL_STORAGE_KEY_JOB_MATCHER_FORM = 'jobspark_form_data';
 const LOCAL_STORAGE_KEY_SAVED_BIOS = 'jobspark_saved_bios';
+const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
 
 
 function BioCreatorCore() {
@@ -102,20 +103,28 @@ function BioCreatorCore() {
         setSavedBios(JSON.parse(savedBiosData));
       }
 
-      // If coming from matcher, load the bio from the matcher's form data
-      const fromMatcher = searchParams.get('from') === 'matcher';
-      let initialBio = '';
+      const savedChatData = localStorage.getItem(LOCAL_STORAGE_KEY_CHAT);
 
-      if (fromMatcher) {
-        const matcherDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
-        if (matcherDataRaw) {
-          initialBio = JSON.parse(matcherDataRaw).bio || '';
+      if (savedChatData) {
+        const { bio: savedBio, history: savedHistory } = JSON.parse(savedChatData);
+        setBio(savedBio || '');
+        setChatHistory(savedHistory || [getInitialMessage(savedBio)]);
+        analyzeBio(savedBio);
+      } else {
+         // If coming from matcher, load the bio from the matcher's form data
+        const fromMatcher = searchParams.get('from') === 'matcher';
+        let initialBio = '';
+
+        if (fromMatcher) {
+          const matcherDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
+          if (matcherDataRaw) {
+            initialBio = JSON.parse(matcherDataRaw).bio || '';
+          }
         }
+        setBio(initialBio);
+        setChatHistory([getInitialMessage(initialBio)]);
+        analyzeBio(initialBio);
       }
-      
-      setBio(initialBio);
-      setChatHistory([getInitialMessage(initialBio)]);
-      analyzeBio(initialBio);
 
     } catch (e) {
       console.error('Failed to load data from localStorage', e);
@@ -134,6 +143,19 @@ function BioCreatorCore() {
       clearTimeout(handler);
     };
   }, [bio, analyzeBio]);
+  
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      const dataToSave = {
+        bio: bio,
+        history: chatHistory,
+      };
+      localStorage.setItem(LOCAL_STORAGE_KEY_CHAT, JSON.stringify(dataToSave));
+    } catch (e) {
+      console.error('Failed to save chat data to localStorage', e);
+    }
+  }, [bio, chatHistory]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -230,6 +252,7 @@ function BioCreatorCore() {
     setBio('');
     setChatHistory([getInitialMessage()]);
     setCompleteness(null);
+    localStorage.removeItem(LOCAL_STORAGE_KEY_CHAT);
     toast({ title: 'Started Over', description: 'Your bio and chat history have been cleared.' });
   };
 
@@ -353,7 +376,7 @@ function BioCreatorCore() {
            </div>
         </div>
       </header>
-      <main className="p-4">
+      <main className="flex-1 p-4">
         <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-2">
           {/* Chat Panel */}
           <Card className="flex flex-col overflow-hidden">
