@@ -85,16 +85,15 @@ export function BioProgressTracker({
                   <div className="flex flex-col items-center gap-1">
                     <div
                       className={cn(
-                        'flex h-8 w-8 items-center justify-center rounded-full',
+                        'relative flex h-8 w-8 items-center justify-center rounded-full',
                         isCompleted
-                          ? 'bg-green-100 text-green-600'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
                           : 'bg-muted text-muted-foreground'
                       )}
                     >
-                      {isCompleted ? (
-                        <CheckCircle2 className="h-5 w-5" />
-                      ) : (
-                        item.icon
+                      {item.icon}
+                       {isCompleted && (
+                        <CheckCircle2 className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-background text-green-600 dark:text-green-400" />
                       )}
                     </div>
                   </div>
