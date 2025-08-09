@@ -33,7 +33,8 @@ const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
 
 const INITIAL_MESSAGE: BioChatMessage = {
   author: 'assistant',
-  content: "Hello! I'm here to help you build a professional bio. You can either answer my questions one by one, or simply paste your existing resume, notes, or any other details, and I'll structure it for you.\n\nTo start, what is your full name and most recent job title?",
+  content: "Hello! I'm here to help you build a professional bio. You can either answer my questions, or just paste your resume or other details and I'll structure it for you.",
+  suggestedReplies: ["What's your full name?", "I want to paste my resume"],
 };
 
 export default function BioCreatorPage() {
@@ -81,10 +82,15 @@ export default function BioCreatorPage() {
     }
   }, [chatHistory]);
   
-  const handleSendMessage = () => {
-    if (!userInput.trim()) return;
+  const sendMessage = (message: string) => {
+    if (!message.trim()) return;
 
-    const newUserMessage: BioChatMessage = { author: 'user', content: userInput };
+    if (message.toLowerCase() === "go to job matcher") {
+        handleUseBio();
+        return;
+    }
+
+    const newUserMessage: BioChatMessage = { author: 'user', content: message };
     const newChatHistory = [...chatHistory, newUserMessage];
     setChatHistory(newChatHistory);
     setUserInput('');
@@ -104,10 +110,14 @@ export default function BioCreatorPage() {
         // Optionally remove the user's message if the API call fails
         setChatHistory(chatHistory);
       } else {
-        setChatHistory(prev => [...prev, { author: 'assistant', content: response.response }]);
+        setChatHistory(prev => [...prev, { author: 'assistant', content: response.response, suggestedReplies: response.suggestedReplies }]);
         setBio(response.updatedBio);
       }
     });
+  };
+  
+  const handleSendMessage = () => {
+    sendMessage(userInput);
   };
 
   const handleCopyToClipboard = () => {
@@ -184,7 +194,7 @@ export default function BioCreatorPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleStartOver}>
+                    <AlertDialogAction onClick={handleStartOver} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                         Start Over
                     </AlertDialogAction>
                     </AlertDialogFooter>
@@ -195,7 +205,7 @@ export default function BioCreatorPage() {
         </div>
       </header>
       <main className="flex flex-1 flex-col overflow-hidden p-4">
-        <div className="flex-1 grid grid-cols-1 gap-4 overflow-hidden md:grid-cols-2">
+        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-2">
           {/* Chat Panel */}
           <Card className="flex flex-col overflow-hidden">
             <CardHeader>
@@ -207,30 +217,40 @@ export default function BioCreatorPage() {
               <ScrollArea className="flex-1 pr-4" ref={chatContainerRef}>
                 <div className="space-y-4">
                   {chatHistory.map((msg, index) => (
-                    <div
-                      key={index}
-                      className={`flex items-start gap-3 ${
-                        msg.author === 'user' ? 'justify-end' : ''
-                      }`}
-                    >
-                      {msg.author === 'assistant' && (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                          <Bot size={20} />
-                        </div>
-                      )}
+                    <div key={index}>
                       <div
-                        className={`max-w-[80%] rounded-lg p-3 text-sm ${
-                          msg.author === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
+                        className={`flex items-start gap-3 ${
+                          msg.author === 'user' ? 'justify-end' : ''
                         }`}
                       >
-                        {msg.content}
-                      </div>
-                      {msg.author === 'user' && (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                          <User size={20} />
+                        {msg.author === 'assistant' && (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                            <Bot size={20} />
+                          </div>
+                        )}
+                        <div
+                          className={`max-w-[80%] rounded-lg p-3 text-sm ${
+                            msg.author === 'user'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
+                          }`}
+                        >
+                          {msg.content}
                         </div>
+                        {msg.author === 'user' && (
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                            <User size={20} />
+                          </div>
+                        )}
+                      </div>
+                      {msg.author === 'assistant' && msg.suggestedReplies && msg.suggestedReplies.length > 0 && !isGenerating && (
+                         <div className="mt-2 flex flex-wrap gap-2">
+                            {msg.suggestedReplies.map((reply, i) => (
+                                <Button key={i} variant="outline" size="sm" onClick={() => sendMessage(reply)}>
+                                    {reply}
+                                </Button>
+                            ))}
+                         </div>
                       )}
                     </div>
                   ))}
@@ -252,7 +272,7 @@ export default function BioCreatorPage() {
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                  placeholder="Type your message..."
+                  placeholder="Type your message or choose a suggestion..."
                   disabled={isGenerating}
                 />
                 <Button onClick={handleSendMessage} disabled={isGenerating || !userInput.trim()}>
@@ -280,7 +300,7 @@ export default function BioCreatorPage() {
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col">
+            <CardContent className="flex flex-1">
               <Textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}

@@ -117,18 +117,20 @@ export interface SavedJob {
 export const BioChatMessageSchema = z.object({
   author: z.enum(['user', 'assistant']),
   content: z.string(),
+  suggestedReplies: z.array(z.string()).optional(),
 });
 export type BioChatMessage = z.infer<typeof BioChatMessageSchema>;
 
 export const BioChatInputSchema = z.object({
   chatHistory: z.array(BioChatMessageSchema).describe("The full history of the conversation."),
-  currentBio: z.string().describe("The current, full text of the user's bio in Markdown format."),
+  currentBio: z.string().describe("The current, full text of the user's bio in plain text format."),
 });
 export type BioChatInput = z.infer<typeof BioChatInputSchema>;
 
 export const BioChatOutputSchema = z.object({
-  response: z.string().describe("The chatbot's next message to the user (e.g., the next question to ask)."),
+  response: z.string().describe("The chatbot's next concise message to the user."),
   updatedBio: z.string().describe("The new, complete version of the user's bio, updated with the latest information."),
+  suggestedReplies: z.array(z.string()).optional().describe("A list of short, suggested replies for the user to click."),
   error: z.string().optional().describe("An error message if the model failed to process the request."),
 });
 export type BioChatOutput = z.infer<typeof BioChatOutputSchema>;
