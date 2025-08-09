@@ -2,7 +2,7 @@
 'use client';
 
 import { useFormContext } from 'react-hook-form';
-
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -61,10 +61,18 @@ export function InputForm(): JSX.Element {
               control={formMethods.control}
               name="bio"
               render={({ field }) => (
-                <ExpandableTextarea
+                 <ExpandableTextarea
                   field={field}
                   label="Your Bio / Resume"
                   placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
+                  footer={
+                     <p className="text-xs text-muted-foreground">
+                        Need help with your bio?{' '}
+                        <Link href="/bio-creator?from=matcher" className="underline text-accent">
+                           Go to the Bio Creator
+                        </Link>
+                     </p>
+                  }
                 />
               )}
             />

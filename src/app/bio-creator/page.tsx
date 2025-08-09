@@ -10,11 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import type { BioChatMessage, BioCompletenessOutput } from '@/lib/schemas';
-import { Bot, Copy, ExternalLink, Loader2, Send, Trash2, User, AlertTriangle } from 'lucide-react';
+import type { BioChatMessage, BioCompletenessOutput, SavedBio } from '@/lib/schemas';
+import { Bot, Copy, ExternalLink, Loader2, Send, Trash2, User, AlertTriangle, List, Save } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import React, { useEffect, useRef, useState, useTransition, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useEffect, useRef, useState, useTransition, useCallback, Suspense } from 'react';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import {
   AlertDialog,
@@ -27,58 +27,106 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { SavedBiosSheet } from '@/components/saved-bios-sheet';
+
 
 const LOCAL_STORAGE_KEY_BIO_FORM = 'jobspark_form_data';
-const LOCAL_STORAGE_KEY_BIO = 'jobspark_bio_creator_bio';
 const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
+const LOCAL_STORAGE_KEY_SAVED_BIOS = 'jobspark_saved_bios';
 
-const INITIAL_MESSAGE: BioChatMessage = {
-  author: 'assistant',
-  content: "Hello! I'm here to help you build a professional bio. You can either answer my questions, or just paste your resume or other details and I'll structure it for you.",
-  suggestedReplies: ["Add my name", "Paste my resume"],
-};
 
-export default function BioCreatorPage() {
-  const [chatHistory, setChatHistory] = useState<BioChatMessage[]>([INITIAL_MESSAGE]);
+function BioCreatorCore() {
+  const [chatHistory, setChatHistory] = useState<BioChatMessage[]>([]);
   const [bio, setBio] = useState('');
   const [userInput, setUserInput] = useState('');
   const [isGenerating, startGenerating] = useTransition();
   const [isAnalyzing, startAnalyzing] = useTransition();
   const [completeness, setCompleteness] = useState<BioCompletenessOutput | null>(null);
+  const [savedBios, setSavedBios] = useState<SavedBio[]>([]);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [bioNameToSave, setBioNameToSave] = useState('');
+
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
+  const getInitialMessage = useCallback((initialBio?: string | null): BioChatMessage => {
+    if (initialBio && initialBio.trim().length > 50) {
+      return {
+        author: 'assistant',
+        content: "I've loaded the bio you were working on. How can I help you improve it?",
+        suggestedReplies: ["Check for completeness", "Make it more professional", "Shorten this section"],
+      };
+    }
+    return {
+      author: 'assistant',
+      content: "Hello! I'm here to help you build a professional bio. You can either answer my questions, or just paste your resume or other details and I'll structure it for you.",
+      suggestedReplies: ["Add my name", "Paste my resume"],
+    };
+  }, []);
 
   // Load state from localStorage on mount
   useEffect(() => {
     try {
-      const savedBio = localStorage.getItem(LOCAL_STORAGE_KEY_BIO);
-      if (savedBio) {
-        const parsedBio = JSON.parse(savedBio);
-        setBio(parsedBio);
-        analyzeBio(parsedBio); // Analyze loaded bio
+      const savedBiosData = localStorage.getItem(LOCAL_STORAGE_KEY_SAVED_BIOS);
+      if (savedBiosData) {
+        setSavedBios(JSON.parse(savedBiosData));
       }
 
+      const fromMatcher = searchParams.get('from') === 'matcher';
+      const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
+      const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
+      const initialBio = existingData.bio || '';
+      
+      setBio(initialBio);
+      analyzeBio(initialBio);
+
       const savedChat = localStorage.getItem(LOCAL_STORAGE_KEY_CHAT);
-      if (savedChat) {
-        const parsedChat = JSON.parse(savedChat);
-        if (parsedChat.length > 0) {
-          setChatHistory(parsedChat);
-        }
+      const initialMessage = getInitialMessage(initialBio);
+
+      if (fromMatcher) {
+        setChatHistory([initialMessage]);
+      } else if (savedChat) {
+         const parsedChat = JSON.parse(savedChat);
+         if (parsedChat.length > 0) {
+            setChatHistory(parsedChat);
+         } else {
+            setChatHistory([initialMessage]);
+         }
+      } else {
+        setChatHistory([initialMessage]);
       }
+
     } catch (e) {
       console.error('Failed to load data from localStorage', e);
     }
-  }, []);
+  }, [getInitialMessage, searchParams]);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY_BIO, JSON.stringify(bio));
-      localStorage.setItem(LOCAL_STORAGE_KEY_CHAT, JSON.stringify(chatHistory));
+      const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
+      const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
+      const dataToSave = { ...existingData, bio };
+      localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(dataToSave));
+      
+      if (chatHistory.length > 0) {
+        localStorage.setItem(LOCAL_STORAGE_KEY_CHAT, JSON.stringify(chatHistory));
+      }
     } catch (e) {
       console.error('Failed to save data to localStorage', e);
     }
@@ -97,7 +145,7 @@ export default function BioCreatorPage() {
     } else {
       setCompleteness(null);
     }
-  }, [startAnalyzing]);
+  }, []);
 
   // Debounced bio analysis
   useEffect(() => {
@@ -115,7 +163,9 @@ export default function BioCreatorPage() {
     if (scrollAreaRef.current) {
         const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
         if (viewport) {
-            viewport.scrollTop = viewport.scrollHeight;
+             setTimeout(() => {
+                viewport.scrollTop = viewport.scrollHeight;
+            }, 0);
         }
     }
   }, [chatHistory]);
@@ -145,7 +195,6 @@ export default function BioCreatorPage() {
           title: 'An error occurred',
           description: response.error,
         });
-        // Optionally remove the user's message if the API call fails
         setChatHistory(chatHistory);
       } else {
         setChatHistory(prev => [...prev, { author: 'assistant', content: response.response, suggestedReplies: response.suggestedReplies }]);
@@ -179,27 +228,57 @@ export default function BioCreatorPage() {
         toast({ variant: 'destructive', title: 'Your bio is empty.' });
         return;
     }
-    try {
-        const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
-        const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
-        const dataToSave = { ...existingData, bio };
-        localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(dataToSave));
-        toast({ title: 'Bio saved!', description: 'Redirecting you to the Job Matcher...' });
-        router.push('/job-matcher');
-    } catch (e) {
-        console.error('Failed to save bio for Job Matcher', e);
-        toast({ variant: 'destructive', title: 'Could not save bio.' });
-    }
+    toast({ title: 'Bio ready!', description: 'Redirecting you to the Job Matcher...' });
+    router.push('/job-matcher');
   }
 
   const handleStartOver = () => {
     setBio('');
-    setChatHistory([INITIAL_MESSAGE]);
+    setChatHistory([getInitialMessage()]);
     setCompleteness(null);
-    localStorage.removeItem(LOCAL_STORAGE_KEY_BIO);
     localStorage.removeItem(LOCAL_STORAGE_KEY_CHAT);
+    const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
+    const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
+    delete existingData.bio;
+    localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(existingData));
     toast({ title: 'Started Over', description: 'Your bio and chat history have been cleared.' });
   };
+
+  const handleSaveBio = () => {
+    if (!bioNameToSave.trim()) {
+      toast({ variant: 'destructive', title: 'Please enter a name for the bio.' });
+      return;
+    }
+
+    const newSavedBio: SavedBio = {
+      id: crypto.randomUUID(),
+      name: bioNameToSave,
+      bio: bio,
+      savedAt: new Date().toISOString(),
+    };
+
+    const updatedSavedBios = [...savedBios, newSavedBio];
+    setSavedBios(updatedSavedBios);
+    localStorage.setItem(LOCAL_STORAGE_KEY_SAVED_BIOS, JSON.stringify(updatedSavedBios));
+
+    toast({ title: 'Bio Saved!', description: `"${newSavedBio.name}" has been saved.` });
+    setIsSaveDialogOpen(false);
+    setBioNameToSave('');
+  };
+  
+  const handleLoadBio = (savedBio: SavedBio) => {
+    setBio(savedBio.bio);
+    setChatHistory([getInitialMessage(savedBio.bio)]);
+    toast({ title: 'Bio Loaded', description: `Loaded "${savedBio.name}".` });
+  };
+
+  const handleDeleteBio = (bioId: string) => {
+    const updatedSavedBios = savedBios.filter((b) => b.id !== bioId);
+    setSavedBios(updatedSavedBios);
+    localStorage.setItem(LOCAL_STORAGE_KEY_SAVED_BIOS, JSON.stringify(updatedSavedBios));
+    toast({ title: 'Bio Deleted' });
+  };
+
 
   const isBioNearlyComplete = completeness ? Object.values(completeness).filter(Boolean).length >= 4 : false;
 
@@ -209,8 +288,8 @@ export default function BioCreatorPage() {
       <header className="sticky top-0 z-10 w-full border-b border-b-accent bg-primary px-4 py-4 sm:px-6 md:px-8">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" aria-label="Back to Home">
-              <JobSparkLogo className="h-10 w-10 text-primary-foreground" />
+             <Link href="/" aria-label="Back to Home">
+                <JobSparkLogo className="h-10 w-10 text-primary-foreground" />
             </Link>
             <div className="flex flex-col">
               <h1 className="font-headline text-2xl font-bold text-primary-foreground md:text-3xl">
@@ -222,6 +301,41 @@ export default function BioCreatorPage() {
             </div>
           </div>
            <div className="flex items-center gap-2">
+            <SavedBiosSheet
+              savedBios={savedBios}
+              onLoadBio={handleLoadBio}
+              onDeleteBio={handleDeleteBio}
+            />
+             <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" disabled={!bio} aria-label="Save Bio">
+                        <Save className="h-4 w-4" />
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Save Your Bio</DialogTitle>
+                        <DialogDescription>
+                            Give this version of your bio a name so you can easily find it later.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="bio-name" className="text-right">Name</Label>
+                            <Input
+                                id="bio-name"
+                                value={bioNameToSave}
+                                onChange={(e) => setBioNameToSave(e.target.value)}
+                                className="col-span-3"
+                                placeholder={`Bio for a ${completeness?.hasWorkExperience ? 'Developer' : 'New Role'}`}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button type="button" onClick={handleSaveBio}>Save</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <Button variant="outline" size="icon" aria-label="Start Over">
@@ -369,4 +483,12 @@ export default function BioCreatorPage() {
       </main>
     </div>
   );
+}
+
+export default function BioCreatorPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <BioCreatorCore />
+        </Suspense>
+    )
 }

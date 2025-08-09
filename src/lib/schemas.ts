@@ -101,14 +101,20 @@ export type JobDetailsOutput = z.infer<typeof JobDetailsOutputSchema>;
 
 
 // Schema for a saved job in localStorage
-// This is not a Zod schema because it includes a complex object `allResults`
-// which doesn't have a single, unified Zod schema.
 export interface SavedJob {
   id: string;
   companyName: string;
   jobTitle: string;
   formData: Omit<JobApplicationData, 'generationType'>;
   allResults: AllGenerationResults;
+  savedAt: string;
+}
+
+// Schema for a saved bio
+export interface SavedBio {
+  id: string;
+  name: string;
+  bio: string;
   savedAt: string;
 }
 

@@ -28,6 +28,7 @@ interface ExpandableTextareaProps {
   field: ControllerRenderProps<Omit<JobApplicationData, 'generationType'>>;
   label: string;
   placeholder: string;
+  footer?: React.ReactNode;
 }
 
 /**
@@ -38,13 +39,12 @@ export function ExpandableTextarea({
   field,
   label,
   placeholder,
+  footer,
 }: ExpandableTextareaProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [editedValue, setEditedValue] = useState(field.value || '');
 
   useEffect(() => {
-    // This effect ensures that if the dialog is opened manually,
-    // it shows the latest value from the form state.
     if (isOpen) {
       setEditedValue(field.value || '');
     }
@@ -79,6 +79,7 @@ export function ExpandableTextarea({
             <Edit className="absolute right-2 top-2 h-4 w-4 text-muted-foreground" />
           </div>
         </DialogTrigger>
+         {footer && <div className="mt-1">{footer}</div>}
         <FormMessage />
       </FormItem>
 
