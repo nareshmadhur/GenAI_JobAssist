@@ -42,7 +42,7 @@ const prompt = ai.definePrompt({
 3.  **Assess Completeness**: After updating, check if the bio contains key elements (e.g., name, contact info, a summary, at least one job, and some skills).
 4.  **Respond to the User**:
     *   Provide a short, concise response.
-    *   Provide 'suggestedReplies' to guide the user. These should be short actions, like "Add a job" or "List my skills."
+    *   Provide 'suggestedReplies' to guide the user. These should be short, user-centric actions, like "Add a job" or "List my skills." The user will click these to populate their input box.
     *   If the bio seems reasonably complete, congratulate the user, and **one of the 'suggestedReplies' MUST be "Go to Job Matcher".**
     *   If they pasted a lot of text, confirm you've updated the bio and ask them to review it. Then provide suggestions for what to add next.
 

@@ -115,6 +115,14 @@ export default function BioCreatorPage() {
       }
     });
   };
+
+  const handleSuggestedReplyClick = (reply: string) => {
+    if (reply.toLowerCase() === "go to job matcher") {
+        handleUseBio();
+        return;
+    }
+    setUserInput(reply);
+  };
   
   const handleSendMessage = () => {
     sendMessage(userInput);
@@ -246,7 +254,7 @@ export default function BioCreatorPage() {
                       {msg.author === 'assistant' && msg.suggestedReplies && msg.suggestedReplies.length > 0 && !isGenerating && (
                          <div className="mt-2 flex flex-wrap gap-2">
                             {msg.suggestedReplies.map((reply, i) => (
-                                <Button key={i} variant="outline" size="sm" onClick={() => sendMessage(reply)}>
+                                <Button key={i} variant="outline" size="sm" onClick={() => handleSuggestedReplyClick(reply)}>
                                     {reply}
                                 </Button>
                             ))}
