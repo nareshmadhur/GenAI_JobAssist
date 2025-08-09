@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { AllGenerationResults } from '@/app/actions';
 
 export const JobApplicationSchema = z.object({
   jobDescription: z
@@ -84,3 +85,28 @@ export const CvOutputSchema = z.object({
   skills: z.array(z.string()).describe("A list of key skills relevant to the job description."),
 });
 export type CvOutput = z.infer<typeof CvOutputSchema>;
+
+// Schema for job detail extraction
+export const JobDetailsInputSchema = z.object({
+  jobDescription: z.string(),
+});
+export type JobDetailsInput = z.infer<typeof JobDetailsInputSchema>;
+
+export const JobDetailsOutputSchema = z.object({
+    companyName: z.string().describe("The name of the company hiring for the role. If not found, return 'Unknown Company'."),
+    jobTitle: z.string().describe("The title of the job position (e.g., 'Senior Software Engineer'). If not found, return 'Unknown Role'."),
+});
+export type JobDetailsOutput = z.infer<typeof JobDetailsOutputSchema>;
+
+
+// Schema for a saved job in localStorage
+// This is not a Zod schema because it includes a complex object `allResults`
+// which doesn't have a single, unified Zod schema.
+export interface SavedJob {
+  id: string;
+  companyName: string;
+  jobTitle: string;
+  formData: Omit<JobApplicationData, 'generationType'>;
+  allResults: AllGenerationResults;
+  savedAt: string;
+}

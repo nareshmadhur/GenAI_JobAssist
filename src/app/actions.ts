@@ -7,13 +7,15 @@ import type { DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
 import { generateDeepAnalysis } from '@/ai/flows/generate-deep-analysis';
 import { generateQAndA } from '@/ai/flows/generate-q-and-a';
 import { reviseResponse } from '@/ai/flows/revise-response';
+import type { JobDetailsOutput } from '@/lib/schemas';
+import { extractJobDetails } from '@/ai/flows/extract-job-details';
 import type {
   CvOutput,
   QAndAOutput,
   ReviseResponseData,
   ReviseResponseOutput,
 } from '@/lib/schemas';
-import { JobApplicationSchema, ReviseResponseSchema } from '@/lib/schemas';
+import { JobApplicationSchema, ReviseResponseSchema, JobDetailsInputSchema } from '@/lib/schemas';
 
 /**
  * Type union for a successful generation response.
@@ -46,6 +48,13 @@ type GenerateActionResponse =
  */
 type ReviseActionResponse =
   | { success: true; data: ReviseResponseOutput }
+  | { success: false; error: string };
+
+/**
+ * A discriminated union for the result of the job detail extraction action.
+ */
+type ExtractDetailsActionResponse =
+  | { success: true; data: JobDetailsOutput }
   | { success: false; error: string };
 
 
@@ -140,4 +149,30 @@ export async function reviseAction(
     success: true,
     data: response,
   };
+}
+
+/**
+ * Server Action to extract company name and job title from a job description.
+ *
+ * @param rawData - The raw input containing the job description.
+ * @returns A promise that resolves to an `ExtractDetailsActionResponse`.
+ */
+export async function extractJobDetailsAction(rawData: unknown): Promise<ExtractDetailsActionResponse> {
+  const validationResult = JobDetailsInputSchema.safeParse(rawData);
+  if (!validationResult.success) {
+    return { success: false, error: 'Invalid job description provided.' };
+  }
+
+  try {
+    const response = await extractJobDetails(validationResult.data);
+    return { success: true, data: response };
+  } catch (error) {
+    console.error('Error in extractJobDetailsAction:', error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {
+      success: false,
+      error: `Failed to extract job details: ${errorMessage}.`,
+    };
+  }
 }

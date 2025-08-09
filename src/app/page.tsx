@@ -1,12 +1,12 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound, Sparkles, Trash2 } from 'lucide-react';
+import { KeyRound, Sparkles, Trash2, Plus, List, Loader2 } from 'lucide-react';
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import Link from 'next/link';
 
-import { AllGenerationResults, generateAction } from '@/app/actions';
+import { AllGenerationResults, generateAction, extractJobDetailsAction } from '@/app/actions';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { FloatingActionBar } from '@/components/floating-action-bar';
 import { InputForm } from '@/components/input-form';
@@ -22,19 +22,23 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import type { JobApplicationData } from '@/lib/schemas';
+import type { JobApplicationData, SavedJob } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
 import { ActiveView, GenerationType } from '@/components/job-spark-app';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
+import { SavedJobsSheet } from '@/components/saved-jobs-sheet';
 
-const LOCAL_STORAGE_KEY = 'jobspark_form_data';
+const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
+const LOCAL_STORAGE_KEY_JOBS = 'jobspark_saved_jobs';
 
 export default function Home() {
   const [isGenerating, startGenerating] = useTransition();
+  const [isSaving, startSaving] = useTransition();
   const [activeView, setActiveView] = useState<ActiveView>('none');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
 
@@ -43,9 +47,22 @@ export default function Home() {
     defaultValues: { jobDescription: '', bio: '', questions: '' },
   });
 
+  // Load saved jobs from localStorage on initial mount
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const savedJobsData = localStorage.getItem(LOCAL_STORAGE_KEY_JOBS);
+      if (savedJobsData) {
+        setSavedJobs(JSON.parse(savedJobsData));
+      }
+    } catch (e) {
+      console.error('Failed to load saved jobs from localStorage', e);
+    }
+  }, []);
+
+
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_FORM);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
         formMethods.reset({
@@ -67,7 +84,7 @@ export default function Home() {
           bio: value.bio,
           questions: value.questions,
         };
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
+        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify(dataToSave));
       } catch (e) {
         console.error('Failed to save data to localStorage', e);
       }
@@ -132,10 +149,76 @@ export default function Home() {
     setActiveView('none');
     setGenerationError(null);
     try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_FORM);
     } catch (e) {
       console.error('Failed to clear data from localStorage', e);
     }
+  };
+
+  const handleSaveJob = () => {
+    formMethods.trigger('jobDescription').then((isValid) => {
+      if (!isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'A job description is required to save.',
+        });
+        return;
+      }
+      if (Object.keys(allResults).length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Nothing to Save',
+          description: 'Please generate at least one output before saving.',
+        });
+        return;
+      }
+
+      startSaving(async () => {
+        const { jobDescription, bio, questions } = formMethods.getValues();
+        const detailsResponse = await extractJobDetailsAction({ jobDescription });
+
+        if (!detailsResponse.success) {
+          toast({
+            variant: 'destructive',
+            title: 'Could not extract job details.',
+            description: detailsResponse.error,
+          });
+          return;
+        }
+
+        const newSavedJob: SavedJob = {
+          id: crypto.randomUUID(),
+          ...detailsResponse.data,
+          formData: { jobDescription, bio, questions },
+          allResults,
+          savedAt: new Date().toISOString(),
+        };
+
+        const updatedSavedJobs = [...savedJobs, newSavedJob];
+        setSavedJobs(updatedSavedJobs);
+        localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
+
+        toast({
+          title: 'Job Saved!',
+          description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
+        });
+
+        handleClear();
+      });
+    });
+  };
+
+  const handleLoadJob = (job: SavedJob) => {
+    formMethods.reset(job.formData);
+    setAllResults(job.allResults);
+    setActiveView(Object.keys(job.allResults)[0] as ActiveView || 'none');
+  };
+
+  const handleDeleteJob = (jobId: string) => {
+    const updatedSavedJobs = savedJobs.filter((job) => job.id !== jobId);
+    setSavedJobs(updatedSavedJobs);
+    localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
+    toast({ title: 'Job Deleted' });
   };
 
   const { jobDescription, bio } = formMethods.getValues();
@@ -175,6 +258,22 @@ export default function Home() {
             >
               <Trash2 className="h-4 w-4" />
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleSaveJob}
+              disabled={isSaving}
+              aria-label="Save Job"
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            </Button>
+            
+            <SavedJobsSheet
+              savedJobs={savedJobs}
+              onLoadJob={handleLoadJob}
+              onDeleteJob={handleDeleteJob}
+            />
 
             <FeedbackDialog
               jobDescription={jobDescription}
