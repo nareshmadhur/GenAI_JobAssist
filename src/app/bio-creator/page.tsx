@@ -47,7 +47,7 @@ export default function BioCreatorPage() {
   const [isAnalyzing, startAnalyzing] = useTransition();
   const [completeness, setCompleteness] = useState<BioCompletenessOutput | null>(null);
   const { toast } = useToast();
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
@@ -110,19 +110,11 @@ export default function BioCreatorPage() {
     };
   }, [bio, analyzeBio]);
 
-  const scrollToBottom = () => {
-    // Use a timeout to ensure the DOM has updated before scrolling
-    setTimeout(() => {
-        if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
-    }, 0);
-  };
-
-
   // Auto-scroll chat
   useEffect(() => {
-    scrollToBottom();
+    if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
   }, [chatHistory]);
   
   const sendMessage = (message: string) => {
@@ -137,7 +129,6 @@ export default function BioCreatorPage() {
     const newChatHistory = [...chatHistory, newUserMessage];
     setChatHistory(newChatHistory);
     setUserInput('');
-    scrollToBottom(); // Immediately scroll after user sends a message
 
     startGenerating(async () => {
       const response = await generateBioChatResponse({
@@ -266,7 +257,7 @@ export default function BioCreatorPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
-              <ScrollArea className="flex-1 pr-4" ref={chatContainerRef}>
+              <ScrollArea className="flex-1 pr-4" ref={scrollAreaRef}>
                 <div className="space-y-4">
                   {chatHistory.map((msg, index) => (
                     <div key={index}>
@@ -311,7 +302,7 @@ export default function BioCreatorPage() {
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
                            <Bot size={20} />
                         </div>
-                        <div className="flex items-center space-x-2 rounded-lg bg-muted p-3">
+                        <div className="flex items-center space-x-2 rounded-lg bg-muted p-3 text-sm">
                            <Loader2 className="h-5 w-5 animate-spin" />
                            <span>Thinking...</span>
                         </div>
