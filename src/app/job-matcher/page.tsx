@@ -345,7 +345,7 @@ export default function JobMatcherPage() {
         </FormProvider>
       </main>
 
-      <div className="sticky bottom-0 z-20 w-full p-4 bg-gradient-to-t from-background via-background/80 to-transparent">
+      <div className="sticky bottom-0 z-20 w-full p-4 bg-gradient-to-t from-background to-transparent">
         <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-1 rounded-full bg-primary p-1 shadow-lg sm:grid-cols-4">
           <Button
             onClick={() => handleGeneration('coverLetter')}
