@@ -103,7 +103,7 @@ export default function JobMatcherPage() {
       }
     });
     return () => subscription.unsubscribe();
-  }, [formMethods.watch]);
+  }, [formMethods, formMethods.watch]);
   
   // This effect handles scrolling to the output view when it becomes active.
   // It runs after the component re-renders, ensuring the ref is attached.
@@ -351,5 +351,3 @@ export default function JobMatcherPage() {
     </div>
   );
 }
-
-    

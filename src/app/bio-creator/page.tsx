@@ -227,11 +227,12 @@ export default function BioCreatorPage() {
                   <User /> Your Bio
                 </span>
                 <div>
-                    <Button variant="ghost" size="icon" onClick={handleCopyToClipboard} disabled={!bio}>
+                    <Button variant="ghost" size="icon" onClick={handleCopyToClipboard} disabled={!bio} aria-label="Copy Bio">
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={handleUseBio} disabled={!bio}>
-                        <ExternalLink className="h-4 w-4" />
+                    <Button variant="outline" size="sm" onClick={handleUseBio} disabled={!bio}>
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Use Bio
                     </Button>
                 </div>
               </CardTitle>
@@ -250,5 +251,3 @@ export default function BioCreatorPage() {
     </div>
   );
 }
-
-    
