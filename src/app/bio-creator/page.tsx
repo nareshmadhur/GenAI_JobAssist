@@ -258,8 +258,8 @@ export default function BioCreatorPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
-              <ScrollArea className="flex-1 pr-4" ref={chatContainerRef}>
-                <div className="space-y-4">
+              <ScrollArea className="flex-1 pr-4">
+                <div className="space-y-4" ref={chatContainerRef}>
                   {chatHistory.map((msg, index) => (
                     <div key={index}>
                       <div
