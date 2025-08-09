@@ -38,8 +38,8 @@
     --card-foreground: 0 0% 93%;
     --popover: 217 30% 15%;
     --popover-foreground: 0 0% 93%;
-    --primary: 217 30% 20%; /* Even Darker Slate Blue for Header */
-    --primary-foreground: 0 0% 93%; /* Light Gray Text */
+    --primary: 38 90% 51%; /* Yellow-Orange Accent */
+    --primary-foreground: 217 48% 12%;
     --secondary: 217 30% 25%;
     --secondary-foreground: 0 0% 93%;
     --muted: 217 30% 25%;
