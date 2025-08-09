@@ -151,16 +151,16 @@ export default function BioCreatorPage() {
            </div>
         </div>
       </header>
-      <main className="flex-1 p-4">
-        <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-2">
+      <main className="flex flex-1 flex-col overflow-hidden p-4">
+        <div className="flex-1 grid grid-cols-1 gap-4 overflow-hidden md:grid-cols-2">
           {/* Chat Panel */}
-          <Card className="flex flex-col">
+          <Card className="flex flex-col overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bot /> AI Assistant
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto">
+            <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
               <ScrollArea className="flex-1 pr-4" ref={chatContainerRef}>
                 <div className="space-y-4">
                   {chatHistory.map((msg, index) => (
@@ -220,7 +220,7 @@ export default function BioCreatorPage() {
           </Card>
 
           {/* Bio Preview Panel */}
-          <Card className="flex flex-col">
+          <Card className="flex flex-col overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -237,12 +237,12 @@ export default function BioCreatorPage() {
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1">
+            <CardContent className="flex flex-1 flex-col">
               <Textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="Your bio will appear here as you build it..."
-                className="h-full resize-none"
+                className="h-full flex-1 resize-none"
               />
             </CardContent>
           </Card>
