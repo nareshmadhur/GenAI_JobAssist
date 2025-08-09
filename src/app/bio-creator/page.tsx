@@ -22,7 +22,7 @@ const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
 
 const INITIAL_MESSAGE: BioChatMessage = {
   author: 'assistant',
-  content: "Hello! I'm here to help you build a compelling professional bio. To start, could you please tell me your full name and the most recent job title you've held?",
+  content: "Hello! I'm here to help you build a compelling professional bio. To start, could you please tell me your full name and the most recent job title you'veheld?",
 };
 
 export default function BioCreatorPage() {
