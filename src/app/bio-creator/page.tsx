@@ -111,14 +111,12 @@ export default function BioCreatorPage() {
   }, [bio, analyzeBio]);
 
   const scrollToBottom = () => {
-    if (chatContainerRef.current) {
-        // Use a timeout to ensure the DOM has updated before scrolling
-        setTimeout(() => {
-            if (chatContainerRef.current) {
-                chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-            }
-        }, 0);
-    }
+    // Use a timeout to ensure the DOM has updated before scrolling
+    setTimeout(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, 0);
   };
 
 
