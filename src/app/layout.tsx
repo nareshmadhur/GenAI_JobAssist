@@ -29,7 +29,9 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-          {children}
+          <div className="flex-1 flex flex-col">
+            {children}
+          </div>
           <Toaster />
           <footer className="w-full p-4 bg-muted/40 border-t">
             <div className="mx-auto w-full max-w-7xl flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground gap-2">

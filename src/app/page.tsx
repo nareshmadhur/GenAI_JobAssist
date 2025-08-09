@@ -30,7 +30,7 @@ export default function WelcomePage() {
            <ThemeToggleButton />
         </div>
       </header>
-      <main className="flex flex-1 items-center justify-center p-4">
+      <main className="flex-1 flex items-center justify-center p-4">
         <div className="mx-auto w-full max-w-4xl space-y-8">
           <div className="text-center">
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">

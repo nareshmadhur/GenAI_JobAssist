@@ -2,26 +2,17 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound, Sparkles, Trash2, Save, List, Loader2, AlertTriangle } from 'lucide-react';
+import { KeyRound, Sparkles, Trash2, Save, List, Loader2, AlertTriangle, FileText, Briefcase, Lightbulb, MessageSquareMore } from 'lucide-react';
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import Link from 'next/link';
 
 import { AllGenerationResults, generateAction, extractJobDetailsAction } from '@/app/actions';
 import { FeedbackDialog } from '@/components/feedback-dialog';
-import { FloatingActionBar } from '@/components/floating-action-bar';
 import { InputForm } from '@/components/input-form';
 import { JobSparkLogo } from '@/components/job-spark-logo';
 import { OutputView } from '@/components/output-view';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,9 +29,9 @@ import { useToast } from '@/hooks/use-toast';
 import type { JobApplicationData, SavedJob } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
 import { ActiveView, GenerationType } from '@/components/job-spark-app';
-import { Skeleton } from '@/components/ui/skeleton';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { SavedJobsSheet } from '@/components/saved-jobs-sheet';
+import { cn } from '@/lib/utils';
 
 const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
 const LOCAL_STORAGE_KEY_JOBS = 'jobspark_saved_jobs';
@@ -212,7 +203,6 @@ export default function JobMatcherPage() {
         };
 
         const updatedSavedJobs = [...savedJobs, newSavedJob];
-        setSavedJobs(updatedSavedJobs);
         localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
 
         toast({
@@ -262,8 +252,11 @@ export default function JobMatcherPage() {
     }
   };
 
+  const baseButtonClass =
+    'h-auto flex-col rounded-full py-2 text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground/90 data-[active=true]:bg-primary-foreground data-[active=true]:text-primary data-[active=true]:hover:bg-primary-foreground/90';
+
   return (
-    <div className="flex w-full flex-col bg-muted/20">
+    <div className="flex min-h-screen w-full flex-col bg-muted/20">
       <header className="sticky top-0 z-10 w-full border-b border-b-accent bg-primary px-4 py-4 sm:px-6 md:px-8">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
@@ -332,7 +325,7 @@ export default function JobMatcherPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-32 sm:p-6 md:p-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-28 sm:p-6 md:p-8">
         <FormProvider {...formMethods}>
           <div className="flex flex-col gap-8">
             <InputForm />
@@ -352,11 +345,69 @@ export default function JobMatcherPage() {
         </FormProvider>
       </main>
 
-      <FloatingActionBar
-        isGenerating={isGenerating}
-        activeView={activeView}
-        onGeneration={handleGeneration}
-      />
+      <div className="sticky bottom-0 z-20 w-full p-4 bg-gradient-to-t from-background via-background/80 to-transparent">
+        <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-1 rounded-full bg-primary p-1 shadow-lg sm:grid-cols-4">
+          <Button
+            onClick={() => handleGeneration('coverLetter')}
+            disabled={isGenerating}
+            variant="ghost"
+            data-active={activeView === 'coverLetter'}
+            className={baseButtonClass}
+          >
+            {isGenerating && activeView === 'coverLetter' ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <FileText />
+            )}
+            <span className="text-xs">Cover Letter</span>
+          </Button>
+
+          <Button
+            onClick={() => handleGeneration('cv')}
+            disabled={isGenerating}
+            variant="ghost"
+            data-active={activeView === 'cv'}
+            className={baseButtonClass}
+          >
+            {isGenerating && activeView === 'cv' ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Briefcase />
+            )}
+            <span className="text-xs">CV</span>
+          </Button>
+
+          <Button
+            onClick={() => handleGeneration('deepAnalysis')}
+            disabled={isGenerating}
+            variant="ghost"
+            data-active={activeView === 'deepAnalysis'}
+            className={baseButtonClass}
+          >
+            {isGenerating && activeView === 'deepAnalysis' ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Lightbulb />
+            )}
+            <span className="text-xs">Analysis</span>
+          </Button>
+
+          <Button
+            onClick={() => handleGeneration('qAndA')}
+            disabled={isGenerating}
+            variant="ghost"
+            data-active={activeView === 'qAndA'}
+            className={baseButtonClass}
+          >
+            {isGenerating && activeView === 'qAndA' ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <MessageSquareMore />
+            )}
+            <span className="text-xs">Q & A</span>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
