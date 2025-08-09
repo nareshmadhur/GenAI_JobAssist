@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound, Sparkles, Trash2, Plus, List, Loader2 } from 'lucide-react';
+import { KeyRound, Sparkles, Trash2, Plus, List, Loader2, AlertTriangle } from 'lucide-react';
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import Link from 'next/link';
@@ -21,6 +21,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
 import { useToast } from '@/hooks/use-toast';
 import type { JobApplicationData, SavedJob } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
@@ -203,7 +215,15 @@ export default function Home() {
           description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
         });
 
-        handleClear();
+        // Clear form for next application, but keep bio
+        formMethods.reset({
+          jobDescription: '',
+          bio: formMethods.getValues('bio'),
+          questions: '',
+        });
+        setAllResults({});
+        setActiveView('none');
+        setGenerationError(null);
       });
     });
   };
@@ -249,15 +269,31 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
              <ThemeToggleButton />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={handleClear}
-              aria-label="Clear All"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+             <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Clear All">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className='flex items-center gap-2'>
+                    <AlertTriangle className="h-6 w-6 text-destructive" />
+                    Are you sure?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently clear the job description, bio, and
+                    all generated content. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClear}>
+                    Clear Everything
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button
               type="button"
               variant="outline"
