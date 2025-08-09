@@ -110,12 +110,21 @@ export default function BioCreatorPage() {
     };
   }, [bio, analyzeBio]);
 
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+        // Use a timeout to ensure the DOM has updated before scrolling
+        setTimeout(() => {
+            if (chatContainerRef.current) {
+                chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+            }
+        }, 0);
+    }
+  };
+
 
   // Auto-scroll chat
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
+    scrollToBottom();
   }, [chatHistory]);
   
   const sendMessage = (message: string) => {
@@ -130,6 +139,7 @@ export default function BioCreatorPage() {
     const newChatHistory = [...chatHistory, newUserMessage];
     setChatHistory(newChatHistory);
     setUserInput('');
+    scrollToBottom(); // Immediately scroll after user sends a message
 
     startGenerating(async () => {
       const response = await generateBioChatResponse({
@@ -258,8 +268,8 @@ export default function BioCreatorPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
-              <ScrollArea className="flex-1 pr-4">
-                <div className="space-y-4" ref={chatContainerRef}>
+              <ScrollArea className="flex-1 pr-4" ref={chatContainerRef}>
+                <div className="space-y-4">
                   {chatHistory.map((msg, index) => (
                     <div key={index}>
                       <div
@@ -345,7 +355,7 @@ export default function BioCreatorPage() {
                         size="sm" 
                         onClick={handleUseBio} 
                         disabled={!bio}
-                        className={cn(isBioNearlyComplete && 'animate-pulse-strong ring-2 ring-accent')}
+                        className={cn(isBioNearlyComplete && 'animate-ring-pulse ring-2 ring-accent')}
                     >
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Use Bio

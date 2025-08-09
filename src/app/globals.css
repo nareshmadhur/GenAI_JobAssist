@@ -63,6 +63,9 @@
   .link {
     @apply cursor-pointer underline w-fit;
   }
+  .dark .dark\:bg-progress-background {
+    background-color: hsl(217 30% 20%);
+  }
 }
 
 @layer utilities {
