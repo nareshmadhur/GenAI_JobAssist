@@ -1,3 +1,4 @@
+
 "use server";
 
 import type { CoverLetterOutput } from '@/ai/flows/generate-cover-letter';

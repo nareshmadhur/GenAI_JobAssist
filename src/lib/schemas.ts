@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 import type { AllGenerationResults } from '@/app/actions';
 
@@ -110,3 +111,28 @@ export interface SavedJob {
   allResults: AllGenerationResults;
   savedAt: string;
 }
+
+
+// Schemas for the Bio Creator chatbot
+export const BioChatMessageSchema = z.object({
+  author: z.enum(['user', 'assistant']),
+  content: z.string(),
+});
+export type BioChatMessage = z.infer<typeof BioChatMessageSchema>;
+
+export const BioChatInputSchema = z.object({
+  chatHistory: z.array(BioChatMessageSchema).describe("The full history of the conversation."),
+  currentBio: z.string().describe("The current, full text of the user's bio in Markdown format."),
+});
+export type BioChatInput = z.infer<typeof BioChatInputSchema>;
+
+export const BioChatOutputSchema = z.object({
+  response: z.string().describe("The chatbot's next message to the user (e.g., the next question to ask)."),
+  updatedBio: z.string().describe("The new, complete version of the user's bio, updated with the latest information."),
+  error: z.string().optional().describe("An error message if the model failed to process the request."),
+});
+export type BioChatOutput = z.infer<typeof BioChatOutputSchema>;
+
+
+// Server action wrapper for bio chat
+export const generateBioChatResponse = z.function(BioChatInputSchema, BioChatOutputSchema);
