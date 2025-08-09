@@ -5,7 +5,6 @@ import { generateBioChatResponse } from '@/ai/flows/generate-bio-chat-response';
 import { JobSparkLogo } from '@/components/job-spark-logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -44,7 +43,7 @@ export default function BioCreatorPage() {
   const [isGenerating, startGenerating] = useTransition();
   const { toast } = useToast();
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
 
 
@@ -219,7 +218,7 @@ export default function BioCreatorPage() {
                 <Bot /> AI Assistant
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto">
+            <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
               <ScrollArea className="flex-1 pr-4" ref={chatContainerRef}>
                 <div className="space-y-4">
                   {chatHistory.map((msg, index) => (
@@ -274,13 +273,15 @@ export default function BioCreatorPage() {
                 </div>
               </ScrollArea>
               <div className="flex items-center gap-2">
-                <Input
+                <Textarea
                   ref={inputRef}
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                   placeholder="Type your message or choose a suggestion..."
                   disabled={isGenerating}
+                  rows={1}
+                  className="resize-none"
                 />
                 <Button onClick={handleSendMessage} disabled={isGenerating || !userInput.trim()}>
                   <Send size={18} />
