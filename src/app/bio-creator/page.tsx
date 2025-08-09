@@ -10,10 +10,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import type { BioChatMessage } from '@/lib/schemas';
-import { Bot, Copy, Loader2, Send, User } from 'lucide-react';
+import { Bot, Copy, ExternalLink, Loader2, Send, User } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef, useState, useTransition } from 'react';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
+const LOCAL_STORAGE_KEY_BIO_FORM = 'jobspark_form_data';
 const LOCAL_STORAGE_KEY_BIO = 'jobspark_bio_creator_bio';
 const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
 
@@ -29,6 +32,8 @@ export default function BioCreatorPage() {
   const [isGenerating, startGenerating] = useTransition();
   const { toast } = useToast();
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -104,6 +109,24 @@ export default function BioCreatorPage() {
       }
     );
   };
+  
+  const handleUseBio = () => {
+    if (!bio) {
+        toast({ variant: 'destructive', title: 'Your bio is empty.' });
+        return;
+    }
+    try {
+        const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
+        const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
+        const dataToSave = { ...existingData, bio };
+        localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(dataToSave));
+        toast({ title: 'Bio saved!', description: 'Redirecting you to the Job Matcher...' });
+        router.push('/job-matcher');
+    } catch (e) {
+        console.error('Failed to save bio for Job Matcher', e);
+        toast({ variant: 'destructive', title: 'Could not save bio.' });
+    }
+  }
 
 
   return (
@@ -123,6 +146,9 @@ export default function BioCreatorPage() {
               </div>
             </div>
           </div>
+           <div className="flex items-center gap-2">
+             <ThemeToggleButton />
+           </div>
         </div>
       </header>
       <main className="flex-1 overflow-hidden p-4">
@@ -135,8 +161,8 @@ export default function BioCreatorPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
-              <ScrollArea className="flex-1" ref={chatContainerRef}>
-                <div className="space-y-4 pr-4">
+              <ScrollArea className="flex-1 pr-4" ref={chatContainerRef}>
+                <div className="space-y-4">
                   {chatHistory.map((msg, index) => (
                     <div
                       key={index}
@@ -182,7 +208,7 @@ export default function BioCreatorPage() {
                 <Input
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                   placeholder="Type your message..."
                   disabled={isGenerating}
                 />
@@ -200,9 +226,14 @@ export default function BioCreatorPage() {
                 <span className="flex items-center gap-2">
                   <User /> Your Bio
                 </span>
-                 <Button variant="ghost" size="icon" onClick={handleCopyToClipboard} disabled={!bio}>
-                  <Copy className="h-4 w-4" />
-                </Button>
+                <div>
+                    <Button variant="ghost" size="icon" onClick={handleCopyToClipboard} disabled={!bio}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={handleUseBio} disabled={!bio}>
+                        <ExternalLink className="h-4 w-4" />
+                    </Button>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1">
