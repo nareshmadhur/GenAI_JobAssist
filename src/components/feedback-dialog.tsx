@@ -108,15 +108,18 @@ export function FeedbackDialog({
               className="space-y-4 pt-4"
             >
               {/* Hidden fields to pass context */}
+              {/* Job Description */}
               <input
                 type="hidden"
                 name="entry.685011891"
                 value={jobDescription}
               />
+              {/* Bio */}
               <input type="hidden" name="entry.1458936165" value={bio} />
+              {/* Generated Output */}
               <input
                 type="hidden"
-                name="entry.292295861"
+                name="entry.667296479"
                 value={lastGeneratedOutput}
               />
 
