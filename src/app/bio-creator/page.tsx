@@ -43,7 +43,6 @@ import { SavedBiosSheet } from '@/components/saved-bios-sheet';
 
 
 const LOCAL_STORAGE_KEY_JOB_MATCHER_FORM = 'jobspark_form_data';
-const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
 const LOCAL_STORAGE_KEY_SAVED_BIOS = 'jobspark_saved_bios';
 
 
@@ -92,7 +91,7 @@ function BioCreatorCore() {
     } else {
       setCompleteness(null);
     }
-  }, []);
+  }, [startAnalyzing]);
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -103,32 +102,19 @@ function BioCreatorCore() {
         setSavedBios(JSON.parse(savedBiosData));
       }
 
+      // If coming from matcher, load the bio from the matcher's form data
       const fromMatcher = searchParams.get('from') === 'matcher';
-      const matcherDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
-      const matcherBio = matcherDataRaw ? JSON.parse(matcherDataRaw).bio : '';
+      let initialBio = '';
 
-      const savedChatDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_CHAT);
-      const savedChatData = savedChatDataRaw ? JSON.parse(savedChatDataRaw) : { bio: '', chatHistory: [] };
-      
-      let initialBio = savedChatData.bio || '';
-      let initialChat = savedChatData.chatHistory || [];
-
-      // If coming from matcher with a bio, it overrides the current state
-      if (fromMatcher && matcherBio) {
-        initialBio = matcherBio;
-        initialChat = []; // Start a fresh chat session
+      if (fromMatcher) {
+        const matcherDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
+        if (matcherDataRaw) {
+          initialBio = JSON.parse(matcherDataRaw).bio || '';
+        }
       }
-
+      
       setBio(initialBio);
-      
-      const initialMessage = getInitialMessage(initialBio);
-      
-      if (initialChat.length > 0) {
-        setChatHistory(initialChat);
-      } else {
-        setChatHistory([initialMessage]);
-      }
-      
+      setChatHistory([getInitialMessage(initialBio)]);
       analyzeBio(initialBio);
 
     } catch (e) {
@@ -136,17 +122,6 @@ function BioCreatorCore() {
       setChatHistory([getInitialMessage()]);
     }
   }, [getInitialMessage, searchParams, analyzeBio]);
-
-
-  // Save state to localStorage whenever it changes
-  useEffect(() => {
-    try {
-      const dataToSave = { bio, chatHistory };
-      localStorage.setItem(LOCAL_STORAGE_KEY_CHAT, JSON.stringify(dataToSave));
-    } catch (e) {
-      console.error('Failed to save data to localStorage', e);
-    }
-  }, [bio, chatHistory]);
 
 
   // Debounced bio analysis
@@ -225,17 +200,25 @@ function BioCreatorCore() {
     );
   };
   
-  const proceedToJobMatcher = () => {
+  const handleUseBio = () => {
     if (!bio) {
         toast({ variant: 'destructive', title: 'Your bio is empty.' });
         return;
     }
      try {
+      // Get existing matcher data, or create a new object.
       const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
       const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
-      const dataToSave = { ...existingData, bio, jobDescription: '', questions: '', allResults: {} };
+      
+      // Update the bio, keep other fields like jobDescription, clear results.
+      const dataToSave = { 
+          ...existingData, 
+          bio: bio, 
+          allResults: {},
+        };
+
       localStorage.setItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM, JSON.stringify(dataToSave));
-      toast({ title: 'Bio ready!', description: 'Redirecting you to the Job Matcher...' });
+      toast({ title: 'Bio Ready!', description: 'Redirecting you to the Job Matcher...' });
       router.push('/job-matcher');
     } catch (e) {
       console.error('Failed to save bio for Job Matcher', e);
@@ -243,19 +226,10 @@ function BioCreatorCore() {
     }
   }
 
-  const handleUseBio = () => {
-    if (!bio) {
-        toast({ variant: 'destructive', title: 'Your bio is empty.' });
-        return;
-    }
-    proceedToJobMatcher();
-  }
-
   const handleStartOver = () => {
     setBio('');
     setChatHistory([getInitialMessage()]);
     setCompleteness(null);
-    localStorage.removeItem(LOCAL_STORAGE_KEY_CHAT);
     toast({ title: 'Started Over', description: 'Your bio and chat history have been cleared.' });
   };
 
@@ -364,7 +338,7 @@ function BioCreatorCore() {
                         Are you sure you want to start over?
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                        This will permanently clear your current bio and chat history. This action cannot be undone.
+                        This will permanently clear your current bio and chat history. This action cannot be undone. Saved named bios will not be affected.
                     </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -471,17 +445,16 @@ function BioCreatorCore() {
                     <Button variant="ghost" size="icon" onClick={handleCopyToClipboard} disabled={!bio} aria-label="Copy Bio">
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <UnsavedChangesDialog onConfirm={proceedToJobMatcher}>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={!bio}
-                            className={cn(isBioNearlyComplete && 'animate-ring-pulse ring-2 ring-accent')}
-                        >
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            Use Bio
-                        </Button>
-                    </UnsavedChangesDialog>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={!bio}
+                        className={cn(isBioNearlyComplete && 'animate-ring-pulse ring-2 ring-accent')}
+                        onClick={handleUseBio}
+                    >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Use Bio
+                    </Button>
                 </div>
               </CardTitle>
               <BioProgressTracker analysis={completeness} isLoading={isAnalyzing} />
@@ -501,52 +474,6 @@ function BioCreatorCore() {
   );
 }
 
-function UnsavedChangesDialog({
-  children,
-  onConfirm,
-}: {
-  children: React.ReactNode;
-  onConfirm: () => void;
-}) {
-  const [jobMatcherData, setJobMatcherData] = useState<{ jobDescription?: string } | null>(null);
-
-  useEffect(() => {
-    try {
-      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
-      if (savedData) {
-        setJobMatcherData(JSON.parse(savedData));
-      }
-    } catch (e) {
-      console.error('Failed to parse data from localStorage', e);
-    }
-  }, []);
-
-  const hasUnsavedChanges = jobMatcherData && jobMatcherData.jobDescription && jobMatcherData.jobDescription.length > 10;
-
-  if (!hasUnsavedChanges) {
-    return <div onClick={onConfirm}>{children}</div>;
-  }
-
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>You have unsaved changes</AlertDialogTitle>
-          <AlertDialogDescription>
-            You have an existing job application in progress in the Job Matcher. Starting a new application with this bio will clear that data. Do you want to continue?
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Continue & Clear</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
-
 export default function BioCreatorPage() {
     return (
         <Suspense fallback={<div>Loading...</div>}>
@@ -554,3 +481,5 @@ export default function BioCreatorPage() {
         </Suspense>
     )
 }
+
+    
