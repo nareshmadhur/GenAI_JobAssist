@@ -87,7 +87,6 @@ function BioCreatorCore() {
         setSavedBios(JSON.parse(savedBiosData));
       }
 
-      const fromMatcher = searchParams.get('from') === 'matcher';
       const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
       const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
       const initialBio = existingData.bio || '';
@@ -97,8 +96,10 @@ function BioCreatorCore() {
 
       const savedChat = localStorage.getItem(LOCAL_STORAGE_KEY_CHAT);
       const initialMessage = getInitialMessage(initialBio);
-
-      if (fromMatcher) {
+      
+      const fromMatcher = searchParams.get('from') === 'matcher';
+      
+      if (fromMatcher && initialBio) {
         setChatHistory([initialMessage]);
       } else if (savedChat) {
          const parsedChat = JSON.parse(savedChat);
@@ -114,7 +115,7 @@ function BioCreatorCore() {
     } catch (e) {
       console.error('Failed to load data from localStorage', e);
     }
-  }, [getInitialMessage, searchParams]);
+  }, [getInitialMessage, searchParams, analyzeBio]);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -492,3 +493,5 @@ export default function BioCreatorPage() {
         </Suspense>
     )
 }
+
+    
