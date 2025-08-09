@@ -34,10 +34,10 @@ const prompt = ai.definePrompt({
 
 - You will be given the entire chat history and the current version of the user's bio.
 - Your task is to analyze the user's latest message and do two things:
-  1.  **Update the Bio**: Modify the bio based on the new information provided. If the user corrects something, update it. If they provide new details, integrate them smoothly. The bio should be a professional, well-formatted document. Use Markdown for formatting (e.g., headings, bullet points).
+  1.  **Update the Bio**: Modify the bio based on the new information provided. If the user corrects something, update it. If they provide new details, integrate them smoothly. The bio should be a professional, well-formatted document. **IMPORTANT: Do NOT use Markdown formatting (like **, ##, or *). Use simple newlines and spacing to create a clean, plain-text document.**
   2.  **Ask the Next Question**: Ask the *next logical question* to continue building the bio. For example, if they just gave you their job title, ask about their responsibilities. If they talked about responsibilities, ask for quantifiable achievements. If they finished a job, ask about the one before it, or their education.
 
-**Current Bio (in Markdown):**
+**Current Bio (Plain Text):**
 ---
 {{currentBio}}
 ---
@@ -49,7 +49,7 @@ const prompt = ai.definePrompt({
 {{/each}}
 ---
 
-Based on the last message from the user, generate your response and the fully updated bio.`,
+Based on the last message from the user, generate your response and the fully updated, plain-text bio.`,
 });
 
 const generateBioChatResponseFlow = ai.defineFlow(
