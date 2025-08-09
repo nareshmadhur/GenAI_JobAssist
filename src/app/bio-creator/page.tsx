@@ -44,6 +44,7 @@ export default function BioCreatorPage() {
   const [isGenerating, startGenerating] = useTransition();
   const { toast } = useToast();
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
 
@@ -117,7 +118,8 @@ export default function BioCreatorPage() {
   };
 
   const handleSuggestedReplyClick = (reply: string) => {
-    setUserInput(reply);
+    setUserInput(reply + ': ');
+    inputRef.current?.focus();
   };
   
   const handleSendMessage = () => {
@@ -273,6 +275,7 @@ export default function BioCreatorPage() {
               </ScrollArea>
               <div className="flex items-center gap-2">
                 <Input
+                  ref={inputRef}
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
