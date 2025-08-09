@@ -233,6 +233,11 @@ export default function JobMatcherPage() {
     formMethods.reset(job.formData);
     setAllResults(job.allResults);
     setActiveView(Object.keys(job.allResults)[0] as ActiveView || 'none');
+     try {
+        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify(job.formData));
+      } catch (e) {
+        console.error('Failed to save loaded data to localStorage', e);
+      }
   };
 
   const handleDeleteJob = (jobId: string) => {
