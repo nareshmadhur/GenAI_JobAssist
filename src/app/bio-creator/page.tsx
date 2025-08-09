@@ -213,7 +213,7 @@ export default function BioCreatorPage() {
                 <Bot /> AI Assistant
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
+            <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto">
               <ScrollArea className="flex-1 pr-4" ref={chatContainerRef}>
                 <div className="space-y-4">
                   {chatHistory.map((msg, index) => (
@@ -246,7 +246,7 @@ export default function BioCreatorPage() {
                       {msg.author === 'assistant' && msg.suggestedReplies && msg.suggestedReplies.length > 0 && !isGenerating && (
                          <div className="mt-2 flex flex-wrap gap-2">
                             {msg.suggestedReplies.map((reply, i) => (
-                                <Button key={i} variant="outline" size="sm" onClick={() => setUserInput(reply)}>
+                                <Button key={i} variant="outline" size="sm" onClick={() => sendMessage(reply)}>
                                     {reply}
                                 </Button>
                             ))}
@@ -300,12 +300,12 @@ export default function BioCreatorPage() {
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-1">
+            <CardContent className="flex flex-1 flex-col">
               <Textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="Your bio will appear here as you build it..."
-                className="h-full flex-1 resize-none"
+                className="flex-1 resize-none"
               />
             </CardContent>
           </Card>
