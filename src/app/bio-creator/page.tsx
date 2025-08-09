@@ -42,7 +42,7 @@ import { Label } from '@/components/ui/label';
 import { SavedBiosSheet } from '@/components/saved-bios-sheet';
 
 
-const LOCAL_STORAGE_KEY_BIO_FORM = 'jobspark_form_data';
+const LOCAL_STORAGE_KEY_JOB_MATCHER_FORM = 'jobspark_form_data';
 const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
 const LOCAL_STORAGE_KEY_SAVED_BIOS = 'jobspark_saved_bios';
 
@@ -104,11 +104,11 @@ function BioCreatorCore() {
       }
 
       const fromMatcher = searchParams.get('from') === 'matcher';
-      const matcherDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
+      const matcherDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
       const matcherBio = matcherDataRaw ? JSON.parse(matcherDataRaw).bio : '';
 
       const savedChatDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_CHAT);
-      const savedChatData = savedChatDataRaw ? JSON.parse(savedChatDataRaw) : {};
+      const savedChatData = savedChatDataRaw ? JSON.parse(savedChatDataRaw) : { bio: '', chatHistory: [] };
       
       let initialBio = savedChatData.bio || '';
       let initialChat = savedChatData.chatHistory || [];
@@ -120,7 +120,6 @@ function BioCreatorCore() {
       }
 
       setBio(initialBio);
-      analyzeBio(initialBio);
       
       const initialMessage = getInitialMessage(initialBio);
       
@@ -129,6 +128,8 @@ function BioCreatorCore() {
       } else {
         setChatHistory([initialMessage]);
       }
+      
+      analyzeBio(initialBio);
 
     } catch (e) {
       console.error('Failed to load data from localStorage', e);
@@ -230,10 +231,10 @@ function BioCreatorCore() {
         return;
     }
      try {
-      const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
+      const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
       const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
       const dataToSave = { ...existingData, bio, jobDescription: '', questions: '', allResults: {} };
-      localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(dataToSave));
+      localStorage.setItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM, JSON.stringify(dataToSave));
       toast({ title: 'Bio ready!', description: 'Redirecting you to the Job Matcher...' });
       router.push('/job-matcher');
     } catch (e) {
@@ -511,7 +512,7 @@ function UnsavedChangesDialog({
 
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
+      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
       if (savedData) {
         setJobMatcherData(JSON.parse(savedData));
       }
