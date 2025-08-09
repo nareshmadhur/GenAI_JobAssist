@@ -34,7 +34,7 @@ const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
 const INITIAL_MESSAGE: BioChatMessage = {
   author: 'assistant',
   content: "Hello! I'm here to help you build a professional bio. You can either answer my questions, or just paste your resume or other details and I'll structure it for you.",
-  suggestedReplies: ["What's your full name?", "I want to paste my resume"],
+  suggestedReplies: ["Add my name", "Paste my resume"],
 };
 
 export default function BioCreatorPage() {
@@ -117,10 +117,6 @@ export default function BioCreatorPage() {
   };
 
   const handleSuggestedReplyClick = (reply: string) => {
-    if (reply.toLowerCase() === "go to job matcher") {
-        handleUseBio();
-        return;
-    }
     setUserInput(reply);
   };
   
