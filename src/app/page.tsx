@@ -53,7 +53,7 @@ export default function WelcomePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="font-semibold text-primary">
+                  <p className="font-semibold text-accent">
                     Start Building &rarr;
                   </p>
                 </CardContent>
@@ -72,7 +72,7 @@ export default function WelcomePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="font-semibold text-primary">
+                  <p className="font-semibold text-accent">
                     Start Analyzing &rarr;
                   </p>
                 </CardContent>
