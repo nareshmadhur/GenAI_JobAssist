@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 const LOCAL_STORAGE_KEY_BIO_FORM = 'jobspark_form_data';
 const LOCAL_STORAGE_KEY_BIO = 'jobspark_bio_creator_bio';
@@ -198,6 +199,8 @@ export default function BioCreatorPage() {
     toast({ title: 'Started Over', description: 'Your bio and chat history have been cleared.' });
   };
 
+  const isBioNearlyComplete = completeness ? Object.values(completeness).filter(Boolean).length >= 4 : false;
+
 
   return (
     <div className="flex h-screen flex-col bg-muted/20">
@@ -337,7 +340,13 @@ export default function BioCreatorPage() {
                     <Button variant="ghost" size="icon" onClick={handleCopyToClipboard} disabled={!bio} aria-label="Copy Bio">
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleUseBio} disabled={!bio}>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleUseBio} 
+                        disabled={!bio}
+                        className={cn(isBioNearlyComplete && 'animate-pulse-strong ring-2 ring-accent')}
+                    >
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Use Bio
                     </Button>
