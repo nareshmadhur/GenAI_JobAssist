@@ -13,6 +13,7 @@ export * from './flows/revise-response';
 export * from './flows/generate-q-and-a';
 export * from './flows/extract-job-details';
 export * from './flows/generate-bio-chat-response';
+export * from './flows/analyze-bio-completeness';
 
 import './flows/generate-cover-letter.ts';
 import './flows/generate-cv.ts';
@@ -23,3 +24,4 @@ import './flows/revise-response.ts';
 import './flows/generate-q-and-a.ts';
 import './flows/extract-job-details.ts';
 import './flows/generate-bio-chat-response.ts';
+import './flows/analyze-bio-completeness.ts';

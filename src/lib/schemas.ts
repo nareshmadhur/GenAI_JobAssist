@@ -138,3 +138,18 @@ export type BioChatOutput = z.infer<typeof BioChatOutputSchema>;
 
 // Server action wrapper for bio chat
 export const generateBioChatResponse = z.function(BioChatInputSchema, BioChatOutputSchema);
+
+// Schemas for bio completeness analysis
+export const BioCompletenessInputSchema = z.object({
+  bio: z.string(),
+});
+export type BioCompletenessInput = z.infer<typeof BioCompletenessInputSchema>;
+
+export const BioCompletenessOutputSchema = z.object({
+  hasContactInfo: z.boolean().describe('True if contact information is present.'),
+  hasSummary: z.boolean().describe('True if a professional summary is present.'),
+  hasWorkExperience: z.boolean().describe('True if work experience is present.'),
+  hasEducation: z.boolean().describe('True if education history is present.'),
+  hasSkills: z.boolean().describe('True if a skills section is present.'),
+});
+export type BioCompletenessOutput = z.infer<typeof BioCompletenessOutputSchema>;

@@ -2,17 +2,19 @@
 'use client';
 
 import { generateBioChatResponse } from '@/ai/flows/generate-bio-chat-response';
+import { analyzeBioCompletenessAction } from '@/app/actions';
+import { BioProgressTracker } from '@/components/bio-progress-tracker';
 import { JobSparkLogo } from '@/components/job-spark-logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import type { BioChatMessage } from '@/lib/schemas';
+import type { BioChatMessage, BioCompletenessOutput } from '@/lib/schemas';
 import { Bot, Copy, ExternalLink, Loader2, Send, Trash2, User, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import React, { useEffect, useRef, useState, useTransition } from 'react';
+import React, { useEffect, useRef, useState, useTransition, useCallback } from 'react';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import {
   AlertDialog,
@@ -41,6 +43,8 @@ export default function BioCreatorPage() {
   const [bio, setBio] = useState('');
   const [userInput, setUserInput] = useState('');
   const [isGenerating, startGenerating] = useTransition();
+  const [isAnalyzing, startAnalyzing] = useTransition();
+  const [completeness, setCompleteness] = useState<BioCompletenessOutput | null>(null);
   const { toast } = useToast();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -51,7 +55,11 @@ export default function BioCreatorPage() {
   useEffect(() => {
     try {
       const savedBio = localStorage.getItem(LOCAL_STORAGE_KEY_BIO);
-      if (savedBio) setBio(JSON.parse(savedBio));
+      if (savedBio) {
+        const parsedBio = JSON.parse(savedBio);
+        setBio(parsedBio);
+        analyzeBio(parsedBio); // Analyze loaded bio
+      }
 
       const savedChat = localStorage.getItem(LOCAL_STORAGE_KEY_CHAT);
       if (savedChat) {
@@ -74,6 +82,33 @@ export default function BioCreatorPage() {
       console.error('Failed to save data to localStorage', e);
     }
   }, [bio, chatHistory]);
+  
+  const analyzeBio = useCallback((currentBio: string) => {
+    if (currentBio && currentBio.length > 50) {
+      startAnalyzing(async () => {
+        const result = await analyzeBioCompletenessAction({ bio: currentBio });
+        if (result.success) {
+          setCompleteness(result.data);
+        } else {
+          console.error("Bio analysis failed:", result.error);
+        }
+      });
+    } else {
+      setCompleteness(null);
+    }
+  }, [startAnalyzing]);
+
+  // Debounced bio analysis
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      analyzeBio(bio);
+    }, 1000); // 1-second debounce
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [bio, analyzeBio]);
+
 
   // Auto-scroll chat
   useEffect(() => {
@@ -157,6 +192,7 @@ export default function BioCreatorPage() {
   const handleStartOver = () => {
     setBio('');
     setChatHistory([INITIAL_MESSAGE]);
+    setCompleteness(null);
     localStorage.removeItem(LOCAL_STORAGE_KEY_BIO);
     localStorage.removeItem(LOCAL_STORAGE_KEY_CHAT);
     toast({ title: 'Started Over', description: 'Your bio and chat history have been cleared.' });
@@ -307,6 +343,7 @@ export default function BioCreatorPage() {
                     </Button>
                 </div>
               </CardTitle>
+              <BioProgressTracker analysis={completeness} isLoading={isAnalyzing} />
             </CardHeader>
             <CardContent className="flex flex-1 flex-col">
               <Textarea

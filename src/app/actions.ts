@@ -10,13 +10,20 @@ import { generateQAndA } from '@/ai/flows/generate-q-and-a';
 import { reviseResponse } from '@/ai/flows/revise-response';
 import type { JobDetailsOutput } from '@/lib/schemas';
 import { extractJobDetails } from '@/ai/flows/extract-job-details';
+import { analyzeBioCompleteness } from '@/ai/flows/analyze-bio-completeness';
 import type {
+  BioCompletenessOutput,
   CvOutput,
   QAndAOutput,
   ReviseResponseData,
   ReviseResponseOutput,
 } from '@/lib/schemas';
-import { JobApplicationSchema, ReviseResponseSchema, JobDetailsInputSchema } from '@/lib/schemas';
+import {
+  JobApplicationSchema,
+  ReviseResponseSchema,
+  JobDetailsInputSchema,
+  BioCompletenessInputSchema,
+} from '@/lib/schemas';
 
 /**
  * Type union for a successful generation response.
@@ -56,6 +63,13 @@ type ReviseActionResponse =
  */
 type ExtractDetailsActionResponse =
   | { success: true; data: JobDetailsOutput }
+  | { success: false; error: string };
+
+/**
+ * A discriminated union for the result of the bio completeness analysis action.
+ */
+type AnalyzeBioActionResponse =
+  | { success: true; data: BioCompletenessOutput }
   | { success: false; error: string };
 
 
@@ -174,6 +188,34 @@ export async function extractJobDetailsAction(rawData: unknown): Promise<Extract
     return {
       success: false,
       error: `Failed to extract job details: ${errorMessage}.`,
+    };
+  }
+}
+
+/**
+ * Server Action to analyze the completeness of a user's bio.
+ *
+ * @param rawData - The raw input containing the bio text.
+ * @returns A promise that resolves to an `AnalyzeBioActionResponse`.
+ */
+export async function analyzeBioCompletenessAction(
+  rawData: unknown
+): Promise<AnalyzeBioActionResponse> {
+  const validationResult = BioCompletenessInputSchema.safeParse(rawData);
+  if (!validationResult.success) {
+    return { success: false, error: 'Invalid bio provided for analysis.' };
+  }
+
+  try {
+    const response = await analyzeBioCompleteness(validationResult.data);
+    return { success: true, data: response };
+  } catch (error) {
+    console.error('Error in analyzeBioCompletenessAction:', error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    return {
+      success: false,
+      error: `Failed to analyze bio: ${errorMessage}.`,
     };
   }
 }
