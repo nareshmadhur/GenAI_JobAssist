@@ -224,7 +224,7 @@ function BioCreatorCore() {
     );
   };
   
-  const handleUseBio = () => {
+  const proceedToJobMatcher = () => {
     if (!bio) {
         toast({ variant: 'destructive', title: 'Your bio is empty.' });
         return;
@@ -232,7 +232,7 @@ function BioCreatorCore() {
      try {
       const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
       const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
-      const dataToSave = { ...existingData, bio };
+      const dataToSave = { ...existingData, bio, jobDescription: '', questions: '', allResults: {} };
       localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(dataToSave));
       toast({ title: 'Bio ready!', description: 'Redirecting you to the Job Matcher...' });
       router.push('/job-matcher');
@@ -240,6 +240,14 @@ function BioCreatorCore() {
       console.error('Failed to save bio for Job Matcher', e);
       toast({ variant: 'destructive', title: 'Could not load bio for Job Matcher.' });
     }
+  }
+
+  const handleUseBio = () => {
+    if (!bio) {
+        toast({ variant: 'destructive', title: 'Your bio is empty.' });
+        return;
+    }
+    proceedToJobMatcher();
   }
 
   const handleStartOver = () => {
@@ -462,16 +470,17 @@ function BioCreatorCore() {
                     <Button variant="ghost" size="icon" onClick={handleCopyToClipboard} disabled={!bio} aria-label="Copy Bio">
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={handleUseBio} 
-                        disabled={!bio}
-                        className={cn(isBioNearlyComplete && 'animate-ring-pulse ring-2 ring-accent')}
-                    >
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Use Bio
-                    </Button>
+                    <UnsavedChangesDialog onConfirm={proceedToJobMatcher}>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            disabled={!bio}
+                            className={cn(isBioNearlyComplete && 'animate-ring-pulse ring-2 ring-accent')}
+                        >
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Use Bio
+                        </Button>
+                    </UnsavedChangesDialog>
                 </div>
               </CardTitle>
               <BioProgressTracker analysis={completeness} isLoading={isAnalyzing} />
@@ -490,6 +499,52 @@ function BioCreatorCore() {
     </div>
   );
 }
+
+function UnsavedChangesDialog({
+  children,
+  onConfirm,
+}: {
+  children: React.ReactNode;
+  onConfirm: () => void;
+}) {
+  const [jobMatcherData, setJobMatcherData] = useState<{ jobDescription?: string } | null>(null);
+
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
+      if (savedData) {
+        setJobMatcherData(JSON.parse(savedData));
+      }
+    } catch (e) {
+      console.error('Failed to parse data from localStorage', e);
+    }
+  }, []);
+
+  const hasUnsavedChanges = jobMatcherData && jobMatcherData.jobDescription && jobMatcherData.jobDescription.length > 10;
+
+  if (!hasUnsavedChanges) {
+    return <div onClick={onConfirm}>{children}</div>;
+  }
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>You have unsaved changes</AlertDialogTitle>
+          <AlertDialogDescription>
+            You have an existing job application in progress in the Job Matcher. Starting a new application with this bio will clear that data. Do you want to continue?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>Continue & Clear</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 
 export default function BioCreatorPage() {
     return (

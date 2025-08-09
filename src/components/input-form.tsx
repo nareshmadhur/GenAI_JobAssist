@@ -22,6 +22,18 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import type { JobApplicationData } from '@/lib/schemas';
 import { ExpandableTextarea } from './expandable-textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
+import React, { useEffect, useState } from 'react';
 
 /**
  * A component that renders the main input form for the application, including
@@ -31,6 +43,50 @@ import { ExpandableTextarea } from './expandable-textarea';
  */
 export function InputForm(): JSX.Element {
   const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
+  const [hasJobDescription, setHasJobDescription] = useState(false);
+
+  useEffect(() => {
+    const subscription = formMethods.watch((value) => {
+      setHasJobDescription(!!(value.jobDescription && value.jobDescription.length > 10));
+    });
+    return () => subscription.unsubscribe();
+  }, [formMethods.watch]);
+
+  const bioCreatorLink = (
+    <p className="text-xs text-muted-foreground">
+      Need help with your bio?{' '}
+      <Link href="/bio-creator?from=matcher" className="underline text-accent">
+        Go to the Bio Creator
+      </Link>
+    </p>
+  );
+
+  const bioCreatorLinkWithWarning = (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <p className="text-xs text-muted-foreground">
+          Need help with your bio?{' '}
+          <span className="underline text-accent cursor-pointer">
+            Go to the Bio Creator
+          </span>
+        </p>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>You have unsaved changes</AlertDialogTitle>
+          <AlertDialogDescription>
+            Navigating to the Bio Creator will clear your current job description and generated results. Do you want to continue?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction asChild>
+            <Link href="/bio-creator?from=matcher">Continue & Clear</Link>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   return (
     <Card className="bg-card/80 backdrop-blur-sm">
@@ -65,14 +121,7 @@ export function InputForm(): JSX.Element {
                   field={field}
                   label="Your Bio / Resume"
                   placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
-                  footer={
-                     <p className="text-xs text-muted-foreground">
-                        Need help with your bio?{' '}
-                        <Link href="/bio-creator?from=matcher" className="underline text-accent">
-                           Go to the Bio Creator
-                        </Link>
-                     </p>
-                  }
+                  footer={hasJobDescription ? bioCreatorLinkWithWarning : bioCreatorLink}
                 />
               )}
             />
