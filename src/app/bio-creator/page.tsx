@@ -97,56 +97,56 @@ function BioCreatorCore() {
   // Load state from localStorage on mount
   useEffect(() => {
     try {
+      // Load saved bios list
       const savedBiosData = localStorage.getItem(LOCAL_STORAGE_KEY_SAVED_BIOS);
       if (savedBiosData) {
         setSavedBios(JSON.parse(savedBiosData));
       }
 
-      const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
-      const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
-      const initialBio = existingData.bio || '';
+      const fromMatcher = searchParams.get('from') === 'matcher';
+      const matcherDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
+      const matcherBio = matcherDataRaw ? JSON.parse(matcherDataRaw).bio : '';
+
+      const savedChatDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_CHAT);
+      const savedChatData = savedChatDataRaw ? JSON.parse(savedChatDataRaw) : {};
       
+      let initialBio = savedChatData.bio || '';
+      let initialChat = savedChatData.chatHistory || [];
+
+      // If coming from matcher with a bio, it overrides the current state
+      if (fromMatcher && matcherBio) {
+        initialBio = matcherBio;
+        initialChat = []; // Start a fresh chat session
+      }
+
       setBio(initialBio);
       analyzeBio(initialBio);
-
-      const savedChat = localStorage.getItem(LOCAL_STORAGE_KEY_CHAT);
+      
       const initialMessage = getInitialMessage(initialBio);
       
-      const fromMatcher = searchParams.get('from') === 'matcher';
-      
-      if (fromMatcher && initialBio) {
-        setChatHistory([initialMessage]);
-      } else if (savedChat) {
-         const parsedChat = JSON.parse(savedChat);
-         if (parsedChat.length > 0) {
-            setChatHistory(parsedChat);
-         } else {
-            setChatHistory([initialMessage]);
-         }
+      if (initialChat.length > 0) {
+        setChatHistory(initialChat);
       } else {
         setChatHistory([initialMessage]);
       }
 
     } catch (e) {
       console.error('Failed to load data from localStorage', e);
+      setChatHistory([getInitialMessage()]);
     }
   }, [getInitialMessage, searchParams, analyzeBio]);
+
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
     try {
-      const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
-      const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
-      const dataToSave = { ...existingData, bio };
-      localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(dataToSave));
-      
-      if (chatHistory.length > 0) {
-        localStorage.setItem(LOCAL_STORAGE_KEY_CHAT, JSON.stringify(chatHistory));
-      }
+      const dataToSave = { bio, chatHistory };
+      localStorage.setItem(LOCAL_STORAGE_KEY_CHAT, JSON.stringify(dataToSave));
     } catch (e) {
       console.error('Failed to save data to localStorage', e);
     }
   }, [bio, chatHistory]);
+
 
   // Debounced bio analysis
   useEffect(() => {
@@ -229,8 +229,17 @@ function BioCreatorCore() {
         toast({ variant: 'destructive', title: 'Your bio is empty.' });
         return;
     }
-    toast({ title: 'Bio ready!', description: 'Redirecting you to the Job Matcher...' });
-    router.push('/job-matcher');
+     try {
+      const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
+      const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
+      const dataToSave = { ...existingData, bio };
+      localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(dataToSave));
+      toast({ title: 'Bio ready!', description: 'Redirecting you to the Job Matcher...' });
+      router.push('/job-matcher');
+    } catch (e) {
+      console.error('Failed to save bio for Job Matcher', e);
+      toast({ variant: 'destructive', title: 'Could not load bio for Job Matcher.' });
+    }
   }
 
   const handleStartOver = () => {
@@ -238,10 +247,6 @@ function BioCreatorCore() {
     setChatHistory([getInitialMessage()]);
     setCompleteness(null);
     localStorage.removeItem(LOCAL_STORAGE_KEY_CHAT);
-    const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
-    const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
-    delete existingData.bio;
-    localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(existingData));
     toast({ title: 'Started Over', description: 'Your bio and chat history have been cleared.' });
   };
 
@@ -493,5 +498,3 @@ export default function BioCreatorPage() {
         </Suspense>
     )
 }
-
-    
