@@ -10,11 +10,22 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import type { BioChatMessage } from '@/lib/schemas';
-import { Bot, Copy, ExternalLink, Loader2, Send, User } from 'lucide-react';
+import { Bot, Copy, ExternalLink, Loader2, Send, Trash2, User, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const LOCAL_STORAGE_KEY_BIO_FORM = 'jobspark_form_data';
 const LOCAL_STORAGE_KEY_BIO = 'jobspark_bio_creator_bio';
@@ -22,7 +33,7 @@ const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
 
 const INITIAL_MESSAGE: BioChatMessage = {
   author: 'assistant',
-  content: "Hello! I'm here to help you build a compelling professional bio. To start, could you please tell me your full name and the most recent job title you'veheld?",
+  content: "Hello! I'm here to help you build a professional bio. You can either answer my questions one by one, or simply paste your existing resume, notes, or any other details, and I'll structure it for you.\n\nTo start, what is your full name and most recent job title?",
 };
 
 export default function BioCreatorPage() {
@@ -128,6 +139,14 @@ export default function BioCreatorPage() {
     }
   }
 
+  const handleStartOver = () => {
+    setBio('');
+    setChatHistory([INITIAL_MESSAGE]);
+    localStorage.removeItem(LOCAL_STORAGE_KEY_BIO);
+    localStorage.removeItem(LOCAL_STORAGE_KEY_CHAT);
+    toast({ title: 'Started Over', description: 'Your bio and chat history have been cleared.' });
+  };
+
 
   return (
     <div className="flex h-screen flex-col bg-muted/20">
@@ -147,6 +166,30 @@ export default function BioCreatorPage() {
             </div>
           </div>
            <div className="flex items-center gap-2">
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="icon" aria-label="Start Over">
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle className='flex items-center gap-2'>
+                        <AlertTriangle className="h-6 w-6 text-destructive" />
+                        Are you sure you want to start over?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently clear your current bio and chat history. This action cannot be undone.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleStartOver}>
+                        Start Over
+                    </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
              <ThemeToggleButton />
            </div>
         </div>
