@@ -78,6 +78,21 @@ function BioCreatorCore() {
       suggestedReplies: ["Add my name", "Paste my resume"],
     };
   }, []);
+  
+  const analyzeBio = useCallback((currentBio: string) => {
+    if (currentBio && currentBio.length > 50) {
+      startAnalyzing(async () => {
+        const result = await analyzeBioCompletenessAction({ bio: currentBio });
+        if (result.success) {
+          setCompleteness(result.data);
+        } else {
+          console.error("Bio analysis failed:", result.error);
+        }
+      });
+    } else {
+      setCompleteness(null);
+    }
+  }, []);
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -132,21 +147,6 @@ function BioCreatorCore() {
       console.error('Failed to save data to localStorage', e);
     }
   }, [bio, chatHistory]);
-  
-  const analyzeBio = useCallback((currentBio: string) => {
-    if (currentBio && currentBio.length > 50) {
-      startAnalyzing(async () => {
-        const result = await analyzeBioCompletenessAction({ bio: currentBio });
-        if (result.success) {
-          setCompleteness(result.data);
-        } else {
-          console.error("Bio analysis failed:", result.error);
-        }
-      });
-    } else {
-      setCompleteness(null);
-    }
-  }, []);
 
   // Debounced bio analysis
   useEffect(() => {
