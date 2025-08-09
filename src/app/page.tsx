@@ -316,34 +316,6 @@ export default function Home() {
               bio={bio}
               lastGeneratedOutput={getLastGeneratedOutput()}
             />
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="API Key">
-                  <KeyRound className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80">
-                <div className="grid gap-4">
-                  <div className="space-y-2">
-                    <h4 className="font-medium leading-none">
-                      Custom API Key
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Use your own Gemini API key for requests.
-                    </p>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="apiKey">Gemini API Key</Label>
-                    <Input
-                      id="apiKey"
-                      type="password"
-                      placeholder="Enter your Gemini API key"
-                    />
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
           </div>
         </div>
       </header>
