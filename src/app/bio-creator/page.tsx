@@ -210,7 +210,7 @@ function BioCreatorCore() {
       const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
       const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
       
-      // Update the bio, keep other fields like jobDescription, clear results.
+      // Update the bio, keep other fields like jobDescription, and clear any old results.
       const dataToSave = { 
           ...existingData, 
           bio: bio, 
@@ -481,5 +481,3 @@ export default function BioCreatorPage() {
         </Suspense>
     )
 }
-
-    
