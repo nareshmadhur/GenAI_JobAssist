@@ -151,7 +151,7 @@ export default function BioCreatorPage() {
            </div>
         </div>
       </header>
-      <main className="flex-1 overflow-hidden p-4">
+      <main className="flex-1 p-4">
         <div className="grid h-full grid-cols-1 gap-4 md:grid-cols-2">
           {/* Chat Panel */}
           <Card className="flex flex-col">
@@ -160,7 +160,7 @@ export default function BioCreatorPage() {
                 <Bot /> AI Assistant
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
+            <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto">
               <ScrollArea className="flex-1 pr-4" ref={chatContainerRef}>
                 <div className="space-y-4">
                   {chatHistory.map((msg, index) => (
