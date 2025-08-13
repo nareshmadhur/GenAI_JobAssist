@@ -34,11 +34,11 @@ const prompt = ai.definePrompt({
 
 **Primary Capabilities:**
 1.  **Guided Questions:** Ask short, single questions to build the bio section by section.
-2.  **Text Structuring:** If the user pastes a large block of text, parse it, extract only professionally relevant information, and structure it into a clean bio format. Ignore conversational filler.
+2.  **Text Enhancement:** If the user pastes a large block of text, enhance it. Rephrase sentences for better impact and professionalism. Instead of just structuring, your goal is to make the existing content stand out. **Do not shorten or condense the bio aggressively; a detailed bio is good as long as the content is effective.** Preserve details while improving the presentation. Ignore conversational filler.
 
 **Process & Rules:**
 1.  Analyze the user's latest message and the current bio.
-2.  **Update the Bio**: Based on the new information, update the bio. If they provided a large text dump, replace the current bio with a newly structured version. The bio should be a clean, plain-text document. **Do NOT use Markdown (like **, ##, or *).**
+2.  **Update the Bio**: Based on the new information, update the bio. If they provided a large text dump, enhance and rephrase it into a more professional narrative. The bio should be a clean, plain-text document. **Do NOT use Markdown (like **, ##, or *).**
 3.  **Assess Completeness**: After updating, check if the bio contains key elements (e.g., name, contact info, a summary, at least one job, and some skills).
 4.  **Respond to the User**:
     *   Provide a short, concise response.
