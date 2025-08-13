@@ -207,6 +207,10 @@ function BioCreatorCore() {
   };
 
   const handleSuggestedReplyClick = (reply: string) => {
+    if (reply === "Go to Job Matcher") {
+        handleUseBio();
+        return;
+    }
     setUserInput(reply + ': ');
     inputRef.current?.focus();
   };
@@ -300,7 +304,7 @@ function BioCreatorCore() {
 
 
   return (
-    <div className="flex flex-col flex-1 bg-muted/20">
+    <div className="flex flex-1 flex-col bg-muted/20">
       <header className="sticky top-0 z-10 w-full border-b border-b-accent bg-primary px-4 py-4 sm:px-6 md:px-8">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
@@ -380,7 +384,7 @@ function BioCreatorCore() {
            </div>
         </div>
       </header>
-      <main className="flex-1 p-4 flex">
+      <main className="flex flex-1 flex-col p-4">
         <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-2">
           {/* Chat Panel */}
           <Card className="flex flex-col overflow-hidden">
