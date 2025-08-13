@@ -102,35 +102,39 @@ function BioCreatorCore() {
       if (savedBiosData) {
         setSavedBios(JSON.parse(savedBiosData));
       }
+      
+      const fromMatcher = searchParams.get('from') === 'matcher';
+      let bioToLoad = '';
+      let chatToLoad: BioChatMessage[] | null = null;
 
-      const savedChatData = localStorage.getItem(LOCAL_STORAGE_KEY_CHAT);
-
-      if (savedChatData) {
-        const { bio: savedBio, history: savedHistory } = JSON.parse(savedChatData);
-        setBio(savedBio || '');
-        setChatHistory(savedHistory || [getInitialMessage(savedBio)]);
-        analyzeBio(savedBio);
-      } else {
-         // If coming from matcher, load the bio from the matcher's form data
-        const fromMatcher = searchParams.get('from') === 'matcher';
-        let initialBio = '';
-
-        if (fromMatcher) {
-          const matcherDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
-          if (matcherDataRaw) {
-            initialBio = JSON.parse(matcherDataRaw).bio || '';
-          }
+      if (fromMatcher) {
+        // Always prioritize loading from Job Matcher if the param is present
+        const matcherDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM);
+        if (matcherDataRaw) {
+          bioToLoad = JSON.parse(matcherDataRaw).bio || '';
         }
-        setBio(initialBio);
-        setChatHistory([getInitialMessage(initialBio)]);
-        analyzeBio(initialBio);
+      } else {
+        // Otherwise, try to load a saved chat session
+        const savedChatData = localStorage.getItem(LOCAL_STORAGE_KEY_CHAT);
+        if (savedChatData) {
+          const { bio: savedBio, history: savedHistory } = JSON.parse(savedChatData);
+          bioToLoad = savedBio || '';
+          chatToLoad = savedHistory || null;
+        }
       }
+
+      setBio(bioToLoad);
+      setChatHistory(chatToLoad || [getInitialMessage(bioToLoad)]);
+      analyzeBio(bioToLoad);
 
     } catch (e) {
       console.error('Failed to load data from localStorage', e);
+      setBio('');
       setChatHistory([getInitialMessage()]);
+      setCompleteness(null);
     }
-  }, [getInitialMessage, searchParams, analyzeBio]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   // Debounced bio analysis
@@ -504,3 +508,5 @@ export default function BioCreatorPage() {
         </Suspense>
     )
 }
+
+    
