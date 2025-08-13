@@ -321,15 +321,10 @@ function BioCreatorCore() {
             </div>
           </div>
            <div className="flex items-center gap-2">
-            <SavedBiosSheet
-              savedBios={savedBios}
-              onLoadBio={handleLoadBio}
-              onDeleteBio={handleDeleteBio}
-            />
-             <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+            <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline" size="icon" disabled={!bio} aria-label="Save Bio">
-                        <Save className="h-4 w-4" />
+                    <Button variant="outline" size="sm" disabled={!bio} aria-label="Save Bio">
+                        <Save className="mr-2 h-4 w-4" /> Save Bio
                     </Button>
                 </DialogTrigger>
                 <DialogContent>
@@ -347,7 +342,7 @@ function BioCreatorCore() {
                                 value={bioNameToSave}
                                 onChange={(e) => setBioNameToSave(e.target.value)}
                                 className="col-span-3"
-                                placeholder={`Bio for a ${completeness?.hasWorkExperience ? 'Developer' : 'New Role'}`}
+                                placeholder={`Bio from ${new Date().toLocaleDateString()}`}
                             />
                         </div>
                     </div>
@@ -356,6 +351,11 @@ function BioCreatorCore() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <SavedBiosSheet
+              savedBios={savedBios}
+              onLoadBio={handleLoadBio}
+              onDeleteBio={handleDeleteBio}
+            />
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <Button variant="outline" size="icon" aria-label="Start Over">

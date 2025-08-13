@@ -274,48 +274,11 @@ export default function JobMatcherPage() {
           </div>
           <div className="flex items-center gap-2">
              <ThemeToggleButton />
-             <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="icon" aria-label="Clear All">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className='flex items-center gap-2'>
-                    <AlertTriangle className="h-6 w-6 text-destructive" />
-                    Are you sure?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently clear the job description, bio, and
-                    all generated content. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleClear}>
-                    Clear Everything
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              onClick={handleSaveJob}
-              disabled={isSaving}
-              aria-label="Save Job"
-            >
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            </Button>
-            
             <SavedJobsSheet
               savedJobs={savedJobs}
               onLoadJob={handleLoadJob}
               onDeleteJob={handleDeleteJob}
             />
-
             <FeedbackDialog
               jobDescription={jobDescription}
               bio={bio}
@@ -329,6 +292,45 @@ export default function JobMatcherPage() {
         <FormProvider {...formMethods}>
           <div className="flex flex-col gap-8">
             <InputForm />
+            <div className="flex justify-end items-center gap-4">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="mr-2" />
+                    Clear Everything
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className='flex items-center gap-2'>
+                      <AlertTriangle className="h-6 w-6 text-destructive" />
+                      Are you sure?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently clear the job description, bio, and
+                      all generated content. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Clear Everything
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSaveJob}
+                disabled={isSaving}
+                aria-label="Save Job"
+              >
+                {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2" />}
+                Save Job
+              </Button>
+            </div>
             <div ref={outputRef}>
               {activeView !== 'none' && (
                 <OutputView
