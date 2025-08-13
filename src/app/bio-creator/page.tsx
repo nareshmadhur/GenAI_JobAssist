@@ -241,7 +241,7 @@ function BioCreatorCore() {
 
       localStorage.setItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM, JSON.stringify(dataToSave));
       toast({ title: 'Bio Ready!', description: 'Redirecting you to the Job Matcher...' });
-      router.push('/job-matcher');
+      router.push('/');
     } catch (e) {
       console.error('Failed to save bio for Job Matcher', e);
       toast({ variant: 'destructive', title: 'Could not load bio for Job Matcher.' });

@@ -1,88 +1,413 @@
 
-import { BotMessageSquare, Briefcase, Sparkles } from 'lucide-react';
-import Link from 'next/link';
-import { JobSparkLogo } from '@/components/job-spark-logo';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { ThemeToggleButton } from '@/components/theme-toggle-button';
+'use client';
 
-export default function WelcomePage() {
+import { zodResolver } from '@hookform/resolvers/zod';
+import { KeyRound, Sparkles, Trash2, Save, List, Loader2, AlertTriangle, FileText, Briefcase, Lightbulb, MessageSquareMore } from 'lucide-react';
+import React, { useEffect, useRef, useState, useTransition } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
+import Link from 'next/link';
+
+import { AllGenerationResults, generateAction, extractJobDetailsAction } from '@/app/actions';
+import { FeedbackDialog } from '@/components/feedback-dialog';
+import { InputForm } from '@/components/input-form';
+import { JobSparkLogo } from '@/components/job-spark-logo';
+import { OutputView } from '@/components/output-view';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
+import { useToast } from '@/hooks/use-toast';
+import type { JobApplicationData, SavedJob } from '@/lib/schemas';
+import { JobApplicationSchema } from '@/lib/schemas';
+import { ActiveView, GenerationType } from '@/components/job-spark-app';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
+import { SavedJobsSheet } from '@/components/saved-jobs-sheet';
+import { cn } from '@/lib/utils';
+
+const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
+const LOCAL_STORAGE_KEY_JOBS = 'jobspark_saved_jobs';
+
+export default function JobMatcherPage() {
+  const [isGenerating, startGenerating] = useTransition();
+  const [isSaving, startSaving] = useTransition();
+  const [activeView, setActiveView] = useState<ActiveView>('none');
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [allResults, setAllResults] = useState<AllGenerationResults>({});
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  const { toast } = useToast();
+  const outputRef = useRef<HTMLDivElement>(null);
+
+  const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
+    resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
+    defaultValues: { jobDescription: '', bio: '', questions: '' },
+  });
+
+  // Load saved jobs from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const savedJobsData = localStorage.getItem(LOCAL_STORAGE_KEY_JOBS);
+      if (savedJobsData) {
+        setSavedJobs(JSON.parse(savedJobsData));
+      }
+    } catch (e) {
+      console.error('Failed to load saved jobs from localStorage', e);
+    }
+  }, []);
+
+
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_FORM);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        formMethods.reset({
+          jobDescription: parsedData.jobDescription || '',
+          bio: parsedData.bio || '',
+          questions: parsedData.questions || '',
+        });
+        if (parsedData.allResults) {
+          setAllResults(parsedData.allResults);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load or parse data from localStorage', e);
+    }
+  }, [formMethods]);
+
+  useEffect(() => {
+    const subscription = formMethods.watch((value) => {
+      try {
+        const dataToSave = {
+          jobDescription: value.jobDescription,
+          bio: value.bio,
+          questions: value.questions,
+          allResults: allResults, // Persist results with form data
+        };
+        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify(dataToSave));
+      } catch (e) {
+        console.error('Failed to save data to localStorage', e);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [formMethods, formMethods.watch, allResults]);
+  
+  // This effect handles scrolling to the output view when it becomes active.
+  // It runs after the component re-renders, ensuring the ref is attached.
+  useEffect(() => {
+    if (activeView !== 'none' && outputRef.current) {
+      outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [activeView]);
+
+  const handleGeneration = (generationType: GenerationType) => {
+    formMethods.trigger(['jobDescription', 'bio']).then((isValid) => {
+      if (!isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Please fill out both Job Description and Bio fields.',
+        });
+        return;
+      }
+
+      if (generationType === 'qAndA' && !formMethods.getValues('questions')) {
+        toast({
+          variant: 'destructive',
+          title: 'Please provide specific questions to answer.',
+        });
+        return;
+      }
+
+      const data = { ...formMethods.getValues(), generationType };
+      
+      setActiveView(generationType);
+      setGenerationError(null);
+
+      setAllResults((prev) => {
+        const newResults = { ...prev };
+        delete newResults[generationType];
+        return newResults;
+      });
+
+      startGenerating(async () => {
+        const response = await generateAction(data);
+        if (response.success) {
+          setAllResults((prev) => ({
+            ...prev,
+            [generationType]: response.data,
+          }));
+        } else {
+          setGenerationError(response.error);
+        }
+      });
+    });
+  };
+
+  const handleClear = () => {
+    formMethods.reset({ jobDescription: '', bio: '', questions: '' });
+    setAllResults({});
+    setActiveView('none');
+    setGenerationError(null);
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_KEY_FORM);
+    } catch (e) {
+      console.error('Failed to clear data from localStorage', e);
+    }
+  };
+
+  const handleSaveJob = () => {
+    formMethods.trigger('jobDescription').then((isValid) => {
+      if (!isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'A job description is required to save.',
+        });
+        return;
+      }
+      if (Object.keys(allResults).length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Nothing to Save',
+          description: 'Please generate at least one output before saving.',
+        });
+        return;
+      }
+
+      startSaving(async () => {
+        const { jobDescription, bio, questions } = formMethods.getValues();
+        const detailsResponse = await extractJobDetailsAction({ jobDescription });
+
+        if (!detailsResponse.success) {
+          toast({
+            variant: 'destructive',
+            title: 'Could not extract job details.',
+            description: detailsResponse.error,
+          });
+          return;
+        }
+
+        const newSavedJob: SavedJob = {
+          id: crypto.randomUUID(),
+          ...detailsResponse.data,
+          formData: { jobDescription, bio, questions },
+          allResults,
+          savedAt: new Date().toISOString(),
+        };
+
+        const updatedSavedJobs = [...savedJobs, newSavedJob];
+        localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
+
+        toast({
+          title: 'Job Saved!',
+          description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
+        });
+
+        // Clear form for next application, but keep bio
+        formMethods.reset({
+          jobDescription: '',
+          bio: formMethods.getValues('bio'),
+          questions: '',
+        });
+        setAllResults({});
+        setActiveView('none');
+        setGenerationError(null);
+      });
+    });
+  };
+
+  const handleLoadJob = (job: SavedJob) => {
+    formMethods.reset(job.formData);
+    setAllResults(job.allResults);
+    setActiveView(Object.keys(job.allResults)[0] as ActiveView || 'none');
+     try {
+        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify({ ...job.formData, allResults: job.allResults }));
+      } catch (e) {
+        console.error('Failed to save loaded data to localStorage', e);
+      }
+  };
+
+  const handleDeleteJob = (jobId: string) => {
+    const updatedSavedJobs = savedJobs.filter((job) => job.id !== jobId);
+    setSavedJobs(updatedSavedJobs);
+    localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
+    toast({ title: 'Job Deleted' });
+  };
+
+  const { jobDescription, bio } = formMethods.getValues();
+
+  const getLastGeneratedOutput = (): string => {
+    if (activeView === 'none' || !allResults[activeView]) return '';
+    try {
+      return JSON.stringify(allResults[activeView], null, 2);
+    } catch {
+      return '';
+    }
+  };
+
+  const baseButtonClass =
+    'h-auto flex-col rounded-full py-2 text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground/90 data-[active=true]:bg-primary-foreground data-[active=true]:text-primary data-[active=true]:hover:bg-primary-foreground/90';
+
   return (
     <div className="flex flex-col flex-1 bg-muted/20">
-      <header className="w-full border-b border-b-accent bg-primary px-4 py-4 sm:px-6 md:px-8">
+      <header className="sticky top-0 z-10 w-full border-b border-b-accent bg-primary px-4 py-4 sm:px-6 md:px-8">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <JobSparkLogo className="h-10 w-10 text-primary-foreground" />
+            <Link href="/" aria-label="Back to Home">
+              <JobSparkLogo className="h-10 w-10 text-primary-foreground" />
+            </Link>
             <div className="flex flex-col">
               <h1 className="font-headline text-2xl font-bold text-primary-foreground md:text-3xl">
                 JobSpark
               </h1>
               <div className="text-xs text-primary-foreground/80">
-                Your AI-Powered Career Assistant
+                Job Matching Assistant
               </div>
             </div>
           </div>
-           <ThemeToggleButton />
+          <div className="flex items-center gap-2">
+             <ThemeToggleButton />
+             <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Clear All">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className='flex items-center gap-2'>
+                    <AlertTriangle className="h-6 w-6 text-destructive" />
+                    Are you sure?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently clear the job description, bio, and
+                    all generated content. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClear}>
+                    Clear Everything
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleSaveJob}
+              disabled={isSaving}
+              aria-label="Save Job"
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            </Button>
+            
+            <SavedJobsSheet
+              savedJobs={savedJobs}
+              onLoadJob={handleLoadJob}
+              onDeleteJob={handleDeleteJob}
+            />
+
+            <FeedbackDialog
+              jobDescription={jobDescription}
+              bio={bio}
+              lastGeneratedOutput={getLastGeneratedOutput()}
+            />
+          </div>
         </div>
       </header>
-      <main className="flex-1 flex items-center justify-center p-4">
-        <div className="mx-auto w-full max-w-4xl space-y-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Choose Your Path
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Whether you're starting from scratch or have a job in mind, we can
-              help.
-            </p>
+
+      <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-28 sm:p-6 md:p-8">
+        <FormProvider {...formMethods}>
+          <div className="flex flex-col gap-8">
+            <InputForm />
+            <div ref={outputRef}>
+              {activeView !== 'none' && (
+                <OutputView
+                  activeView={activeView}
+                  setActiveView={setActiveView}
+                  allResults={allResults}
+                  setAllResults={setAllResults}
+                  isGenerating={isGenerating}
+                  generationError={generationError}
+                />
+              )}
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            <Link href="/bio-creator" className="group">
-              <Card className="h-full transform-gpu transition-all duration-300 ease-out group-hover:scale-[1.02] group-hover:shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-2xl">
-                    <BotMessageSquare className="h-8 w-8 text-accent" />
-                    Bio Creator
-                  </CardTitle>
-                  <CardDescription>
-                    Build a professional bio from scratch with our guided AI
-                    chatbot. Perfect if you're not sure where to start.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="font-semibold text-accent">
-                    Start Building &rarr;
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-            <Link href="/job-matcher" className="group">
-              <Card className="h-full transform-gpu transition-all duration-300 ease-out group-hover:scale-[1.02] group-hover:shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-2xl">
-                    <Briefcase className="h-8 w-8 text-accent" />
-                    Job Matcher
-                  </CardTitle>
-                  <CardDescription>
-                    Already have a job description and bio? Analyze them to
-                    generate tailored application materials instantly.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="font-semibold text-accent">
-                    Start Analyzing &rarr;
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
-        </div>
+        </FormProvider>
       </main>
+
+      <div className="sticky bottom-0 z-20 w-full p-4 bg-gradient-to-t from-background to-transparent">
+        <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-1 rounded-full bg-primary p-1 shadow-lg sm:grid-cols-4">
+          <Button
+            onClick={() => handleGeneration('coverLetter')}
+            disabled={isGenerating}
+            variant="ghost"
+            data-active={activeView === 'coverLetter'}
+            className={baseButtonClass}
+          >
+            {isGenerating && activeView === 'coverLetter' ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <FileText />
+            )}
+            <span className="text-xs">Cover Letter</span>
+          </Button>
+
+          <Button
+            onClick={() => handleGeneration('cv')}
+            disabled={isGenerating}
+            variant="ghost"
+            data-active={activeView === 'cv'}
+            className={baseButtonClass}
+          >
+            {isGenerating && activeView === 'cv' ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Briefcase />
+            )}
+            <span className="text-xs">CV</span>
+          </Button>
+
+          <Button
+            onClick={() => handleGeneration('deepAnalysis')}
+            disabled={isGenerating}
+            variant="ghost"
+            data-active={activeView === 'deepAnalysis'}
+            className={baseButtonClass}
+          >
+            {isGenerating && activeView === 'deepAnalysis' ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Lightbulb />
+            )}
+            <span className="text-xs">Analysis</span>
+          </Button>
+
+          <Button
+            onClick={() => handleGeneration('qAndA')}
+            disabled={isGenerating}
+            variant="ghost"
+            data-active={activeView === 'qAndA'}
+            className={baseButtonClass}
+          >
+            {isGenerating && activeView === 'qAndA' ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <MessageSquareMore />
+            )}
+            <span className="text-xs">Q & A</span>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

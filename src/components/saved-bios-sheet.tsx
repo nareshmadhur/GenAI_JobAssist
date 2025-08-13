@@ -49,7 +49,7 @@ export function SavedBiosSheet({ savedBios, onLoadBio, onDeleteBio }: SavedBiosS
         const dataToSave = { ...existingData, bio: bio.bio };
         localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(dataToSave));
         toast({ title: 'Bio Loaded!', description: 'Redirecting you to the Job Matcher...' });
-        router.push('/job-matcher');
+        router.push('/');
     } catch (e) {
         console.error('Failed to save bio for Job Matcher', e);
         toast({ variant: 'destructive', title: 'Could not load bio.' });
