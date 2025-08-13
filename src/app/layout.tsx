@@ -38,12 +38,12 @@ export default function RootLayout({
                 <p>
                   Created by{' '}
                   <a
-                    href="https://nareshmadhur.com"
+                    href="https://firebase.google.com"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-medium underline hover:text-accent"
                   >
-                    Naresh
+                    Firebase
                   </a>
                 </p>
                 <div className="flex items-center gap-4">

@@ -1,20 +1,17 @@
 'use client';
 
-import React from 'react';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetFooter,
-  SheetClose
-} from '@/components/ui/sheet';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { KeyRound, Sparkles, Trash2, Save, List, Loader2, AlertTriangle, FileText, Briefcase, Lightbulb, MessageSquareMore } from 'lucide-react';
+import React, { useEffect, useRef, useState, useTransition } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
+import Link from 'next/link';
+
+import { AllGenerationResults, generateAction, extractJobDetailsAction } from '@/app/actions';
+import { FeedbackDialog } from '@/components/feedback-dialog';
+import { InputForm } from '@/components/input-form';
+import { JobSparkLogo } from '@/components/job-spark-logo';
+import { OutputView } from '@/components/output-view';
 import { Button } from '@/components/ui/button';
-import { List, Briefcase, Trash2, Download } from 'lucide-react';
-import type { SavedJob } from '@/lib/schemas';
-import { formatDistanceToNow } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,81 +24,402 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
+import { useToast } from '@/hooks/use-toast';
+import type { JobApplicationData, SavedJob } from '@/lib/schemas';
+import { JobApplicationSchema } from '@/lib/schemas';
+import { ActiveView, GenerationType } from '@/components/job-spark-app';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
+import { SavedJobsCarousel } from '@/components/saved-jobs-carousel';
+import { cn } from '@/lib/utils';
 
-interface SavedJobsSheetProps {
-  savedJobs: SavedJob[];
-  onLoadJob: (job: SavedJob) => void;
-  onDeleteJob: (jobId: string) => void;
-}
+const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
+const LOCAL_STORAGE_KEY_JOBS = 'jobspark_saved_jobs';
 
-export function SavedJobsSheet({ savedJobs, onLoadJob, onDeleteJob }: SavedJobsSheetProps) {
+export default function JobMatcherPage() {
+  const [isGenerating, startGenerating] = useTransition();
+  const [isSaving, startSaving] = useTransition();
+  const [activeView, setActiveView] = useState<ActiveView>('none');
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [allResults, setAllResults] = useState<AllGenerationResults>({});
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  const { toast } = useToast();
+  const outputRef = useRef<HTMLDivElement>(null);
+
+  const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
+    resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
+    defaultValues: { jobDescription: '', bio: '', questions: '' },
+  });
+
+  // Load saved jobs from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const savedJobsData = localStorage.getItem(LOCAL_STORAGE_KEY_JOBS);
+      if (savedJobsData) {
+        setSavedJobs(JSON.parse(savedJobsData));
+      }
+    } catch (e) {
+      console.error('Failed to load saved jobs from localStorage', e);
+    }
+  }, []);
+
+
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_FORM);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        formMethods.reset({
+          jobDescription: parsedData.jobDescription || '',
+          bio: parsedData.bio || '',
+          questions: parsedData.questions || '',
+        });
+        if (parsedData.allResults) {
+          setAllResults(parsedData.allResults);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load or parse data from localStorage', e);
+    }
+  }, [formMethods]);
+
+  useEffect(() => {
+    const subscription = formMethods.watch((value) => {
+      try {
+        const dataToSave = {
+          jobDescription: value.jobDescription,
+          bio: value.bio,
+          questions: value.questions,
+          allResults: allResults, // Persist results with form data
+        };
+        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify(dataToSave));
+      } catch (e) {
+        console.error('Failed to save data to localStorage', e);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [formMethods, formMethods.watch, allResults]);
+  
+  // This effect handles scrolling to the output view when it becomes active.
+  // It runs after the component re-renders, ensuring the ref is attached.
+  useEffect(() => {
+    if (activeView !== 'none' && outputRef.current) {
+      outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [activeView]);
+
+  const handleGeneration = (generationType: GenerationType) => {
+    formMethods.trigger(['jobDescription', 'bio']).then((isValid) => {
+      if (!isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Please fill out both Job Description and Bio fields.',
+        });
+        return;
+      }
+
+      if (generationType === 'qAndA' && !formMethods.getValues('questions')) {
+        toast({
+          variant: 'destructive',
+          title: 'Please provide specific questions to answer.',
+        });
+        return;
+      }
+
+      const data = { ...formMethods.getValues(), generationType };
+      
+      setActiveView(generationType);
+      setGenerationError(null);
+
+      setAllResults((prev) => {
+        const newResults = { ...prev };
+        delete newResults[generationType];
+        return newResults;
+      });
+
+      startGenerating(async () => {
+        const response = await generateAction(data);
+        if (response.success) {
+          setAllResults((prev) => ({
+            ...prev,
+            [generationType]: response.data,
+          }));
+        } else {
+          setGenerationError(response.error);
+        }
+      });
+    });
+  };
+
+  const handleClear = () => {
+    formMethods.reset({ jobDescription: '', bio: '', questions: '' });
+    setAllResults({});
+    setActiveView('none');
+    setGenerationError(null);
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_KEY_FORM);
+    } catch (e) {
+      console.error('Failed to clear data from localStorage', e);
+    }
+  };
+
+  const handleSaveJob = () => {
+    formMethods.trigger('jobDescription').then((isValid) => {
+      if (!isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'A job description is required to save.',
+        });
+        return;
+      }
+      if (Object.keys(allResults).length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Nothing to Save',
+          description: 'Please generate at least one output before saving.',
+        });
+        return;
+      }
+
+      startSaving(async () => {
+        const { jobDescription, bio, questions } = formMethods.getValues();
+        const detailsResponse = await extractJobDetailsAction({ jobDescription });
+
+        if (!detailsResponse.success) {
+          toast({
+            variant: 'destructive',
+            title: 'Could not extract job details.',
+            description: detailsResponse.error,
+          });
+          return;
+        }
+
+        const newSavedJob: SavedJob = {
+          id: crypto.randomUUID(),
+          ...detailsResponse.data,
+          formData: { jobDescription, bio, questions },
+          allResults,
+          savedAt: new Date().toISOString(),
+        };
+
+        const updatedSavedJobs = [newSavedJob, ...savedJobs];
+        setSavedJobs(updatedSavedJobs);
+        localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
+
+        toast({
+          title: 'Job Saved!',
+          description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
+        });
+
+        // Clear form for next application, but keep bio
+        formMethods.reset({
+          jobDescription: '',
+          bio: formMethods.getValues('bio'),
+          questions: '',
+        });
+        setAllResults({});
+        setActiveView('none');
+        setGenerationError(null);
+      });
+    });
+  };
+
+  const handleLoadJob = (job: SavedJob) => {
+    formMethods.reset(job.formData);
+    setAllResults(job.allResults);
+    setActiveView(Object.keys(job.allResults)[0] as ActiveView || 'none');
+     try {
+        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify({ ...job.formData, allResults: job.allResults }));
+      } catch (e) {
+        console.error('Failed to save loaded data to localStorage', e);
+      }
+    toast({ title: "Job Loaded!", description: `Loaded application for ${job.jobTitle}`})
+  };
+
+  const handleDeleteJob = (jobId: string) => {
+    const updatedSavedJobs = savedJobs.filter((job) => job.id !== jobId);
+    setSavedJobs(updatedSavedJobs);
+    localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
+    toast({ title: 'Job Deleted' });
+  };
+
+  const { jobDescription, bio } = formMethods.getValues();
+
+  const getLastGeneratedOutput = (): string => {
+    if (activeView === 'none' || !allResults[activeView]) return '';
+    try {
+      return JSON.stringify(allResults[activeView], null, 2);
+    } catch {
+      return '';
+    }
+  };
+
+  const baseButtonClass =
+    'h-auto flex-col rounded-full py-2 text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground/90 data-[active=true]:bg-primary-foreground data-[active=true]:text-primary data-[active=true]:hover:bg-primary-foreground/90';
+
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="View Saved Jobs">
-          <List className="h-4 w-4" />
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="flex flex-col">
-        <SheetHeader>
-          <SheetTitle>Saved Applications</SheetTitle>
-          <SheetDescription>
-            Here are your saved job applications. You can load or delete them.
-          </SheetDescription>
-        </SheetHeader>
-        <div className="flex-1 overflow-y-auto pr-4 -mr-4">
-          {savedJobs.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-center text-muted-foreground">
-              <p>You have no saved jobs yet.</p>
+    <div className="flex flex-col flex-1 bg-muted/20">
+      <header className="sticky top-0 z-10 w-full border-b border-b-accent bg-primary px-4 py-4 sm:px-6 md:px-8">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/" aria-label="Back to Home">
+              <JobSparkLogo className="h-10 w-10 text-primary-foreground" />
+            </Link>
+            <div className="flex flex-col">
+              <h1 className="font-headline text-2xl font-bold text-primary-foreground md:text-3xl">
+                JobSpark
+              </h1>
+              <div className="text-xs text-primary-foreground/80">
+                Job Matching Assistant
+              </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {savedJobs.sort((a,b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()).map((job) => (
-                <div key={job.id} className="rounded-lg border p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold">{job.jobTitle}</h3>
-                      <p className="text-sm text-muted-foreground">{job.companyName}</p>
-                      <p className="text-xs text-muted-foreground/80 mt-1">
-                        Saved {formatDistanceToNow(new Date(job.savedAt), { addSuffix: true })}
-                      </p>
-                    </div>
-                     <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/80 hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently delete the saved application for {job.jobTitle} at {job.companyName}. This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => onDeleteJob(job.id)} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                  <SheetFooter className="mt-4">
-                    <SheetClose asChild>
-                      <Button variant="outline" className="w-full" onClick={() => onLoadJob(job)}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Load Application
-                      </Button>
-                    </SheetClose>
-                  </SheetFooter>
-                </div>
-              ))}
-            </div>
-          )}
+          </div>
+          <div className="flex items-center gap-2">
+             <ThemeToggleButton />
+            <FeedbackDialog
+              jobDescription={jobDescription}
+              bio={bio}
+              lastGeneratedOutput={getLastGeneratedOutput()}
+            />
+          </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </header>
+
+      <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-8 sm:p-6 md:p-8">
+        <FormProvider {...formMethods}>
+          <div className="flex flex-col gap-8">
+            <InputForm />
+            <div className="flex justify-end items-center gap-4">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="mr-2" />
+                    Clear Everything
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className='flex items-center gap-2'>
+                      <AlertTriangle className="h-6 w-6 text-destructive" />
+                      Are you sure?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently clear the job description, bio, and
+                      all generated content. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Clear Everything
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSaveJob}
+                disabled={isSaving}
+                aria-label="Save Job"
+              >
+                {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2" />}
+                Save Job
+              </Button>
+            </div>
+            
+            <div className="sticky bottom-0 z-10 w-full bg-gradient-to-t from-background via-background/90 to-transparent -mb-8 py-4">
+              <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-1 rounded-full bg-primary p-1 shadow-lg sm:grid-cols-4">
+                <Button
+                  onClick={() => handleGeneration('coverLetter')}
+                  disabled={isGenerating}
+                  variant="ghost"
+                  data-active={activeView === 'coverLetter'}
+                  className={baseButtonClass}
+                >
+                  {isGenerating && activeView === 'coverLetter' ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <FileText />
+                  )}
+                  <span className="text-xs">Cover Letter</span>
+                </Button>
+
+                <Button
+                  onClick={() => handleGeneration('cv')}
+                  disabled={isGenerating}
+                  variant="ghost"
+                  data-active={activeView === 'cv'}
+                  className={baseButtonClass}
+                >
+                  {isGenerating && activeView === 'cv' ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Briefcase />
+                  )}
+                  <span className="text-xs">CV</span>
+                </Button>
+
+                <Button
+                  onClick={() => handleGeneration('deepAnalysis')}
+                  disabled={isGenerating}
+                  variant="ghost"
+                  data-active={activeView === 'deepAnalysis'}
+                  className={baseButtonClass}
+                >
+                  {isGenerating && activeView === 'deepAnalysis' ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Lightbulb />
+                  )}
+                  <span className="text-xs">Analysis</span>
+                </Button>
+
+                <Button
+                  onClick={() => handleGeneration('qAndA')}
+                  disabled={isGenerating}
+                  variant="ghost"
+                  data-active={activeView === 'qAndA'}
+                  className={baseButtonClass}
+                >
+                  {isGenerating && activeView === 'qAndA' ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <MessageSquareMore />
+                  )}
+                  <span className="text-xs">Q & A</span>
+                </Button>
+              </div>
+            </div>
+
+            <div ref={outputRef} className="pt-8">
+              {activeView !== 'none' && (
+                <OutputView
+                  activeView={activeView}
+                  setActiveView={setActiveView}
+                  allResults={allResults}
+                  setAllResults={setAllResults}
+                  isGenerating={isGenerating}
+                  generationError={generationError}
+                />
+              )}
+            </div>
+          </div>
+        </FormProvider>
+      </main>
+
+      {savedJobs.length > 0 && (
+          <section className="w-full py-8 bg-muted/60 border-t">
+              <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8">
+                 <SavedJobsCarousel 
+                    savedJobs={savedJobs}
+                    onLoadJob={handleLoadJob}
+                    onDeleteJob={handleDeleteJob}
+                  />
+              </div>
+          </section>
+      )}
+
+    </div>
   );
 }

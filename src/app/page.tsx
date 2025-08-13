@@ -30,7 +30,7 @@ import type { JobApplicationData, SavedJob } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
 import { ActiveView, GenerationType } from '@/components/job-spark-app';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
-import { SavedJobsSheet } from '@/components/saved-jobs-sheet';
+import { SavedJobsCarousel } from '@/components/saved-jobs-carousel';
 import { cn } from '@/lib/utils';
 
 const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
@@ -202,7 +202,8 @@ export default function JobMatcherPage() {
           savedAt: new Date().toISOString(),
         };
 
-        const updatedSavedJobs = [...savedJobs, newSavedJob];
+        const updatedSavedJobs = [newSavedJob, ...savedJobs];
+        setSavedJobs(updatedSavedJobs);
         localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
 
         toast({
@@ -232,6 +233,7 @@ export default function JobMatcherPage() {
       } catch (e) {
         console.error('Failed to save loaded data to localStorage', e);
       }
+    toast({ title: "Job Loaded!", description: `Loaded application for ${job.jobTitle}`})
   };
 
   const handleDeleteJob = (jobId: string) => {
@@ -274,11 +276,6 @@ export default function JobMatcherPage() {
           </div>
           <div className="flex items-center gap-2">
              <ThemeToggleButton />
-            <SavedJobsSheet
-              savedJobs={savedJobs}
-              onLoadJob={handleLoadJob}
-              onDeleteJob={handleDeleteJob}
-            />
             <FeedbackDialog
               jobDescription={jobDescription}
               bio={bio}
@@ -288,7 +285,7 @@ export default function JobMatcherPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-28 sm:p-6 md:p-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-8 sm:p-6 md:p-8">
         <FormProvider {...formMethods}>
           <div className="flex flex-col gap-8">
             <InputForm />
@@ -331,7 +328,72 @@ export default function JobMatcherPage() {
                 Save Job
               </Button>
             </div>
-            <div ref={outputRef}>
+            
+            <div className="sticky bottom-0 z-10 w-full bg-gradient-to-t from-background via-background/90 to-transparent -mb-8 py-4">
+              <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-1 rounded-full bg-primary p-1 shadow-lg sm:grid-cols-4">
+                <Button
+                  onClick={() => handleGeneration('coverLetter')}
+                  disabled={isGenerating}
+                  variant="ghost"
+                  data-active={activeView === 'coverLetter'}
+                  className={baseButtonClass}
+                >
+                  {isGenerating && activeView === 'coverLetter' ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <FileText />
+                  )}
+                  <span className="text-xs">Cover Letter</span>
+                </Button>
+
+                <Button
+                  onClick={() => handleGeneration('cv')}
+                  disabled={isGenerating}
+                  variant="ghost"
+                  data-active={activeView === 'cv'}
+                  className={baseButtonClass}
+                >
+                  {isGenerating && activeView === 'cv' ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Briefcase />
+                  )}
+                  <span className="text-xs">CV</span>
+                </Button>
+
+                <Button
+                  onClick={() => handleGeneration('deepAnalysis')}
+                  disabled={isGenerating}
+                  variant="ghost"
+                  data-active={activeView === 'deepAnalysis'}
+                  className={baseButtonClass}
+                >
+                  {isGenerating && activeView === 'deepAnalysis' ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Lightbulb />
+                  )}
+                  <span className="text-xs">Analysis</span>
+                </Button>
+
+                <Button
+                  onClick={() => handleGeneration('qAndA')}
+                  disabled={isGenerating}
+                  variant="ghost"
+                  data-active={activeView === 'qAndA'}
+                  className={baseButtonClass}
+                >
+                  {isGenerating && activeView === 'qAndA' ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <MessageSquareMore />
+                  )}
+                  <span className="text-xs">Q & A</span>
+                </Button>
+              </div>
+            </div>
+
+            <div ref={outputRef} className="pt-8">
               {activeView !== 'none' && (
                 <OutputView
                   activeView={activeView}
@@ -347,69 +409,18 @@ export default function JobMatcherPage() {
         </FormProvider>
       </main>
 
-      <div className="sticky bottom-0 z-20 w-full p-4 bg-gradient-to-t from-background to-transparent">
-        <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-1 rounded-full bg-primary p-1 shadow-lg sm:grid-cols-4">
-          <Button
-            onClick={() => handleGeneration('coverLetter')}
-            disabled={isGenerating}
-            variant="ghost"
-            data-active={activeView === 'coverLetter'}
-            className={baseButtonClass}
-          >
-            {isGenerating && activeView === 'coverLetter' ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <FileText />
-            )}
-            <span className="text-xs">Cover Letter</span>
-          </Button>
+      {savedJobs.length > 0 && (
+          <section className="w-full py-8 bg-muted/60 border-t">
+              <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8">
+                 <SavedJobsCarousel 
+                    savedJobs={savedJobs}
+                    onLoadJob={handleLoadJob}
+                    onDeleteJob={handleDeleteJob}
+                  />
+              </div>
+          </section>
+      )}
 
-          <Button
-            onClick={() => handleGeneration('cv')}
-            disabled={isGenerating}
-            variant="ghost"
-            data-active={activeView === 'cv'}
-            className={baseButtonClass}
-          >
-            {isGenerating && activeView === 'cv' ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Briefcase />
-            )}
-            <span className="text-xs">CV</span>
-          </Button>
-
-          <Button
-            onClick={() => handleGeneration('deepAnalysis')}
-            disabled={isGenerating}
-            variant="ghost"
-            data-active={activeView === 'deepAnalysis'}
-            className={baseButtonClass}
-          >
-            {isGenerating && activeView === 'deepAnalysis' ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Lightbulb />
-            )}
-            <span className="text-xs">Analysis</span>
-          </Button>
-
-          <Button
-            onClick={() => handleGeneration('qAndA')}
-            disabled={isGenerating}
-            variant="ghost"
-            data-active={activeView === 'qAndA'}
-            className={baseButtonClass}
-          >
-            {isGenerating && activeView === 'qAndA' ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <MessageSquareMore />
-            )}
-            <span className="text-xs">Q & A</span>
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }
