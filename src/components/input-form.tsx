@@ -73,15 +73,15 @@ export function InputForm(): JSX.Element {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>You have unsaved changes</AlertDialogTitle>
+          <AlertDialogTitle>You have an unsaved job description.</AlertDialogTitle>
           <AlertDialogDescription>
-            Navigating to the Bio Creator will clear your current job description and generated results. Do you want to continue?
+            Navigating to the Bio Creator is safe, and your job description will be here when you return, but we recommend saving your application first.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction asChild>
-            <Link href="/bio-creator?from=matcher">Continue & Clear</Link>
+            <Link href="/bio-creator?from=matcher">Continue to Bio Creator</Link>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
