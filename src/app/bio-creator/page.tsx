@@ -380,7 +380,7 @@ function BioCreatorCore() {
            </div>
         </div>
       </header>
-      <main className="flex-1 p-4">
+      <main className="flex-1 p-4 flex">
         <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-2">
           {/* Chat Panel */}
           <Card className="flex flex-col overflow-hidden">
