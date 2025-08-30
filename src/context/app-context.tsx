@@ -101,7 +101,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleCoPilotSubmit = (message: string) => {
     // This is a trick to allow the page to inject its context-specific tool handlers.
-    // If a page-specific handler exists on the window, use it. Otherwise, use the default internal one.
     if ((window as any)._handleCoPilotSubmit) {
       (window as any)._handleCoPilotSubmit(message);
     } else {
@@ -137,12 +136,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (initialResponse.toolRequest) {
         const toolRequest = initialResponse.toolRequest as ToolRequestPart;
         let toolOutput: any = null;
+        let requiresSecondCall = false;
 
         // Step 3: Execute the requested tool on the client-side.
         if (toolContext) {
           const { name, input } = toolRequest;
           if (name === 'getFormFields' && toolContext.getFormFields) {
             toolOutput = toolContext.getFormFields();
+            requiresSecondCall = true; // We need to send this data back to the AI
           } else if (
             name === 'updateFormFields' &&
             toolContext.updateFormFields
@@ -151,45 +152,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
             toolOutput = `Successfully updated fields: ${Object.keys(
               input
             ).join(', ')}`;
+            requiresSecondCall = true;
           } else if (
             name === 'generateJobMaterial' &&
             toolContext.generateJobMaterial
           ) {
             toolContext.generateJobMaterial(input.generationType);
             toolOutput = `Generating ${input.generationType}...`;
+            requiresSecondCall = true;
           } else {
             toolOutput = { error: `Tool '${name}' not found or implemented.` };
+            requiresSecondCall = true;
           }
         } else {
           toolOutput = { error: 'Tool context not available.' };
+          requiresSecondCall = true;
         }
 
-        // Step 4: Send the tool's output back to the AI to get the final response.
-        const historyWithToolResponse: CoPilotMessage[] = [
-          ...currentChatHistory,
-          {
-            author: 'tool',
-            content: JSON.stringify(toolOutput),
-            toolRequestId: toolRequest.id,
-          },
-        ];
+        if (requiresSecondCall) {
+            const historyWithToolResponse: CoPilotMessage[] = [
+            ...currentChatHistory,
+            {
+                author: 'tool',
+                content: JSON.stringify(toolOutput),
+                toolRequestId: toolRequest.id,
+            },
+            ];
 
-        const finalResponse = await generateCoPilotResponse({
-          chatHistory: historyWithToolResponse,
-        });
+            const finalResponse = await generateCoPilotResponse({
+            chatHistory: historyWithToolResponse,
+            });
 
-        if (finalResponse.error) {
-          toast({
-            variant: 'destructive',
-            title: 'Error after tool use',
-            description: finalResponse.error,
-          });
-          setChatHistory(chatHistory); // Revert
+            if (finalResponse.error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error after tool use',
+                description: finalResponse.error,
+            });
+            setChatHistory(chatHistory); // Revert
+            } else {
+            setChatHistory((prev) => [
+                ...prev,
+                { author: 'assistant', content: finalResponse.response },
+            ]);
+            }
         } else {
-          setChatHistory((prev) => [
-            ...prev,
-            { author: 'assistant', content: finalResponse.response },
-          ]);
+            // This case might be for tools that don't need a follow-up, though our current ones do.
+            setChatHistory((prev) => [
+                ...prev,
+                { author: 'assistant', content: initialResponse.response },
+            ]);
         }
       } else {
         // If no tool was requested, just add the AI's response to the history.
