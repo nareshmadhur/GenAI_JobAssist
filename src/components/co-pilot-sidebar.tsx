@@ -18,6 +18,7 @@ import { useAppContext } from '@/context/app-context';
 import { cn } from '@/lib/utils';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import ReactMarkdown from 'react-markdown';
+import { useOnClickOutside } from '@/hooks/use-on-click-outside';
 
 /**
  * The main content of the sidebar, refactored into its own component
@@ -176,6 +177,14 @@ function DesktopSidebarHeader() {
 export function CoPilotSidebar() {
   const { isCoPilotSidebarOpen, setIsCoPilotSidebarOpen } = useAppContext();
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useOnClickOutside(sidebarRef, () => {
+    if (isCoPilotSidebarOpen && isDesktop) {
+        setIsCoPilotSidebarOpen(false);
+    }
+  });
+
 
   // For mobile, use a sheet which provides the necessary context for SheetHeader, etc.
   if (!isDesktop) {
@@ -199,6 +208,7 @@ export function CoPilotSidebar() {
   // For desktop, use a static sidebar and provide a simple, non-contextual header.
   return (
     <aside
+      ref={sidebarRef}
       className={cn(
         'fixed right-0 top-0 z-20 flex h-full w-[520px] flex-col border-l bg-card text-card-foreground shadow-lg transition-transform duration-300 ease-in-out',
         isCoPilotSidebarOpen ? 'translate-x-0' : 'translate-x-full'
