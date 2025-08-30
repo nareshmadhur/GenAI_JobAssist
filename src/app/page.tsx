@@ -93,6 +93,7 @@ export default function JobMatcherPage() {
     return () => {
       delete (window as any)._handleCoPilotSubmit;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formMethods, _handleCoPilotSubmitInternal]); // Dependencies ensure this runs if the form or handler changes.
 
   // When the global bio changes (e.g., from the sidebar), update the form
