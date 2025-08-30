@@ -24,7 +24,7 @@ import {
 } from '@/app/actions';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { InputForm } from '@/components/input-form';
-import { JobSparkLogo } from '@/components/job-spark-logo';
+import { AiJobAssistLogo } from '@/components/ai-job-assist-logo';
 import { OutputView } from '@/components/output-view';
 import { SavedJobsCarousel } from '@/components/saved-jobs-carousel';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
@@ -102,16 +102,11 @@ export default function JobMatcherPage() {
       });
 
       startGenerating(async () => {
-        try {
-          const response = await generateAction(data);
-          setAllResults((prev) => ({
+        const response = await generateAction(data);
+        setAllResults((prev) => ({
             ...prev,
             [generationType]: response,
-          }));
-        } catch (error: any) {
-           console.error("Generation failed:", error);
-           setGenerationError(error.message || 'An unexpected error occurred.');
-        }
+        }));
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -236,45 +231,37 @@ export default function JobMatcherPage() {
 
       startSaving(async () => {
         const { jobDescription, bio, questions } = formMethods.getValues();
-        try {
-            const detailsResponse = await extractJobDetailsAction({
-                jobDescription,
-            });
+        const detailsResponse = await extractJobDetailsAction({
+            jobDescription,
+        });
 
-            const newSavedJob: SavedJob = {
-                id: crypto.randomUUID(),
-                ...detailsResponse,
-                formData: { jobDescription, bio, questions },
-                allResults,
-                savedAt: new Date().toISOString(),
-            };
+        const newSavedJob: SavedJob = {
+            id: crypto.randomUUID(),
+            ...detailsResponse,
+            formData: { jobDescription, bio, questions },
+            allResults,
+            savedAt: new Date().toISOString(),
+        };
 
-            const updatedSavedJobs = [newSavedJob, ...savedJobs];
-            setSavedJobs(updatedSavedJobs);
-            localStorage.setItem(
-                LOCAL_STORAGE_KEY_JOBS,
-                JSON.stringify(updatedSavedJobs)
-            );
+        const updatedSavedJobs = [newSavedJob, ...savedJobs];
+        setSavedJobs(updatedSavedJobs);
+        localStorage.setItem(
+            LOCAL_STORAGE_KEY_JOBS,
+            JSON.stringify(updatedSavedJobs)
+        );
 
-            toast({
-                title: 'Job Saved!',
-                description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
-            });
+        toast({
+            title: 'Job Saved!',
+            description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
+        });
 
-            formMethods.reset({
-                jobDescription: '',
-                bio: formMethods.getValues('bio'),
-                questions: '',
-            });
-            setAllResults({});
-            setActiveView('none');
-        } catch (error: any) {
-             toast({
-                variant: 'destructive',
-                title: 'Could not extract job details to save.',
-                description: error.message || 'An unexpected error occurred.',
-            });
-        }
+        formMethods.reset({
+            jobDescription: '',
+            bio: formMethods.getValues('bio'),
+            questions: '',
+        });
+        setAllResults({});
+        setActiveView('none');
       });
     });
   };
@@ -356,11 +343,11 @@ export default function JobMatcherPage() {
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" aria-label="Back to Home">
-              <JobSparkLogo className="h-10 w-10 text-primary-foreground" />
+              <AiJobAssistLogo className="h-10 w-10 text-primary-foreground" />
             </Link>
             <div className="flex flex-col">
               <h1 className="font-headline text-2xl font-bold text-primary-foreground md:text-3xl">
-                JobSpark
+                AI Job Assist
               </h1>
               <div className="text-xs text-primary-foreground/80">
                 Job Matching Assistant

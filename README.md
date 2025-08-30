@@ -50,7 +50,7 @@ src
 │       ├── ...           # All Genkit flows (e.g., generate-cv.ts)
 ├── components/
 │   ├── ui/               # Reusable ShadCN UI components
-│   └── job-spark-app.tsx # The main application component orchestrating the UI
+│   └── ai-job-assist-app.tsx # The main application component orchestrating the UI
 ├── lib/
 │   ├── schemas.ts        # Zod schemas for form and API validation
 │   └── utils.ts          # Utility functions (e.g., cn for Tailwind)
@@ -75,7 +75,7 @@ src
 
 #### 3. State Management and Data Flow
 
--   **Decision**: The primary state is managed within the main `JobSparkApp` component (`src/components/job-spark-app.tsx`) using `useState` and `useTransition`. There is no global state manager like Redux or Zustand.
+-   **Decision**: The primary state is managed within the main `AiJobAssistApp` component (`src/components/ai-job-assist-app.tsx`) using `useState` and `useTransition`. There is no global state manager like Redux or Zustand.
 -   **Reasoning**: For an application of this scope, a complex state management library is overkill.
     -   **Form Data**: The user's input (job description and bio) is persisted in `localStorage` to prevent data loss on page refresh.
     -   **AI-Generated Data**: The results from the AI are stored in a single state object (`allResults`). When a user switches tabs, the app first checks if the data for that tab already exists in this object. If not, it triggers a new Server Action to generate it. This lazy-loading approach saves API calls and improves performance.

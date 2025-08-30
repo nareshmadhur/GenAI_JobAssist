@@ -4,7 +4,7 @@
 import { generateBioChatResponse } from '@/ai/flows/generate-bio-chat-response';
 import { analyzeBioCompletenessAction } from '@/app/actions';
 import { BioProgressTracker } from '@/components/bio-progress-tracker';
-import { JobSparkLogo } from '@/components/job-spark-logo';
+import { AiJobAssistLogo } from '@/components/ai-job-assist-logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -83,11 +83,7 @@ function BioCreatorCore() {
     if (currentBio && currentBio.length > 50) {
       startAnalyzing(async () => {
         const result = await analyzeBioCompletenessAction({ bio: currentBio });
-        if (result.success) {
-          setCompleteness(result.data);
-        } else {
-          console.error("Bio analysis failed:", result.error);
-        }
+        setCompleteness(result);
       });
     } else {
       setCompleteness(null);
@@ -192,17 +188,8 @@ function BioCreatorCore() {
         currentBio: bio,
       });
 
-      if (response.error) {
-        toast({
-          variant: 'destructive',
-          title: 'An error occurred',
-          description: response.error,
-        });
-        setChatHistory(chatHistory);
-      } else {
-        setChatHistory(prev => [...prev, { author: 'assistant', content: response.response, suggestedReplies: response.suggestedReplies }]);
-        setBio(response.updatedBio);
-      }
+      setChatHistory(prev => [...prev, { author: 'assistant', content: response.response, suggestedReplies: response.suggestedReplies }]);
+      setBio(response.updatedBio);
     });
   };
 
@@ -309,11 +296,11 @@ function BioCreatorCore() {
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
              <Link href="/" aria-label="Back to Home">
-                <JobSparkLogo className="h-10 w-10 text-primary-foreground" />
+                <AiJobAssistLogo className="h-10 w-10 text-primary-foreground" />
             </Link>
             <div className="flex flex-col">
               <h1 className="font-headline text-2xl font-bold text-primary-foreground md:text-3xl">
-                JobSpark
+                AI Job Assist
               </h1>
               <div className="text-xs text-primary-foreground/80">
                 AI Bio Creator
@@ -512,5 +499,3 @@ export default function BioCreatorPage() {
         </Suspense>
     )
 }
-
-    

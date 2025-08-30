@@ -1,6 +1,6 @@
 
 'use client'
-import { JobSparkLogo } from '@/components/job-spark-logo';
+import { AiJobAssistLogo } from '@/components/ai-job-assist-logo';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import Link from 'next/link';
 import React from 'react';
@@ -17,11 +17,11 @@ export default function PrivacyPolicyPage() {
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" aria-label="Back to Home">
-                <JobSparkLogo className="h-10 w-10 text-primary-foreground" />
+                <AiJobAssistLogo className="h-10 w-10 text-primary-foreground" />
             </Link>
             <div className="flex flex-col">
               <h1 className="font-headline text-2xl font-bold text-primary-foreground md:text-3xl">
-                JobSpark
+                AI Job Assist
               </h1>
               <div className="text-xs text-primary-foreground/80">
                 Privacy Policy
@@ -47,7 +47,7 @@ export default function PrivacyPolicyPage() {
 
             <h2>Introduction</h2>
             <p>
-              Welcome to JobSpark. We are committed to protecting your privacy. This Privacy Policy explains how we
+              Welcome to AI Job Assist. We are committed to protecting your privacy. This Privacy Policy explains how we
               collect, use, disclose, and safeguard your information when you use our application.
             </p>
 
@@ -73,6 +73,9 @@ export default function PrivacyPolicyPage() {
                 applications directly in your browser's local storage. This data remains on your device and is not
                 transmitted to our servers. Clearing your browser's cache or storage will permanently delete this data.
               </li>
+               <li>
+                <strong>Analytics:</strong> We may collect anonymized usage data to understand how our application is used and to improve its functionality. This data does not include the content of your job descriptions or bios.
+              </li>
             </ul>
 
             <h2>Use of Your Information</h2>
@@ -83,6 +86,7 @@ export default function PrivacyPolicyPage() {
             <ul>
               <li>Generate tailored job application materials.</li>
               <li>Persist your session data for your convenience.</li>
+              <li>Monitor and analyze usage and trends to improve your experience.</li>
               <li>Improve the application's functionality and user experience.</li>
             </ul>
 

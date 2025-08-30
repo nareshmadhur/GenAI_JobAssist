@@ -8,7 +8,7 @@ import { AppProvider } from '@/context/app-context';
 import { CoPilotSidebar } from '@/components/co-pilot-sidebar';
 
 export const metadata: Metadata = {
-  title: 'JobSpark',
+  title: 'AI Job Assist',
   description: 'Allow AI to boost your job application productivity',
 };
 
@@ -41,16 +41,16 @@ export default function RootLayout({
                     <p>
                     Created by{' '}
                     <a
-                        href="https://firebase.google.com"
+                        href="https://www.nareshmadhur.com"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-medium underline hover:text-accent"
+                        className="font-medium underline hover:text-accent-foreground"
                     >
-                        Firebase
+                        Naresh Madhur
                     </a>
                     </p>
                     <div className="flex items-center gap-4">
-                    <Link href="/privacy" className="underline hover:text-accent">
+                    <Link href="/privacy" className="underline hover:text-accent-foreground">
                         Privacy Policy
                     </Link>
                     </div>

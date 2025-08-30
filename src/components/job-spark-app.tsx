@@ -7,7 +7,7 @@ export type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis' | 'qAndA';
 export type ActiveView = GenerationType | 'none';
 
 
-export interface JobSparkAppProps {
+export interface AiJobAssistAppProps {
     isGenerating: boolean;
     startGenerating: React.TransitionStartFunction;
     activeView: ActiveView;
@@ -19,13 +19,13 @@ export interface JobSparkAppProps {
 }
 
 /**
- * Main application component for JobSpark. It orchestrates the user interface,
+ * Main application component for AI Job Assist. It orchestrates the user interface,
  * manages state for form inputs and AI-generated results, and handles the
  * logic for calling server actions.
  *
- * @returns {JSX.Element} The rendered JobSpark application.
+ * @returns {JSX.Element} The rendered AI Job Assist application.
  */
-export function JobSparkApp(): JSX.Element {
+export function AiJobAssistApp(): JSX.Element {
 
   return (
    <></>
