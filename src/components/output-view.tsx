@@ -50,6 +50,7 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { CircularProgress } from './circular-progress';
+import { ErrorDisplay } from './error-display';
 
 interface OutputViewProps {
   activeView: ActiveView;
@@ -57,6 +58,8 @@ interface OutputViewProps {
   allResults: AllGenerationResults;
   setAllResults: React.Dispatch<React.SetStateAction<AllGenerationResults>>;
   isGenerating: boolean;
+  generationError: string | null;
+  onRetry: () => void;
 }
 
 const VIEW_CONFIG: Record<
@@ -489,6 +492,8 @@ export function OutputView({
   allResults,
   setAllResults,
   isGenerating,
+  generationError,
+  onRetry,
 }: OutputViewProps): JSX.Element {
   const { toast } = useToast();
 
@@ -498,13 +503,19 @@ export function OutputView({
    */
   const handleRevision = async (data: ReviseResponseData) => {
     const { generationType } = data;
-
-    const result = await reviseAction(data);
-    
-    setAllResults((prev) => ({
-        ...prev,
-        [generationType]: result as any,
-    }));
+    try {
+        const result = await reviseAction(data);
+        setAllResults((prev) => ({
+            ...prev,
+            [generationType]: result as any,
+        }));
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Revision Failed',
+            description: error.message || 'An unexpected error occurred.',
+        });
+    }
   };
 
   /**
@@ -525,6 +536,10 @@ export function OutputView({
 
 
   const renderActiveView = () => {
+    if (generationError) {
+        return <ErrorDisplay errorMessage={generationError} onRetry={onRetry} />;
+    }
+    
     if (isGenerating && !allResults[activeView as GenerationType]) {
       return <SectionSkeleton />;
     }

@@ -53,6 +53,7 @@ export default function JobMatcherPage() {
   const [isGenerating, startGenerating] = useTransition();
   const [isSaving, startSaving] = useTransition();
   const [activeView, setActiveView] = useState<ActiveView>('none');
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const { toast } = useToast();
@@ -90,6 +91,7 @@ export default function JobMatcherPage() {
       const data = { ...formMethods.getValues(), generationType };
 
       setActiveView(generationType);
+      setGenerationError(null);
 
       setAllResults((prev) => {
         const newResults = { ...prev };
@@ -98,11 +100,16 @@ export default function JobMatcherPage() {
       });
 
       startGenerating(async () => {
-        const response = await generateAction(data);
-        setAllResults((prev) => ({
-          ...prev,
-          [generationType]: response,
-        }));
+        try {
+          const response = await generateAction(data);
+          setAllResults((prev) => ({
+            ...prev,
+            [generationType]: response,
+          }));
+        } catch (error: any) {
+           console.error("Generation failed:", error);
+           setGenerationError(error.message || 'An unexpected error occurred.');
+        }
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,6 +213,7 @@ export default function JobMatcherPage() {
     formMethods.reset({ jobDescription: '', bio: '', questions: '' });
     setAllResults({});
     setActiveView('none');
+    setGenerationError(null);
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY_FORM);
     } catch (e) {
@@ -233,38 +241,46 @@ export default function JobMatcherPage() {
 
       startSaving(async () => {
         const { jobDescription, bio, questions } = formMethods.getValues();
-        const detailsResponse = await extractJobDetailsAction({
-          jobDescription,
-        });
+        try {
+            const detailsResponse = await extractJobDetailsAction({
+                jobDescription,
+            });
 
-        const newSavedJob: SavedJob = {
-          id: crypto.randomUUID(),
-          ...detailsResponse,
-          formData: { jobDescription, bio, questions },
-          allResults,
-          savedAt: new Date().toISOString(),
-        };
+            const newSavedJob: SavedJob = {
+                id: crypto.randomUUID(),
+                ...detailsResponse,
+                formData: { jobDescription, bio, questions },
+                allResults,
+                savedAt: new Date().toISOString(),
+            };
 
-        const updatedSavedJobs = [newSavedJob, ...savedJobs];
-        setSavedJobs(updatedSavedJobs);
-        localStorage.setItem(
-          LOCAL_STORAGE_KEY_JOBS,
-          JSON.stringify(updatedSavedJobs)
-        );
+            const updatedSavedJobs = [newSavedJob, ...savedJobs];
+            setSavedJobs(updatedSavedJobs);
+            localStorage.setItem(
+                LOCAL_STORAGE_KEY_JOBS,
+                JSON.stringify(updatedSavedJobs)
+            );
 
-        toast({
-          title: 'Job Saved!',
-          description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
-        });
+            toast({
+                title: 'Job Saved!',
+                description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
+            });
 
-        // Clear form for next application, but keep bio
-        formMethods.reset({
-          jobDescription: '',
-          bio: formMethods.getValues('bio'),
-          questions: '',
-        });
-        setAllResults({});
-        setActiveView('none');
+            // Clear form for next application, but keep bio
+            formMethods.reset({
+                jobDescription: '',
+                bio: formMethods.getValues('bio'),
+                questions: '',
+            });
+            setAllResults({});
+            setActiveView('none');
+        } catch (error: any) {
+             toast({
+                variant: 'destructive',
+                title: 'Could not extract job details to save.',
+                description: error.message || 'An unexpected error occurred.',
+            });
+        }
       });
     });
   };
@@ -471,6 +487,8 @@ export default function JobMatcherPage() {
                   allResults={allResults}
                   setAllResults={setAllResults}
                   isGenerating={isGenerating}
+                  generationError={generationError}
+                  onRetry={() => handleGeneration(activeView as GenerationType)}
                 />
               )}
             </div>

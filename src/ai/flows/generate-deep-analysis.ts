@@ -80,7 +80,7 @@ const prompt = ai.definePrompt({
 2.  **Consolidated Requirements**: Analyze the job description to identify all requirements. For each one, create an object with the following fields:
     *   \`requirement\`: The specific requirement, summarized concisely.
     *   \`category\`: Classify it (e.g., 'Experience', 'Education', 'Skills', 'Certification').
-    *   \`isMandatory\`: Set to \`true\` if it's a "must-have" or "required", and \`false\` if it's "preferred" or "nice-to-have".
+    *   \`isMandatory\`: **CRITICAL:** Set to \`true\` ONLY if the text uses explicit keywords like "required", "must have", "essential", or "minimum". Set to \`false\` if it uses words like "preferred", "nice to have", "a plus", or if no specific level of importance is stated. Do not assume.
     *   \`isMet\`: Check if the requirement is clearly met in the user's bio and set to \`true\` or \`false\`.
     *   \`justification\`: Briefly explain *why* it's met or not met, referencing the user's bio.
 
