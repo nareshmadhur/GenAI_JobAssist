@@ -124,17 +124,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           chatHistory: history,
         });
 
-        if (response.error) {
-          toast({
-            variant: 'destructive',
-            title: 'An error occurred',
-            description: response.error,
-          });
-          // Revert history on error
-          setChatHistory(history.slice(0, -1)); 
-          return;
-        }
-
         // Check if the AI requested a tool.
         if (response.toolRequest) {
           const toolRequest = response.toolRequest as ToolRequestPart;

@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -45,7 +46,6 @@ import { CvView } from './cv-view';
 import type { ActiveView } from './job-spark-app';
 import { RevisionForm } from './revision-form';
 import { Textarea } from './ui/textarea';
-import { ErrorDisplay } from './error-display';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { Badge } from './ui/badge';
@@ -57,7 +57,6 @@ interface OutputViewProps {
   allResults: AllGenerationResults;
   setAllResults: React.Dispatch<React.SetStateAction<AllGenerationResults>>;
   isGenerating: boolean;
-  generationError: string | null;
 }
 
 const VIEW_CONFIG: Record<
@@ -490,7 +489,6 @@ export function OutputView({
   allResults,
   setAllResults,
   isGenerating,
-  generationError,
 }: OutputViewProps): JSX.Element {
   const { toast } = useToast();
 
@@ -502,19 +500,11 @@ export function OutputView({
     const { generationType } = data;
 
     const result = await reviseAction(data);
-
-    if (result.success) {
-      setAllResults((prev) => ({
+    
+    setAllResults((prev) => ({
         ...prev,
-        [generationType]: result.data as any,
-      }));
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Revision Failed',
-        description: result.error,
-      });
-    }
+        [generationType]: result as any,
+    }));
   };
 
   /**
@@ -538,16 +528,7 @@ export function OutputView({
     if (isGenerating && !allResults[activeView as GenerationType]) {
       return <SectionSkeleton />;
     }
-    if (generationError && !allResults[activeView as GenerationType]) {
-      return (
-        <Card>
-          <CardContent className="p-4">
-            <ErrorDisplay error={generationError} />
-          </CardContent>
-        </Card>
-      );
-    }
-
+    
     switch (activeView) {
       case 'coverLetter':
         if (!allResults.coverLetter) return null;

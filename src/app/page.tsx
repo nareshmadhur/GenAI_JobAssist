@@ -53,7 +53,6 @@ export default function JobMatcherPage() {
   const [isGenerating, startGenerating] = useTransition();
   const [isSaving, startSaving] = useTransition();
   const [activeView, setActiveView] = useState<ActiveView>('none');
-  const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const { toast } = useToast();
@@ -189,7 +188,6 @@ export default function JobMatcherPage() {
       const data = { ...formMethods.getValues(), generationType };
 
       setActiveView(generationType);
-      setGenerationError(null);
 
       setAllResults((prev) => {
         const newResults = { ...prev };
@@ -199,14 +197,10 @@ export default function JobMatcherPage() {
 
       startGenerating(async () => {
         const response = await generateAction(data);
-        if (response.success) {
-          setAllResults((prev) => ({
-            ...prev,
-            [generationType]: response.data,
-          }));
-        } else {
-          setGenerationError(response.error);
-        }
+        setAllResults((prev) => ({
+          ...prev,
+          [generationType]: response,
+        }));
       });
     });
   };
@@ -215,7 +209,6 @@ export default function JobMatcherPage() {
     formMethods.reset({ jobDescription: '', bio: '', questions: '' });
     setAllResults({});
     setActiveView('none');
-    setGenerationError(null);
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY_FORM);
     } catch (e) {
@@ -247,18 +240,9 @@ export default function JobMatcherPage() {
           jobDescription,
         });
 
-        if (!detailsResponse.success) {
-          toast({
-            variant: 'destructive',
-            title: 'Could not extract job details.',
-            description: detailsResponse.error,
-          });
-          return;
-        }
-
         const newSavedJob: SavedJob = {
           id: crypto.randomUUID(),
-          ...detailsResponse.data,
+          ...detailsResponse,
           formData: { jobDescription, bio, questions },
           allResults,
           savedAt: new Date().toISOString(),
@@ -284,7 +268,6 @@ export default function JobMatcherPage() {
         });
         setAllResults({});
         setActiveView('none');
-        setGenerationError(null);
       });
     });
   };
@@ -491,7 +474,6 @@ export default function JobMatcherPage() {
                   allResults={allResults}
                   setAllResults={setAllResults}
                   isGenerating={isGenerating}
-                  generationError={generationError}
                 />
               )}
             </div>

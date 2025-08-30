@@ -15,17 +15,7 @@ import { getFormFields, updateFormFields, generateJobMaterial } from '@/ai/tools
 export async function generateCoPilotResponse(
   input: CoPilotInput
 ): Promise<CoPilotOutput> {
-  try {
-    const response = await coPilotFlow(input);
-    return response;
-  } catch (error) {
-    console.error('Error in Co-pilot Flow: ', error);
-    return {
-      response:
-        "I'm sorry, I encountered an error. Could you please try rephrasing your last message?",
-      error: error instanceof Error ? error.message : 'An unknown error occurred.',
-    };
-  }
+  return coPilotFlow(input);
 }
 
 const prompt = ai.definePrompt({
