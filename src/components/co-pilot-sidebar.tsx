@@ -94,7 +94,7 @@ function SidebarContentWrapper() {
                       </div>
                     )}
                     <div
-                      className={`prose prose-sm dark:prose-invert max-w-[85%] rounded-lg p-2.5 text-sm ${
+                      className={`prose prose-sm dark:prose-invert max-w-[90%] rounded-lg p-2.5 text-sm ${
                         msg.author === 'user'
                           ? 'bg-primary text-primary-foreground prose-invert'
                           : 'bg-muted'
@@ -181,7 +181,7 @@ export function CoPilotSidebar() {
   if (!isDesktop) {
     return (
       <Sheet open={isCoPilotSidebarOpen} onOpenChange={setIsCoPilotSidebarOpen}>
-        <SheetContent className="flex w-full flex-col p-0 sm:max-w-[440px]">
+        <SheetContent className="flex w-full flex-col p-0 sm:max-w-[520px]">
           <SheetHeader className="border-b p-4 text-left">
             <SheetTitle className="flex items-center gap-2">
               <Bot /> AI Co-pilot
@@ -200,7 +200,7 @@ export function CoPilotSidebar() {
   return (
     <aside
       className={cn(
-        'fixed right-0 top-0 z-20 flex h-full w-[440px] flex-col border-l bg-card text-card-foreground shadow-lg transition-transform duration-300 ease-in-out',
+        'fixed right-0 top-0 z-20 flex h-full w-[520px] flex-col border-l bg-card text-card-foreground shadow-lg transition-transform duration-300 ease-in-out',
         isCoPilotSidebarOpen ? 'translate-x-0' : 'translate-x-full'
       )}
     >
