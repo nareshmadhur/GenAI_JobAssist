@@ -15,8 +15,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bot, Loader2, Send, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAppContext } from '@/context/app-context';
-import { generateCoPilotResponse } from '@/ai/flows/generate-co-pilot-response';
-import type { CoPilotMessage } from '@/lib/schemas';
 import { cn } from '@/lib/utils';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
@@ -94,12 +92,19 @@ function SidebarContentWrapper() {
                         : 'bg-muted'
                     }`}
                   >
-                    {msg.content}
+                    {msg.content === 'Thinking...' ? (
+                      <div className="flex items-center space-x-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Thinking...</span>
+                      </div>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 </div>
               </div>
             ))}
-            {isGenerating && (
+            {isGenerating && !chatHistory.some(m => m.content === 'Thinking...') && (
               <div className="flex items-start gap-3">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <Bot size={16} />

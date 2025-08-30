@@ -128,6 +128,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (response.toolRequest) {
           const toolRequest = response.toolRequest as ToolRequestPart;
           let toolOutput: any = null;
+          
+           // Add a temporary "Thinking..." message to the UI
+          const thinkingMessage: CoPilotMessage = { author: 'assistant', content: 'Thinking...' };
+          setChatHistory(prev => [...prev, thinkingMessage]);
 
           // Execute the requested tool on the client-side.
           if (toolContext) {
@@ -164,6 +168,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             },
           ];
           
+          // Remove the "Thinking..." message before getting the final response
+          setChatHistory(prev => prev.filter(msg => msg !== thinkingMessage));
+
           await runGeneration(historyWithToolResponse); 
         } else if (response.response) {
           // If no tool was requested, this is the final response.
