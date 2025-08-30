@@ -59,19 +59,23 @@ const coPilotFlow = ai.defineFlow(
     outputSchema: CoPilotOutputSchema,
   },
   async (input) => {
-    const llmResponse = await prompt(input);
-    const toolResponse = llmResponse.toolRequest;
-    
-    if (toolResponse) {
+    let llmResponse = await prompt(input);
+
+    while (llmResponse.toolRequest) {
+      const toolResponse = llmResponse.toolRequest;
+      // The client-side will intercept this tool call and provide the data.
+      // The flow will appear to 'pause' here until the client resolves the tool promise.
       const toolOutput = await toolResponse.next();
-      return {
-        response: toolOutput?.output as string,
-        toolRequest: toolResponse,
-      }
+      
+      // Send the tool's output back to the LLM to continue the generation.
+      llmResponse = await toolResponse.next(toolOutput);
     }
 
     return {
       response: llmResponse.text,
+      // Pass the original tool request back to the client if it exists,
+      // so the client knows what action to take.
+      toolRequest: llmResponse.toolRequest,
     };
   }
 );
