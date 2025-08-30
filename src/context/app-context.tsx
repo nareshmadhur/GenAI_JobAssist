@@ -156,9 +156,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Remove the "Thinking..." message before getting the final response
           setChatHistory(history);
 
-          await runGeneration(historyWithToolResponse); 
+          // IMPORTANT: Recursively call runGeneration with the *new* history
+          // that includes the tool's output.
+          await runGeneration(historyWithToolResponse);
         } else if (response.response) {
           // If no tool was requested, this is the final response.
+          // The `history` here is the most up-to-date version.
           setChatHistory((prev) => [
             ...history,
             { author: 'assistant', content: response.response },
