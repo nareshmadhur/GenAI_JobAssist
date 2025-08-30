@@ -32,10 +32,7 @@ interface AppContextType {
   setIsLoading: (isLoading: boolean) => void;
   isGenerating: boolean;
   handleCoPilotSubmit: (message: string) => void;
-  _handleCoPilotSubmitInternal: (
-    message: string,
-    toolContext?: ToolContext
-  ) => void;
+  setToolContext: (context: ToolContext | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -48,6 +45,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isCoPilotSidebarOpen, setIsCoPilotSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, startGenerating] = useTransition();
+  const [toolContext, setToolContext] = useState<ToolContext | null>(null);
   const { toast } = useToast();
 
   // Load state from localStorage on initial mount
@@ -100,19 +98,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [bio, chatHistory, isLoading]);
 
   const handleCoPilotSubmit = (message: string) => {
-    // If a page-specific handler exists on the window, use it.
-     if ((window as any)._handleCoPilotSubmit) {
-       (window as any)._handleCoPilotSubmit(message);
-     } else {
-        // Fallback for pages without form context (e.g., Privacy Policy)
-       _handleCoPilotSubmitInternal(message);
-     }
-  };
-
-  const _handleCoPilotSubmitInternal = (
-    message: string,
-    toolContext?: ToolContext
-  ) => {
     const newUserMessage: CoPilotMessage = { author: 'user', content: message };
     const currentChatHistory = [...chatHistory, newUserMessage];
     setChatHistory(currentChatHistory);
@@ -131,7 +116,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           
            // Add a temporary "Thinking..." message to the UI
           const thinkingMessage: CoPilotMessage = { author: 'assistant', content: 'Thinking...' };
-          setChatHistory(prev => [...prev, thinkingMessage]);
+          setChatHistory(prev => [...history, thinkingMessage]);
 
           // Execute the requested tool on the client-side.
           if (toolContext) {
@@ -169,13 +154,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ];
           
           // Remove the "Thinking..." message before getting the final response
-          setChatHistory(prev => prev.filter(msg => msg !== thinkingMessage));
+          setChatHistory(history);
 
           await runGeneration(historyWithToolResponse); 
         } else if (response.response) {
           // If no tool was requested, this is the final response.
           setChatHistory((prev) => [
-            ...prev,
+            ...history,
             { author: 'assistant', content: response.response },
           ]);
         }
@@ -196,7 +181,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsLoading,
     isGenerating,
     handleCoPilotSubmit,
-    _handleCoPilotSubmitInternal,
+    setToolContext,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

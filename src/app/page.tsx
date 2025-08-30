@@ -61,7 +61,7 @@ export default function JobMatcherPage() {
     bio,
     setBio,
     setIsCoPilotSidebarOpen,
-    _handleCoPilotSubmitInternal,
+    setToolContext,
   } = useAppContext();
 
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
@@ -108,10 +108,9 @@ export default function JobMatcherPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formMethods, toast]);
 
-  // This effect is the key to connecting the AI tools to the form.
-  // It creates a context with the necessary functions and passes it to the global submit handler.
+  // This effect provides the tool functions to the global context.
   useEffect(() => {
-    const toolContext = {
+    setToolContext({
       getFormFields: () => formMethods.getValues(),
       updateFormFields: (updates: Record<string, string>) => {
         Object.entries(updates).forEach(([fieldName, value]) => {
@@ -122,17 +121,14 @@ export default function JobMatcherPage() {
       generateJobMaterial: (generationType: string) => {
         handleGeneration(generationType as GenerationType);
       },
-    };
+    });
 
-    // Replace the default handler with one that includes our tool context.
-    (window as any)._handleCoPilotSubmit = (message: string) =>
-      _handleCoPilotSubmitInternal(message, toolContext);
-
-    // Cleanup function to restore the original handler if the component unmounts.
+    // Cleanup function to clear the context when the component unmounts.
     return () => {
-      delete (window as any)._handleCoPilotSubmit;
+      setToolContext(null);
     };
-  }, [formMethods, _handleCoPilotSubmitInternal, handleGeneration]);
+  }, [formMethods, setToolContext, handleGeneration]);
+
 
   // When the global bio changes (e.g., from the sidebar), update the form
   useEffect(() => {
