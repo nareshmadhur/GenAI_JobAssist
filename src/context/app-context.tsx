@@ -12,7 +12,7 @@ import React, {
 import type { CoPilotMessage } from '@/lib/schemas';
 import { generateCoPilotResponse } from '@/ai/flows/generate-co-pilot-response';
 import { useToast } from '@/hooks/use-toast';
-import { GenkitError, ToolRequestPart } from 'genkit';
+import type { ToolRequestPart } from 'genkit';
 
 interface AppContextType {
   bio: string;
@@ -104,13 +104,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   ) => {
     const newUserMessage: CoPilotMessage = { author: 'user', content: message };
-    const newChatHistory = [...chatHistory, newUserMessage];
-    setChatHistory(newChatHistory);
+    const currentChatHistory = [...chatHistory, newUserMessage];
+    setChatHistory(currentChatHistory);
 
     startGenerating(async () => {
       // Step 1: Send the user's message and get the initial response.
       const initialResponse = await generateCoPilotResponse({
-        chatHistory: newChatHistory,
+        chatHistory: currentChatHistory,
       });
 
       if (initialResponse.error) {
@@ -145,10 +145,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } else {
             toolOutput = { error: 'Tool context not available.' };
         }
-
+        
         // Step 4: Send the tool's output back to the AI to get the final response.
         const historyWithToolResponse: CoPilotMessage[] = [
-            ...newChatHistory,
+            ...currentChatHistory,
             { author: 'tool', content: JSON.stringify(toolOutput), toolRequestId: toolRequest.id },
         ];
         
@@ -172,6 +172,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     });
   };
+
 
   const value = {
     bio,

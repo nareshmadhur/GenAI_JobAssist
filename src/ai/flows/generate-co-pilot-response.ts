@@ -59,25 +59,15 @@ const coPilotFlow = ai.defineFlow(
     outputSchema: CoPilotOutputSchema,
   },
   async (input) => {
-    // If the last message is from a tool, it means we are in the second step of the tool-use flow.
-    const lastMessage = input.chatHistory[input.chatHistory.length - 1];
-    if (lastMessage.author === 'tool') {
-       const llmResponse = await prompt(input);
-       return { response: llmResponse.text };
-    }
-
-    // This is the first step: check if the user's message requires a tool.
     const llmResponse = await prompt(input);
 
-    // If a tool is requested, return the request to the client.
     if (llmResponse.toolRequest) {
       return {
-        response: '', // No immediate text response
+        response: '', // No immediate text response, client will handle tool.
         toolRequest: llmResponse.toolRequest,
       };
     }
 
-    // If no tool is needed, just return the text response.
     return {
       response: llmResponse.text,
     };
