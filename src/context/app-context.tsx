@@ -100,11 +100,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [bio, chatHistory, isLoading]);
 
   const handleCoPilotSubmit = (message: string) => {
-    if ((window as any)._handleCoPilotSubmit) {
-      (window as any)._handleCoPilotSubmit(message);
-    } else {
-      _handleCoPilotSubmitInternal(message);
-    }
+    // If a page-specific handler exists on the window, use it. Otherwise, use this default.
+     if ((window as any)._handleCoPilotSubmit) {
+       (window as any)._handleCoPilotSubmit(message);
+     } else {
+        // Fallback for pages without form context
+       _handleCoPilotSubmitInternal(message);
+     }
   };
 
   const _handleCoPilotSubmitInternal = (
@@ -116,8 +118,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setChatHistory(currentChatHistory);
 
     startGenerating(async () => {
-      let historyForNextTurn = currentChatHistory;
-
       // This function will be called recursively if a tool is used.
       const runGeneration = async (history: CoPilotMessage[]) => {
         const response = await generateCoPilotResponse({
@@ -130,16 +130,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             title: 'An error occurred',
             description: response.error,
           });
-          setChatHistory(chatHistory); // Revert history
+          // Revert history on error
+          setChatHistory(history.slice(0, -1)); 
           return;
         }
 
-        // Step 2: Check if the AI requested a tool.
+        // Check if the AI requested a tool.
         if (response.toolRequest) {
           const toolRequest = response.toolRequest as ToolRequestPart;
           let toolOutput: any = null;
 
-          // Step 3: Execute the requested tool on the client-side.
+          // Execute the requested tool on the client-side.
           if (toolContext) {
             const { name, input } = toolRequest;
             if (name === 'getFormFields' && toolContext.getFormFields) {
@@ -164,8 +165,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           } else {
             toolOutput = { error: 'Tool context not available.' };
           }
-
-          // Step 4: Add the tool's output to the history and run generation again.
+          
+          // Add the tool's output to the history and run generation again.
           const historyWithToolResponse: CoPilotMessage[] = [
             ...history,
             {
@@ -174,9 +175,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               toolRequestId: toolRequest.id,
             },
           ];
-          historyForNextTurn = historyWithToolResponse;
-          await runGeneration(historyForNextTurn); // Recursive call
-        } else {
+          
+          // IMPORTANT: Pass the *new* history with the tool response to the recursive call.
+          await runGeneration(historyWithToolResponse); 
+        } else if (response.response) {
           // If no tool was requested, this is the final response.
           setChatHistory((prev) => [
             ...prev,
@@ -185,7 +187,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       };
 
-      await runGeneration(historyForNextTurn);
+      await runGeneration(currentChatHistory);
     });
   };
 
