@@ -14,6 +14,13 @@ import { generateCoPilotResponse } from '@/ai/flows/generate-co-pilot-response';
 import { useToast } from '@/hooks/use-toast';
 import type { ToolRequestPart } from 'genkit';
 
+// Defines the shape of the tool context that the main page will provide.
+export type ToolContext = {
+  getFormFields?: () => Record<string, string>;
+  updateFormFields?: (updates: Record<string, string>) => void;
+  generateJobMaterial?: (generationType: string) => void;
+};
+
 interface AppContextType {
   bio: string;
   setBio: (bio: string) => void;
@@ -26,11 +33,7 @@ interface AppContextType {
   isGenerating: boolean;
   handleCoPilotSubmit: (
     message: string,
-    toolContext?: {
-      getFormFields?: () => Record<string, string>;
-      updateFormFields?: (updates: Record<string, string>) => void;
-      generateJobMaterial?: (generationType: string) => void;
-    }
+    toolContext?: ToolContext
   ) => void;
 }
 
@@ -97,12 +100,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const handleCoPilotSubmit = (
     message: string,
-    toolContext?: {
-      getFormFields?: () => Record<string, string>;
-      updateFormFields?: (updates: Record<string, string>) => void;
-      generateJobMaterial?: (generationType: string) => void;
-    }
+    toolContext?: ToolContext,
   ) => {
+    // This is a trick to allow the page to inject its context-specific tool handlers.
+    // If a page-specific handler exists on the window, use it. Otherwise, use this default.
+    if ((window as any)._handleCoPilotSubmit) {
+      (window as any)._handleCoPilotSubmit(message);
+      return;
+    }
+
     const newUserMessage: CoPilotMessage = { author: 'user', content: message };
     const currentChatHistory = [...chatHistory, newUserMessage];
     setChatHistory(currentChatHistory);

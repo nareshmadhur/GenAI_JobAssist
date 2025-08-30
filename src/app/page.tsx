@@ -66,12 +66,14 @@ export default function JobMatcherPage() {
     defaultValues: { jobDescription: '', bio: '', questions: '' },
   });
 
-  // Connect Co-pilot to the form
+  // This effect is the key to connecting the AI tools to the form.
+  // It creates a context with the necessary functions and passes it to the global submit handler.
   useEffect(() => {
     const toolContext = {
       getFormFields: () => formMethods.getValues(),
       updateFormFields: (updates: Record<string, string>) => {
         Object.entries(updates).forEach(([fieldName, value]) => {
+          // Use 'any' to bypass strict typing for dynamic field names.
           formMethods.setValue(fieldName as any, value);
         });
       },
@@ -80,15 +82,16 @@ export default function JobMatcherPage() {
       },
     };
 
-    // Monkey-patch the submit handler to include the context
+    // Replace the default handler with one that includes our tool context.
     const originalSubmit = handleCoPilotSubmit;
     (window as any)._handleCoPilotSubmit = (message: string) =>
       originalSubmit(message, toolContext);
 
+    // Cleanup function to restore the original handler if the component unmounts.
     return () => {
       delete (window as any)._handleCoPilotSubmit;
     };
-  }, [formMethods, handleCoPilotSubmit]); // Re-create if formMethods or the handler changes
+  }, [formMethods, handleCoPilotSubmit]); // Dependencies ensure this runs if the form or handler changes.
 
 
   // When the global bio changes (e.g., from the sidebar), update the form
@@ -349,12 +352,7 @@ export default function JobMatcherPage() {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={() => {
-                const submitFn = (window as any)._handleCoPilotSubmit;
-                if (submitFn) {
-                    setIsCoPilotSidebarOpen(true)
-                }
-              }}
+              onClick={() => setIsCoPilotSidebarOpen(true)}
             >
               <Bot className="mr-2 h-4 w-4" /> Co-pilot
             </Button>
