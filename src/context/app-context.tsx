@@ -100,7 +100,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [bio, chatHistory, isLoading]);
 
   const handleCoPilotSubmit = (message: string) => {
-    // This is a trick to allow the page to inject its context-specific tool handlers.
     if ((window as any)._handleCoPilotSubmit) {
       (window as any)._handleCoPilotSubmit(message);
     } else {
@@ -117,87 +116,76 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setChatHistory(currentChatHistory);
 
     startGenerating(async () => {
-      // Step 1: Send the user's message and get the initial response.
-      const initialResponse = await generateCoPilotResponse({
-        chatHistory: currentChatHistory,
-      });
+      let historyForNextTurn = currentChatHistory;
 
-      if (initialResponse.error) {
-        toast({
-          variant: 'destructive',
-          title: 'An error occurred',
-          description: initialResponse.error,
-        });
-        setChatHistory(chatHistory); // Revert history
-        return;
-      }
-
-      // Step 2: Check if the AI requested a tool.
-      if (initialResponse.toolRequest) {
-        const toolRequest = initialResponse.toolRequest as ToolRequestPart;
-        let toolOutput: any = null;
-        
-        // Step 3: Execute the requested tool on the client-side.
-        if (toolContext) {
-          const { name, input } = toolRequest;
-          if (name === 'getFormFields' && toolContext.getFormFields) {
-            toolOutput = toolContext.getFormFields();
-          } else if (
-            name === 'updateFormFields' &&
-            toolContext.updateFormFields
-          ) {
-            toolContext.updateFormFields(input);
-            toolOutput = `Successfully updated fields: ${Object.keys(
-              input
-            ).join(', ')}`;
-          } else if (
-            name === 'generateJobMaterial' &&
-            toolContext.generateJobMaterial
-          ) {
-            toolContext.generateJobMaterial(input.generationType);
-            toolOutput = `Generating ${input.generationType}...`;
-          } else {
-            toolOutput = { error: `Tool '${name}' not found or implemented.` };
-          }
-        } else {
-          toolOutput = { error: 'Tool context not available.' };
-        }
-        
-        // Step 4: Send the tool's output back to the AI for a final response.
-        const historyWithToolResponse: CoPilotMessage[] = [
-        ...currentChatHistory,
-        {
-            author: 'tool',
-            content: JSON.stringify(toolOutput),
-            toolRequestId: toolRequest.id,
-        },
-        ];
-
-        const finalResponse = await generateCoPilotResponse({
-        chatHistory: historyWithToolResponse,
+      // This function will be called recursively if a tool is used.
+      const runGeneration = async (history: CoPilotMessage[]) => {
+        const response = await generateCoPilotResponse({
+          chatHistory: history,
         });
 
-        if (finalResponse.error) {
-        toast({
+        if (response.error) {
+          toast({
             variant: 'destructive',
-            title: 'Error after tool use',
-            description: finalResponse.error,
-        });
-        setChatHistory(chatHistory); // Revert
-        } else {
-        setChatHistory((prev) => [
-            ...prev,
-            { author: 'assistant', content: finalResponse.response },
-        ]);
+            title: 'An error occurred',
+            description: response.error,
+          });
+          setChatHistory(chatHistory); // Revert history
+          return;
         }
 
-      } else {
-        // If no tool was requested, just add the AI's response to the history.
-        setChatHistory((prev) => [
-          ...prev,
-          { author: 'assistant', content: initialResponse.response },
-        ]);
-      }
+        // Step 2: Check if the AI requested a tool.
+        if (response.toolRequest) {
+          const toolRequest = response.toolRequest as ToolRequestPart;
+          let toolOutput: any = null;
+
+          // Step 3: Execute the requested tool on the client-side.
+          if (toolContext) {
+            const { name, input } = toolRequest;
+            if (name === 'getFormFields' && toolContext.getFormFields) {
+              toolOutput = toolContext.getFormFields();
+            } else if (
+              name === 'updateFormFields' &&
+              toolContext.updateFormFields
+            ) {
+              toolContext.updateFormFields(input);
+              toolOutput = `Successfully updated fields: ${Object.keys(
+                input
+              ).join(', ')}`;
+            } else if (
+              name === 'generateJobMaterial' &&
+              toolContext.generateJobMaterial
+            ) {
+              toolContext.generateJobMaterial(input.generationType);
+              toolOutput = `Generating ${input.generationType}...`;
+            } else {
+              toolOutput = { error: `Tool '${name}' not found or implemented.` };
+            }
+          } else {
+            toolOutput = { error: 'Tool context not available.' };
+          }
+
+          // Step 4: Add the tool's output to the history and run generation again.
+          const historyWithToolResponse: CoPilotMessage[] = [
+            ...history,
+            {
+              author: 'tool',
+              content: JSON.stringify(toolOutput),
+              toolRequestId: toolRequest.id,
+            },
+          ];
+          historyForNextTurn = historyWithToolResponse;
+          await runGeneration(historyForNextTurn); // Recursive call
+        } else {
+          // If no tool was requested, this is the final response.
+          setChatHistory((prev) => [
+            ...prev,
+            { author: 'assistant', content: response.response },
+          ]);
+        }
+      };
+
+      await runGeneration(historyForNextTurn);
     });
   };
 
