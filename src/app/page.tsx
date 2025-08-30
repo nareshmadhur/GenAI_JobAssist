@@ -45,6 +45,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { JobApplicationData, SavedJob } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
 import type { ActiveView, GenerationType } from '@/components/job-spark-app';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
 const LOCAL_STORAGE_KEY_JOBS = 'jobspark_saved_jobs';
@@ -121,7 +123,6 @@ export default function JobMatcherPage() {
       getFormFields: () => formMethods.getValues(),
       updateFormFields: (updates: Record<string, string>) => {
         Object.entries(updates).forEach(([fieldName, value]) => {
-          // Use 'any' to bypass strict typing for dynamic field names.
           formMethods.setValue(fieldName as any, value);
         });
       },
@@ -130,19 +131,16 @@ export default function JobMatcherPage() {
       },
     });
 
-    // Cleanup function to clear the context when the component unmounts.
     return () => {
       setToolContext(null);
     };
   }, [formMethods, setToolContext, handleGeneration]);
 
 
-  // When the global bio changes (e.g., from the sidebar), update the form
   useEffect(() => {
     formMethods.setValue('bio', bio);
   }, [bio, formMethods]);
 
-  // Load saved jobs from localStorage on initial mount
   useEffect(() => {
     try {
       const savedJobsData = localStorage.getItem(LOCAL_STORAGE_KEY_JOBS);
@@ -165,7 +163,7 @@ export default function JobMatcherPage() {
           questions: parsedData.questions || '',
         });
         if (parsedData.bio) {
-          setBio(parsedData.bio); // Sync loaded bio with global state
+          setBio(parsedData.bio); 
         }
         if (parsedData.allResults) {
           setAllResults(parsedData.allResults);
@@ -184,9 +182,8 @@ export default function JobMatcherPage() {
           jobDescription: value.jobDescription,
           bio: value.bio,
           questions: value.questions,
-          allResults: allResults, // Persist results with form data
+          allResults: allResults,
         };
-        // Also update the global bio state when the form field changes
         if (value.bio !== bio) {
           setBio(value.bio || '');
         }
@@ -201,8 +198,6 @@ export default function JobMatcherPage() {
     return () => subscription.unsubscribe();
   }, [formMethods, formMethods.watch, allResults, bio, setBio]);
 
-  // This effect handles scrolling to the output view when it becomes active.
-  // It runs after the component re-renders, ensuring the ref is attached.
   useEffect(() => {
     if (activeView !== 'none' && outputRef.current) {
       outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -266,7 +261,6 @@ export default function JobMatcherPage() {
                 description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
             });
 
-            // Clear form for next application, but keep bio
             formMethods.reset({
                 jobDescription: '',
                 bio: formMethods.getValues('bio'),
@@ -287,7 +281,7 @@ export default function JobMatcherPage() {
 
   const handleLoadJob = (job: SavedJob) => {
     formMethods.reset(job.formData);
-    setBio(job.formData.bio); // Sync with global state
+    setBio(job.formData.bio);
     setAllResults(job.allResults);
     setActiveView(
       (Object.keys(job.allResults)[0] as ActiveView) || 'none'
@@ -327,8 +321,34 @@ export default function JobMatcherPage() {
     }
   };
 
-  const baseButtonClass =
-    'h-auto flex-col rounded-full py-2 text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground/90 data-[active=true]:bg-primary-foreground data-[active=true]:text-primary data-[active=true]:hover:bg-primary-foreground/90';
+  const ActionButton = ({
+      generationType,
+      icon: Icon,
+      label
+  }: {
+      generationType: GenerationType,
+      icon: React.ElementType,
+      label: string
+  }) => (
+      <Card
+          onClick={() => handleGeneration(generationType)}
+          data-active={activeView === generationType}
+          className={cn(
+            'group cursor-pointer text-center transition-all duration-200 hover:shadow-lg hover:-translate-y-1',
+            'data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-lg data-[active=true]:-translate-y-1'
+          )}
+      >
+        <div className="flex flex-col items-center justify-center gap-2 p-4">
+          <Icon className="h-6 w-6 text-primary transition-colors group-data-[active=true]:text-primary-foreground" />
+          <span className="font-semibold text-sm">{label}</span>
+          {isGenerating && activeView === generationType && (
+              <div className="absolute inset-0 flex items-center justify-center bg-card/80">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+          )}
+        </div>
+      </Card>
+  );
 
   return (
     <div className="flex flex-1 flex-col bg-muted/20">
@@ -415,68 +435,13 @@ export default function JobMatcherPage() {
               </Button>
             </div>
 
-            <div className="sticky bottom-0 z-10 -mb-8 w-full bg-gradient-to-t from-background via-background/90 to-transparent py-4">
-              <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-1 rounded-full bg-primary p-1 shadow-lg sm:grid-cols-4">
-                <Button
-                  onClick={() => handleGeneration('coverLetter')}
-                  disabled={isGenerating}
-                  variant="ghost"
-                  data-active={activeView === 'coverLetter'}
-                  className={baseButtonClass}
-                >
-                  {isGenerating && activeView === 'coverLetter' ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <FileText />
-                  )}
-                  <span className="text-xs">Cover Letter</span>
-                </Button>
-
-                <Button
-                  onClick={() => handleGeneration('cv')}
-                  disabled={isGenerating}
-                  variant="ghost"
-                  data-active={activeView === 'cv'}
-                  className={baseButtonClass}
-                >
-                  {isGenerating && activeView === 'cv' ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Briefcase />
-                  )}
-                  <span className="text-xs">CV</span>
-                </Button>
-
-                <Button
-                  onClick={() => handleGeneration('deepAnalysis')}
-                  disabled={isGenerating}
-                  variant="ghost"
-                  data-active={activeView === 'deepAnalysis'}
-                  className={baseButtonClass}
-                >
-                  {isGenerating && activeView === 'deepAnalysis' ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Lightbulb />
-                  )}
-                  <span className="text-xs">Analysis</span>
-                </Button>
-
-                <Button
-                  onClick={() => handleGeneration('qAndA')}
-                  disabled={isGenerating}
-                  variant="ghost"
-                  data-active={activeView === 'qAndA'}
-                  className={baseButtonClass}
-                >
-                  {isGenerating && activeView === 'qAndA' ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <MessageSquareMore />
-                  )}
-                  <span className="text-xs">Q & A</span>
-                </Button>
-              </div>
+            <div className="w-full">
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <ActionButton generationType="coverLetter" icon={FileText} label="Cover Letter" />
+                    <ActionButton generationType="cv" icon={Briefcase} label="CV" />
+                    <ActionButton generationType="deepAnalysis" icon={Lightbulb} label="Analysis" />
+                    <ActionButton generationType="qAndA" icon={MessageSquareMore} label="Q & A" />
+                </div>
             </div>
 
             <div ref={outputRef} className="pt-8">
