@@ -98,24 +98,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [bio, chatHistory, isLoading]);
 
   const handleCoPilotSubmit = (message: string) => {
-    if (!toolContext?.getFormFields) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Form context is not available. Cannot submit.',
-        });
-        return;
-    }
-
     const newUserMessage: CoPilotMessage = { author: 'user', content: message };
     const currentChatHistory = [...chatHistory, newUserMessage];
     setChatHistory(currentChatHistory);
 
     startGenerating(async () => {
-      const { bio, jobDescription } = toolContext.getFormFields!();
-
       // This function will be called recursively if a tool is used.
       const runGeneration = async (history: CoPilotMessage[]) => {
+        if (!toolContext?.getFormFields) {
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Form context is not available. Cannot submit.',
+          });
+          return;
+        }
+        const { bio, jobDescription } = toolContext.getFormFields();
+
         const response = await generateCoPilotResponse({
           chatHistory: history,
           bio,
@@ -127,28 +126,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const toolRequest = response.toolRequest as ToolRequestPart;
           let toolOutput: any = null;
           
-           // Add a temporary "Thinking..." message to the UI
-          const thinkingMessage: CoPilotMessage = { author: 'assistant', content: 'Thinking...' };
-          setChatHistory(prev => [...history, thinkingMessage]);
-
-          // Execute the requested tool on the client-side.
-          if (toolContext) {
-            const { name, input } = toolRequest;
-            if (name === 'updateFormFields' && toolContext.updateFormFields) {
-              toolContext.updateFormFields(input);
-              toolOutput = `Successfully updated fields: ${Object.keys(input).join(', ')}`;
-            } else if (name === 'generateJobMaterial' && toolContext.generateJobMaterial) {
-              toolContext.generateJobMaterial(input.generationType);
-              toolOutput = `Generating ${input.generationType}...`;
-            } else {
-              toolOutput = { error: `Tool '${name}' not found or implemented.` };
-            }
-          } else {
-            toolOutput = { error: 'Tool context not available.' };
-          }
+          const toolStepMessage: CoPilotMessage = {
+            author: 'assistant',
+            type: 'tool-step',
+            content: `Using tool: **${toolRequest.name}**...`,
+          };
           
+          let historyWithSteps = [...history, toolStepMessage];
+          setChatHistory(historyWithSteps);
+          
+          // Execute the requested tool on the client-side.
+          const { name, input } = toolRequest;
+          if (name === 'updateFormFields' && toolContext.updateFormFields) {
+            toolContext.updateFormFields(input);
+            toolOutput = `Successfully updated fields: ${Object.keys(input).join(', ')}`;
+          } else if (name === 'generateJobMaterial' && toolContext.generateJobMaterial) {
+            toolContext.generateJobMaterial(input.generationType);
+            toolOutput = `Generating ${input.generationType}...`;
+          } else {
+            toolOutput = { error: `Tool '${name}' not found or implemented.` };
+          }
+        
           const historyWithToolResponse: CoPilotMessage[] = [
-            ...history,
+            ...history, // Start from the history before the tool step message
             {
               author: 'tool',
               content: JSON.stringify(toolOutput),
@@ -156,11 +156,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             },
           ];
           
-          // Remove the "Thinking..." message before getting the final response
-          setChatHistory(history);
-
           // IMPORTANT: Recursively call runGeneration with the *new* history
-          // that includes the tool's output.
+          // that includes the tool's output, but not our UX step messages.
           await runGeneration(historyWithToolResponse);
 
         } else if (response.response) {

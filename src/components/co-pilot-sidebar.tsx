@@ -12,11 +12,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Loader2, Send, Trash2 } from 'lucide-react';
+import { Bot, Loader2, Send, Trash2, Wand2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAppContext } from '@/context/app-context';
 import { cn } from '@/lib/utils';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import ReactMarkdown from 'react-markdown';
 
 /**
  * The main content of the sidebar, refactored into its own component
@@ -75,36 +76,43 @@ function SidebarContentWrapper() {
           <div className="space-y-4">
             {chatHistory.map((msg, index) => (
               <div key={index}>
-                <div
-                  className={`flex items-start gap-2 ${
-                    msg.author === 'user' ? 'justify-end' : ''
-                  }`}
-                >
-                  {msg.author === 'assistant' && (
-                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Bot size={16} />
+                {msg.type === 'tool-step' ? (
+                   <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground my-4">
+                        <Wand2 className="h-4 w-4" />
+                        <ReactMarkdown className="prose prose-xs dark:prose-invert">{msg.content}</ReactMarkdown>
                     </div>
-                  )}
+                ) : (
                   <div
-                    className={`max-w-[85%] rounded-lg p-2.5 text-sm ${
-                      msg.author === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
+                    className={`flex items-start gap-2 ${
+                      msg.author === 'user' ? 'justify-end' : ''
                     }`}
                   >
-                    {msg.content === 'Thinking...' ? (
-                      <div className="flex items-center space-x-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Thinking...</span>
+                    {msg.author === 'assistant' && (
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Bot size={16} />
                       </div>
-                    ) : (
-                      msg.content
                     )}
+                    <div
+                      className={`max-w-[85%] rounded-lg p-2.5 text-sm ${
+                        msg.author === 'user'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      {msg.content === 'Thinking...' ? (
+                        <div className="flex items-center space-x-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Thinking...</span>
+                        </div>
+                      ) : (
+                        msg.content
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ))}
-            {isGenerating && !chatHistory.some(m => m.content === 'Thinking...') && (
+            {isGenerating && (
               <div className="flex items-start gap-3">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <Bot size={16} />

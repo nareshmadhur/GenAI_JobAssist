@@ -1,6 +1,7 @@
 
 import { z } from 'zod';
 import type { AllGenerationResults } from '@/app/actions';
+import type { ToolRequestPart } from 'genkit';
 
 export const JobApplicationSchema = z.object({
   jobDescription: z
@@ -123,9 +124,11 @@ export interface SavedBio {
 export const CoPilotMessageSchema = z.object({
   author: z.enum(['user', 'assistant', 'tool']),
   content: z.string(),
+  type: z.enum(['message', 'tool-step']).default('message').optional(),
   toolRequestId: z.string().optional(),
 });
 export type CoPilotMessage = z.infer<typeof CoPilotMessageSchema>;
+
 
 export const CoPilotInputSchema = z.object({
   chatHistory: z.array(CoPilotMessageSchema).describe("The full history of the conversation."),
@@ -137,9 +140,9 @@ export type CoPilotInput = z.infer<typeof CoPilotInputSchema>;
 export const CoPilotOutputSchema = z.object({
   response: z.string().describe("The chatbot's next concise message to the user."),
   toolRequest: z.any().optional().describe('A request from the model to use a tool.'),
-  error: z.string().optional().describe("An error message if the model failed to process the request."),
 });
 export type CoPilotOutput = z.infer<typeof CoPilotOutputSchema>;
+
 
 // Schemas for bio completeness analysis
 export const BioCompletenessInputSchema = z.object({
@@ -155,3 +158,24 @@ export const BioCompletenessOutputSchema = z.object({
   hasSkills: z.boolean().describe('True if a skills section is present.'),
 });
 export type BioCompletenessOutput = z.infer<typeof BioCompletenessOutputSchema>;
+
+// Schemas for Bio Creator Chat
+export const BioChatMessageSchema = z.object({
+    author: z.enum(['user', 'assistant']),
+    content: z.string(),
+    suggestedReplies: z.array(z.string()).optional(),
+});
+export type BioChatMessage = z.infer<typeof BioChatMessageSchema>;
+
+export const BioChatInputSchema = z.object({
+    chatHistory: z.array(BioChatMessageSchema),
+    currentBio: z.string(),
+});
+
+export const BioChatOutputSchema = z.object({
+    response: z.string().describe("The chatbot's next message to the user."),
+    updatedBio: z.string().describe("The full, updated bio text after incorporating the user's last message."),
+    suggestedReplies: z.array(z.string()).optional().describe("A few short, relevant suggested replies for the user."),
+    error: z.string().optional().describe("An error message if the model failed to process the request."),
+});
+export type BioChatOutput = z.infer<typeof BioChatOutputSchema>;
