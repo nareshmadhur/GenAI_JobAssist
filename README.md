@@ -38,7 +38,7 @@ This project is a modern web application built with a focus on server-side rende
 
 ### Project Structure
 
-```
+`
 src
 ├── app/
 │   ├── page.tsx          # Main entry point for the UI
@@ -56,7 +56,7 @@ src
 │   └── utils.ts          # Utility functions (e.g., cn for Tailwind)
 └── hooks/
     └── ...               # Custom React hooks (e.g., use-toast)
-```
+`
 
 ### Architectural Decisions & Explanations
 
