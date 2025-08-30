@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Loader2, Send, Trash2, Wand2 } from 'lucide-react';
+import { Bot, Loader2, Send, Trash2, Wand2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAppContext } from '@/context/app-context';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,7 @@ function SidebarContentWrapper() {
     setChatHistory,
     handleCoPilotSubmit,
     isGenerating,
+    setIsCoPilotSidebarOpen
   } = useAppContext();
   const [userInput, setUserInput] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -93,19 +94,19 @@ function SidebarContentWrapper() {
                       </div>
                     )}
                     <div
-                      className={`max-w-[85%] rounded-lg p-2.5 text-sm ${
+                      className={`prose prose-sm dark:prose-invert max-w-[85%] rounded-lg p-2.5 text-sm ${
                         msg.author === 'user'
-                          ? 'bg-primary text-primary-foreground'
+                          ? 'bg-primary text-primary-foreground prose-invert'
                           : 'bg-muted'
                       }`}
                     >
                       {msg.content === 'Thinking...' ? (
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 not-prose">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           <span>Thinking...</span>
                         </div>
                       ) : (
-                        msg.content
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
                       )}
                     </div>
                   </div>
@@ -154,14 +155,20 @@ function SidebarContentWrapper() {
  * A simple header component for the desktop sidebar that does not rely on Sheet context.
  */
 function DesktopSidebarHeader() {
+    const { setIsCoPilotSidebarOpen } = useAppContext();
   return (
-    <div className="border-b p-4 text-left">
-      <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-        <Bot /> AI Co-pilot
-      </h2>
-      <p className="text-sm text-muted-foreground">
-        Your assistant for the entire application process.
-      </p>
+    <div className="flex items-center justify-between border-b p-4 text-left">
+      <div className="flex flex-col">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+            <Bot /> AI Co-pilot
+        </h2>
+        <p className="text-sm text-muted-foreground">
+            Your assistant for the application process.
+        </p>
+      </div>
+       <Button variant="ghost" size="icon" onClick={() => setIsCoPilotSidebarOpen(false)}>
+        <X className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

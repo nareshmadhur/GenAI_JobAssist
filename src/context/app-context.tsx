@@ -125,18 +125,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (response.toolRequest) {
           const toolRequest = response.toolRequest as ToolRequestPart;
           let toolOutput: any = null;
+          let toolStepContent = `Using tool: **${toolRequest.name}**...`;
           
+          const { name, input } = toolRequest;
+
+          if (name === 'updateFormFields') {
+            const fields = Object.keys(input).join(', ');
+            toolStepContent = `Updating the **${fields}** field...`;
+          } else if (name === 'generateJobMaterial') {
+            toolStepContent = `Generating the **${input.generationType}**...`;
+          }
+
           const toolStepMessage: CoPilotMessage = {
             author: 'assistant',
             type: 'tool-step',
-            content: `Using tool: **${toolRequest.name}**...`,
+            content: toolStepContent,
           };
           
           let historyWithSteps = [...history, toolStepMessage];
           setChatHistory(historyWithSteps);
           
           // Execute the requested tool on the client-side.
-          const { name, input } = toolRequest;
           if (name === 'updateFormFields' && toolContext.updateFormFields) {
             toolContext.updateFormFields(input);
             toolOutput = `Successfully updated fields: ${Object.keys(input).join(', ')}`;
