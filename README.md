@@ -2,24 +2,28 @@
 
 This application is an intelligent assistant designed to streamline the job application process. By leveraging Generative AI, it helps users tailor their application materials to specific job descriptions, saving time and improving the quality of their submissions.
 
-## How It Works (For Everyone)
+## How It Works
 
 The process is simple:
 
-1.  **Provide a Job Description**: Paste the full text of the job description you are interested in.
-2.  **Provide Your Bio**: Paste your resume, a detailed work history, or a personal bio. The more detail you provide, the better the AI's output will be.
-3.  **Generate**: The application analyzes both texts and generates several types of content to help you with your application.
+1.  **Build Your Bio**: Use the dedicated **AI Bio Creator** to build a comprehensive professional bio. You can chat with an AI assistant to add sections, paste your resume for automatic structuring, and track your bio's completeness.
+2.  **Provide a Job Description**: In the **Job Matching Assistant**, paste the full text of the job description you are interested in.
+3.  **Provide Your Bio**: Load the bio you created.
+4.  **Generate**: The application analyzes both texts and generates several types of content to help you with your application.
 
 ### Key Features
 
--   **Cover Letter**: Generates a professional cover letter that highlights how your experience aligns with the job requirements.
--   **CV (Curriculum Vitae)**: Formats your bio into a clean, well-structured, and professional CV, tailored to the tone of the job description.
--   **Q&A**: Finds explicit questions within the job description and provides answers based on your bio. It highlights any questions it cannot answer, showing you where you might need to add more information.
--   **Deep Analysis**: Offers a detailed report on:
-    -   **Key Strengths**: Where your bio directly matches the job's needs.
-    -   **Gaps**: Important qualifications mentioned in the job description that are missing from your bio.
-    -   **Improvement Areas**: Actionable advice on how to better phrase or quantify the experience already in your bio.
--   **Interactive Revision**: You can ask the AI to revise any generated content (like the Cover Letter or CV) with simple text commands, such as "make it more formal" or "emphasize my project management skills."
+-   **AI Bio Creator**: A dedicated workspace to build and manage your professional bio. Chat with an AI to add, edit, and structure your information, and track its completeness across key sections (Contact Info, Experience, etc.).
+-   **Job Matching Assistant**: The core tool for generating job-specific materials.
+    -   **Cover Letter**: Generates a professional cover letter that highlights how your experience aligns with the job requirements.
+    -   **CV (Curriculum Vitae)**: Formats your bio into a clean, well-structured, and professional CV, tailored to the tone of the job description. You can edit the generated CV directly in the app.
+    -   **Q&A**: Finds explicit questions within the job description and provides answers based on your bio.
+    -   **Deep Analysis**: Offers a detailed report on your key strengths, identifies gaps, and provides actionable advice on how to improve your bio for the specific role.
+-   **AI Co-pilot**: A conversational sidebar assistant available throughout the app. You can ask it to:
+    -   Revise generated content (e.g., "make my cover letter more formal").
+    -   Update your bio or the job description directly from the chat.
+    -   Trigger new content generation.
+    -   The Co-pilot shows its "thinking" process, giving you insight into how it interprets your requests.
 
 ---
 
@@ -41,7 +45,8 @@ This project is a modern web application built with a focus on server-side rende
 `
 src
 ├── app/
-│   ├── page.tsx          # Main entry point for the UI
+│   ├── page.tsx          # Main entry for the Job Matching Assistant UI
+│   ├── bio-creator/      # UI for the AI Bio Creator page
 │   ├── layout.tsx        # Root layout
 │   └── actions.ts        # Server Actions that call Genkit flows
 ├── ai/
@@ -50,12 +55,14 @@ src
 │       ├── ...           # All Genkit flows (e.g., generate-cv.ts)
 ├── components/
 │   ├── ui/               # Reusable ShadCN UI components
-│   └── ai-job-assist-app.tsx # The main application component orchestrating the UI
+│   └── co-pilot-sidebar.tsx # The main component for the AI Co-pilot
+├── context/
+│   └── app-context.tsx   # Global React context for managing shared state
 ├── lib/
 │   ├── schemas.ts        # Zod schemas for form and API validation
-│   └── utils.ts          # Utility functions (e.g., cn for Tailwind)
+│   └── utils.ts          # Utility functions
 └── hooks/
-    └── ...               # Custom React hooks (e.g., use-toast)
+    └── ...               # Custom React hooks
 `
 
 ### Architectural Decisions & Explanations
@@ -63,25 +70,24 @@ src
 #### 1. Next.js App Router and Server Actions
 
 -   **Decision**: The application exclusively uses the Next.js App Router and relies heavily on **Server Actions** (`src/app/actions.ts`).
--   **Reasoning**: This architecture simplifies the stack significantly. Instead of creating traditional API endpoints (`/api/...`) that need to be manually fetched from the client, we can call server-side functions directly from our React components. This reduces boilerplate, improves security by keeping sensitive logic on the server, and allows for seamless data mutations and AI calls without client-side state management complexity.
+-   **Reasoning**: This architecture simplifies the stack significantly. Instead of creating traditional API endpoints (`/api/...`), we can call server-side functions directly from our React components. This reduces boilerplate and improves security by keeping sensitive logic on the server.
 
 #### 2. Genkit for AI Logic
 
 -   **Decision**: All AI-powered logic is encapsulated within **Genkit Flows** located in `src/ai/flows/`.
--   **Reasoning**: Genkit provides a structured, observable, and extensible way to interact with large language models.
-    -   **Structured IO**: Each flow defines its input and output using Zod schemas. This provides strong type safety and allows the AI model to return structured JSON data, which is far more reliable than parsing plain text.
+-   **Reasoning**: Genkit provides a structured and observable way to interact with large language models.
+    -   **Structured I/O**: Each flow defines its input and output using Zod schemas. This provides strong type safety and allows the AI model to return structured JSON data, which is far more reliable than parsing plain text.
     -   **Separation of Concerns**: By keeping AI prompts and logic separate from the UI, the application is easier to maintain. Prompt engineering can be done independently of UI development.
-    -   **Observability**: Genkit includes a development UI (`genkit start`) for tracing and debugging AI calls, which is invaluable for refining prompts and understanding model behavior.
+    -   **Observability**: Genkit includes a development UI (`genkit start`) for tracing and debugging AI calls, which is invaluable for refining prompts.
 
-#### 3. State Management and Data Flow
+#### 3. AI Co-pilot: Two-Step Enrichment
 
--   **Decision**: The primary state is managed within the main `AiJobAssistApp` component (`src/components/ai-job-assist-app.tsx`) using `useState` and `useTransition`. There is no global state manager like Redux or Zustand.
--   **Reasoning**: For an application of this scope, a complex state management library is overkill.
-    -   **Form Data**: The user's input (job description and bio) is persisted in `localStorage` to prevent data loss on page refresh.
-    -   **AI-Generated Data**: The results from the AI are stored in a single state object (`allResults`). When a user switches tabs, the app first checks if the data for that tab already exists in this object. If not, it triggers a new Server Action to generate it. This lazy-loading approach saves API calls and improves performance.
-    -   **`useTransition`**: This React hook is used to handle pending states for server actions. It allows the UI to remain interactive and display loading indicators without blocking the main thread.
+-   **Decision**: The AI Co-pilot uses a two-step process for handling user requests. First, a dedicated "enrichment" flow (`enrich-copilot-prompt.ts`) translates the user's raw query into a detailed, context-aware prompt. This enriched prompt is then sent to the main generation flow (`generate-co-pilot-response.ts`).
+-   **Reasoning**: This architecture has two main benefits:
+    1.  **Higher Quality Responses**: The enrichment step acts as a "planner," ensuring the final AI model has all the necessary information (bio, job description, chat history) to generate a concise, accurate, and well-formatted response suitable for the sidebar UI.
+    2.  **Improved Transparency**: The enrichment flow also generates a user-facing "thinking" message (e.g., "Okay, planning to rewrite the summary..."). This message is displayed in the UI as a persistent step, giving the user insight into the AI's reasoning process.
 
-#### 4. Rich Text Copy Functionality
+#### 4. State Management with React Context
 
--   **Decision**: The "Copy" button uses the `navigator.clipboard.write()` API to place both `text/html` and `text/plain` versions of the content onto the clipboard.
--   **Reasoning**: Simply copying the raw Markdown (`**bold**`) is not user-friendly. Pasting formatted text directly into applications like Microsoft Word or Google Docs is a significant quality-of-life feature. The plain text version is also cleaned of Markdown artifacts, providing a reliable fallback.
+-   **Decision**: A global state is managed via React Context (`src/context/app-context.tsx`).
+-   **Reasoning**: A simple, centralized context is sufficient for this application's needs. It holds shared state like the user's `bio` and the Co-pilot's `chatHistory`, making it available to any component in the tree. This avoids prop-drilling and keeps the main page components cleaner. The user's input (job description, bio, generated results) is also persisted in `localStorage` to prevent data loss on page refresh.

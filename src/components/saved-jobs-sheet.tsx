@@ -1,425 +1,93 @@
-'use client';
+# AI Job Assist
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound, Sparkles, Trash2, Save, List, Loader2, AlertTriangle, FileText, Briefcase, Lightbulb, MessageSquareMore } from 'lucide-react';
-import React, { useEffect, useRef, useState, useTransition } from 'react';
-import { FormProvider, useForm } from 'react-hook-form';
-import Link from 'next/link';
+This application is an intelligent assistant designed to streamline the job application process. By leveraging Generative AI, it helps users tailor their application materials to specific job descriptions, saving time and improving the quality of their submissions.
 
-import { AllGenerationResults, generateAction, extractJobDetailsAction } from '@/app/actions';
-import { FeedbackDialog } from '@/components/feedback-dialog';
-import { InputForm } from '@/components/input-form';
-import { JobSparkLogo } from '@/components/job-spark-logo';
-import { OutputView } from '@/components/output-view';
-import { Button } from '@/components/ui/button';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+## How It Works
 
-import { useToast } from '@/hooks/use-toast';
-import type { JobApplicationData, SavedJob } from '@/lib/schemas';
-import { JobApplicationSchema } from '@/lib/schemas';
-import { ActiveView, GenerationType } from '@/components/job-spark-app';
-import { ThemeToggleButton } from '@/components/theme-toggle-button';
-import { SavedJobsCarousel } from '@/components/saved-jobs-carousel';
-import { cn } from '@/lib/utils';
+The process is simple:
 
-const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
-const LOCAL_STORAGE_KEY_JOBS = 'jobspark_saved_jobs';
+1.  **Build Your Bio**: Use the dedicated **AI Bio Creator** to build a comprehensive professional bio. You can chat with an AI assistant to add sections, paste your resume for automatic structuring, and track your bio's completeness.
+2.  **Provide a Job Description**: In the **Job Matching Assistant**, paste the full text of the job description you are interested in.
+3.  **Provide Your Bio**: Load the bio you created.
+4.  **Generate**: The application analyzes both texts and generates several types of content to help you with your application.
 
-export default function JobMatcherPage() {
-  const [isGenerating, startGenerating] = useTransition();
-  const [isSaving, startSaving] = useTransition();
-  const [activeView, setActiveView] = useState<ActiveView>('none');
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const [allResults, setAllResults] = useState<AllGenerationResults>({});
-  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
-  const { toast } = useToast();
-  const outputRef = useRef<HTMLDivElement>(null);
+### Key Features
 
-  const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
-    resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
-    defaultValues: { jobDescription: '', bio: '', questions: '' },
-  });
+-   **AI Bio Creator**: A dedicated workspace to build and manage your professional bio. Chat with an AI to add, edit, and structure your information, and track its completeness across key sections (Contact Info, Experience, etc.).
+-   **Job Matching Assistant**: The core tool for generating job-specific materials.
+    -   **Cover Letter**: Generates a professional cover letter that highlights how your experience aligns with the job requirements.
+    -   **CV (Curriculum Vitae)**: Formats your bio into a clean, well-structured, and professional CV, tailored to the tone of the job description. You can edit the generated CV directly in the app.
+    -   **Q&A**: Finds explicit questions within the job description and provides answers based on your bio.
+    -   **Deep Analysis**: Offers a detailed report on your key strengths, identifies gaps, and provides actionable advice on how to improve your bio for the specific role.
+-   **AI Co-pilot**: A conversational sidebar assistant available throughout the app. You can ask it to:
+    -   Revise generated content (e.g., "make my cover letter more formal").
+    -   Update your bio or the job description directly from the chat.
+    -   Trigger new content generation.
+    -   The Co-pilot shows its "thinking" process, giving you insight into how it interprets your requests.
 
-  // Load saved jobs from localStorage on initial mount
-  useEffect(() => {
-    try {
-      const savedJobsData = localStorage.getItem(LOCAL_STORAGE_KEY_JOBS);
-      if (savedJobsData) {
-        setSavedJobs(JSON.parse(savedJobsData));
-      }
-    } catch (e) {
-      console.error('Failed to load saved jobs from localStorage', e);
-    }
-  }, []);
+---
 
+## Technical Documentation (For Developers)
 
-  useEffect(() => {
-    try {
-      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_FORM);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData);
-        formMethods.reset({
-          jobDescription: parsedData.jobDescription || '',
-          bio: parsedData.bio || '',
-          questions: parsedData.questions || '',
-        });
-        if (parsedData.allResults) {
-          setAllResults(parsedData.allResults);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load or parse data from localStorage', e);
-    }
-  }, [formMethods]);
+This project is a modern web application built with a focus on server-side rendering, type safety, and a component-based UI. The AI capabilities are powered by Firebase Genkit.
 
-  useEffect(() => {
-    const subscription = formMethods.watch((value) => {
-      try {
-        const dataToSave = {
-          jobDescription: value.jobDescription,
-          bio: value.bio,
-          questions: value.questions,
-          allResults: allResults, // Persist results with form data
-        };
-        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify(dataToSave));
-      } catch (e) {
-        console.error('Failed to save data to localStorage', e);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [formMethods, formMethods.watch, allResults]);
-  
-  // This effect handles scrolling to the output view when it becomes active.
-  // It runs after the component re-renders, ensuring the ref is attached.
-  useEffect(() => {
-    if (activeView !== 'none' && outputRef.current) {
-      outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [activeView]);
+### Core Technologies
 
-  const handleGeneration = (generationType: GenerationType) => {
-    formMethods.trigger(['jobDescription', 'bio']).then((isValid) => {
-      if (!isValid) {
-        toast({
-          variant: 'destructive',
-          title: 'Please fill out both Job Description and Bio fields.',
-        });
-        return;
-      }
+-   **Framework**: **Next.js 15** (using the App Router)
+-   **Language**: **TypeScript**
+-   **Styling**: **Tailwind CSS**
+-   **UI Components**: **ShadCN UI**
+-   **Generative AI**: **Firebase Genkit** (with Google's Gemini models)
+-   **Form Management**: **React Hook Form** with **Zod** for validation
 
-      if (generationType === 'qAndA' && !formMethods.getValues('questions')) {
-        toast({
-          variant: 'destructive',
-          title: 'Please provide specific questions to answer.',
-        });
-        return;
-      }
+### Project Structure
 
-      const data = { ...formMethods.getValues(), generationType };
-      
-      setActiveView(generationType);
-      setGenerationError(null);
+`
+src
+├── app/
+│   ├── page.tsx          # Main entry for the Job Matching Assistant UI
+│   ├── bio-creator/      # UI for the AI Bio Creator page
+│   ├── layout.tsx        # Root layout
+│   └── actions.ts        # Server Actions that call Genkit flows
+├── ai/
+│   ├── genkit.ts         # Genkit initialization and configuration
+│   └── flows/
+│       ├── ...           # All Genkit flows (e.g., generate-cv.ts)
+├── components/
+│   ├── ui/               # Reusable ShadCN UI components
+│   └── co-pilot-sidebar.tsx # The main component for the AI Co-pilot
+├── context/
+│   └── app-context.tsx   # Global React context for managing shared state
+├── lib/
+│   ├── schemas.ts        # Zod schemas for form and API validation
+│   └── utils.ts          # Utility functions
+└── hooks/
+    └── ...               # Custom React hooks
+`
 
-      setAllResults((prev) => {
-        const newResults = { ...prev };
-        delete newResults[generationType];
-        return newResults;
-      });
+### Architectural Decisions & Explanations
 
-      startGenerating(async () => {
-        const response = await generateAction(data);
-        if (response.success) {
-          setAllResults((prev) => ({
-            ...prev,
-            [generationType]: response.data,
-          }));
-        } else {
-          setGenerationError(response.error);
-        }
-      });
-    });
-  };
+#### 1. Next.js App Router and Server Actions
 
-  const handleClear = () => {
-    formMethods.reset({ jobDescription: '', bio: '', questions: '' });
-    setAllResults({});
-    setActiveView('none');
-    setGenerationError(null);
-    try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY_FORM);
-    } catch (e) {
-      console.error('Failed to clear data from localStorage', e);
-    }
-  };
+-   **Decision**: The application exclusively uses the Next.js App Router and relies heavily on **Server Actions** (`src/app/actions.ts`).
+-   **Reasoning**: This architecture simplifies the stack significantly. Instead of creating traditional API endpoints (`/api/...`), we can call server-side functions directly from our React components. This reduces boilerplate and improves security by keeping sensitive logic on the server.
 
-  const handleSaveJob = () => {
-    formMethods.trigger('jobDescription').then((isValid) => {
-      if (!isValid) {
-        toast({
-          variant: 'destructive',
-          title: 'A job description is required to save.',
-        });
-        return;
-      }
-      if (Object.keys(allResults).length === 0) {
-        toast({
-          variant: 'destructive',
-          title: 'Nothing to Save',
-          description: 'Please generate at least one output before saving.',
-        });
-        return;
-      }
+#### 2. Genkit for AI Logic
 
-      startSaving(async () => {
-        const { jobDescription, bio, questions } = formMethods.getValues();
-        const detailsResponse = await extractJobDetailsAction({ jobDescription });
+-   **Decision**: All AI-powered logic is encapsulated within **Genkit Flows** located in `src/ai/flows/`.
+-   **Reasoning**: Genkit provides a structured and observable way to interact with large language models.
+    -   **Structured I/O**: Each flow defines its input and output using Zod schemas. This provides strong type safety and allows the AI model to return structured JSON data, which is far more reliable than parsing plain text.
+    -   **Separation of Concerns**: By keeping AI prompts and logic separate from the UI, the application is easier to maintain. Prompt engineering can be done independently of UI development.
+    -   **Observability**: Genkit includes a development UI (`genkit start`) for tracing and debugging AI calls, which is invaluable for refining prompts.
 
-        if (!detailsResponse.success) {
-          toast({
-            variant: 'destructive',
-            title: 'Could not extract job details.',
-            description: detailsResponse.error,
-          });
-          return;
-        }
+#### 3. AI Co-pilot: Two-Step Enrichment
 
-        const newSavedJob: SavedJob = {
-          id: crypto.randomUUID(),
-          ...detailsResponse.data,
-          formData: { jobDescription, bio, questions },
-          allResults,
-          savedAt: new Date().toISOString(),
-        };
+-   **Decision**: The AI Co-pilot uses a two-step process for handling user requests. First, a dedicated "enrichment" flow (`enrich-copilot-prompt.ts`) translates the user's raw query into a detailed, context-aware prompt. This enriched prompt is then sent to the main generation flow (`generate-co-pilot-response.ts`).
+-   **Reasoning**: This architecture has two main benefits:
+    1.  **Higher Quality Responses**: The enrichment step acts as a "planner," ensuring the final AI model has all the necessary information (bio, job description, chat history) to generate a concise, accurate, and well-formatted response suitable for the sidebar UI.
+    2.  **Improved Transparency**: The enrichment flow also generates a user-facing "thinking" message (e.g., "Okay, planning to rewrite the summary..."). This message is displayed in the UI as a persistent step, giving the user insight into the AI's reasoning process.
 
-        const updatedSavedJobs = [newSavedJob, ...savedJobs];
-        setSavedJobs(updatedSavedJobs);
-        localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
+#### 4. State Management with React Context
 
-        toast({
-          title: 'Job Saved!',
-          description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
-        });
-
-        // Clear form for next application, but keep bio
-        formMethods.reset({
-          jobDescription: '',
-          bio: formMethods.getValues('bio'),
-          questions: '',
-        });
-        setAllResults({});
-        setActiveView('none');
-        setGenerationError(null);
-      });
-    });
-  };
-
-  const handleLoadJob = (job: SavedJob) => {
-    formMethods.reset(job.formData);
-    setAllResults(job.allResults);
-    setActiveView(Object.keys(job.allResults)[0] as ActiveView || 'none');
-     try {
-        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify({ ...job.formData, allResults: job.allResults }));
-      } catch (e) {
-        console.error('Failed to save loaded data to localStorage', e);
-      }
-    toast({ title: "Job Loaded!", description: `Loaded application for ${job.jobTitle}`})
-  };
-
-  const handleDeleteJob = (jobId: string) => {
-    const updatedSavedJobs = savedJobs.filter((job) => job.id !== jobId);
-    setSavedJobs(updatedSavedJobs);
-    localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
-    toast({ title: 'Job Deleted' });
-  };
-
-  const { jobDescription, bio } = formMethods.getValues();
-
-  const getLastGeneratedOutput = (): string => {
-    if (activeView === 'none' || !allResults[activeView]) return '';
-    try {
-      return JSON.stringify(allResults[activeView], null, 2);
-    } catch {
-      return '';
-    }
-  };
-
-  const baseButtonClass =
-    'h-auto flex-col rounded-full py-2 text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground/90 data-[active=true]:bg-primary-foreground data-[active=true]:text-primary data-[active=true]:hover:bg-primary-foreground/90';
-
-  return (
-    <div className="flex flex-col flex-1 bg-muted/20">
-      <header className="sticky top-0 z-10 w-full border-b border-b-accent bg-primary px-4 py-4 sm:px-6 md:px-8">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" aria-label="Back to Home">
-              <JobSparkLogo className="h-10 w-10 text-primary-foreground" />
-            </Link>
-            <div className="flex flex-col">
-              <h1 className="font-headline text-2xl font-bold text-primary-foreground md:text-3xl">
-                JobSpark
-              </h1>
-              <div className="text-xs text-primary-foreground/80">
-                Job Matching Assistant
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-             <ThemeToggleButton />
-            <FeedbackDialog
-              jobDescription={jobDescription}
-              bio={bio}
-              lastGeneratedOutput={getLastGeneratedOutput()}
-            />
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-8 sm:p-6 md:p-8">
-        <FormProvider {...formMethods}>
-          <div className="flex flex-col gap-8">
-            <InputForm />
-            <div className="flex justify-end items-center gap-4">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="mr-2" />
-                    Clear Everything
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className='flex items-center gap-2'>
-                      <AlertTriangle className="h-6 w-6 text-destructive" />
-                      Are you sure?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently clear the job description, bio, and
-                      all generated content. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      Clear Everything
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSaveJob}
-                disabled={isSaving}
-                aria-label="Save Job"
-              >
-                {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2" />}
-                Save Job
-              </Button>
-            </div>
-            
-            <div className="sticky bottom-0 z-10 w-full bg-gradient-to-t from-background via-background/90 to-transparent -mb-8 py-4">
-              <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-1 rounded-full bg-primary p-1 shadow-lg sm:grid-cols-4">
-                <Button
-                  onClick={() => handleGeneration('coverLetter')}
-                  disabled={isGenerating}
-                  variant="ghost"
-                  data-active={activeView === 'coverLetter'}
-                  className={baseButtonClass}
-                >
-                  {isGenerating && activeView === 'coverLetter' ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <FileText />
-                  )}
-                  <span className="text-xs">Cover Letter</span>
-                </Button>
-
-                <Button
-                  onClick={() => handleGeneration('cv')}
-                  disabled={isGenerating}
-                  variant="ghost"
-                  data-active={activeView === 'cv'}
-                  className={baseButtonClass}
-                >
-                  {isGenerating && activeView === 'cv' ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Briefcase />
-                  )}
-                  <span className="text-xs">CV</span>
-                </Button>
-
-                <Button
-                  onClick={() => handleGeneration('deepAnalysis')}
-                  disabled={isGenerating}
-                  variant="ghost"
-                  data-active={activeView === 'deepAnalysis'}
-                  className={baseButtonClass}
-                >
-                  {isGenerating && activeView === 'deepAnalysis' ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Lightbulb />
-                  )}
-                  <span className="text-xs">Analysis</span>
-                </Button>
-
-                <Button
-                  onClick={() => handleGeneration('qAndA')}
-                  disabled={isGenerating}
-                  variant="ghost"
-                  data-active={activeView === 'qAndA'}
-                  className={baseButtonClass}
-                >
-                  {isGenerating && activeView === 'qAndA' ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <MessageSquareMore />
-                  )}
-                  <span className="text-xs">Q & A</span>
-                </Button>
-              </div>
-            </div>
-
-            <div ref={outputRef} className="pt-8">
-              {activeView !== 'none' && (
-                <OutputView
-                  activeView={activeView}
-                  setActiveView={setActiveView}
-                  allResults={allResults}
-                  setAllResults={setAllResults}
-                  isGenerating={isGenerating}
-                  generationError={generationError}
-                />
-              )}
-            </div>
-          </div>
-        </FormProvider>
-      </main>
-
-      {savedJobs.length > 0 && (
-          <section className="w-full py-8 bg-muted/60 border-t">
-              <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8">
-                 <SavedJobsCarousel 
-                    savedJobs={savedJobs}
-                    onLoadJob={handleLoadJob}
-                    onDeleteJob={handleDeleteJob}
-                  />
-              </div>
-          </section>
-      )}
-
-    </div>
-  );
-}
+-   **Decision**: A global state is managed via React Context (`src/context/app-context.tsx`).
+-   **Reasoning**: A simple, centralized context is sufficient for this application's needs. It holds shared state like the user's `bio` and the Co-pilot's `chatHistory`, making it available to any component in the tree. This avoids prop-drilling and keeps the main page components cleaner. The user's input (job description, bio, generated results) is also persisted in `localStorage` to prevent data loss on page refresh.
