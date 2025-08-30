@@ -12,15 +12,15 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import type { JobApplicationData } from '@/lib/schemas';
-import { ExpandableTextarea } from './expandable-textarea';
+import { ExpandableTextarea } from '@/components/expandable-textarea';
 import React from 'react';
 import { useAppContext } from '@/context/app-context';
 import { Button } from './ui/button';
