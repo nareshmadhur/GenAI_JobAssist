@@ -123,6 +123,10 @@ function BioProgressTracker({
   );
 }
 
+/**
+ * The main content of the sidebar, refactored into its own component
+ * to be reusable in both the mobile sheet and the desktop sidebar.
+ */
 function SidebarContentWrapper() {
     const {
         bio,
@@ -138,7 +142,7 @@ function SidebarContentWrapper() {
     const { toast } = useToast();
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     
-      // Analyze bio completeness (debounced)
+    // Analyze bio completeness (debounced)
     useEffect(() => {
         const handler = setTimeout(() => {
         if (bio && bio.length > 50) {
@@ -156,7 +160,7 @@ function SidebarContentWrapper() {
         }, 1000);
 
         return () => clearTimeout(handler);
-    }, [bio]);
+    }, [bio, startAnalyzing]);
 
     // Auto-scroll chat
     useEffect(() => {
@@ -211,99 +215,104 @@ function SidebarContentWrapper() {
     }
 
     return (
-        <div className="flex h-full flex-col">
-            <SheetHeader className="p-4 border-b text-left">
-                <SheetTitle className="flex items-center gap-2"><Bot /> AI Co-pilot</SheetTitle>
-                <SheetDescription>
-                    Your assistant for crafting the perfect professional bio.
-                </SheetDescription>
-            </SheetHeader>
-            
-            <div className="flex flex-col flex-1 overflow-hidden p-4 gap-4">
-                {/* Bio Preview Panel */}
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-sm">Your Bio</h3>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/80 hover:text-destructive" onClick={handleClearBio}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    <Textarea
-                        value={bio}
-                        onChange={(e) => setBio(e.target.value)}
-                        placeholder="Your bio will appear here as you build it..."
-                        className="flex-1 resize-none h-32 text-xs"
-                    />
-                    <BioProgressTracker analysis={completeness} isLoading={isAnalyzing} />
+        <div className="flex flex-col flex-1 overflow-hidden p-4 gap-4">
+            {/* Bio Preview Panel */}
+            <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">Your Bio</h3>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/80 hover:text-destructive" onClick={handleClearBio}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
                 </div>
+                <Textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder="Your bio will appear here as you build it..."
+                    className="flex-1 resize-none h-32 text-xs"
+                />
+                <BioProgressTracker analysis={completeness} isLoading={isAnalyzing} />
+            </div>
 
-                {/* Chat Panel */}
-                <div className="flex flex-col flex-1 gap-2 overflow-hidden border-t pt-4">
-                    <h3 className="font-semibold text-sm">Chat</h3>
-                    <ScrollArea className="flex-1 pr-4" ref={scrollAreaRef}>
-                        <div className="space-y-4">
-                            {chatHistory.map((msg, index) => (
-                                <div key={index}>
-                                    <div
-                                        className={`flex items-start gap-2 ${
-                                        msg.author === 'user' ? 'justify-end' : ''
-                                        }`}
-                                    >
-                                        {msg.author === 'assistant' && (
-                                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0">
-                                            <Bot size={16} />
-                                        </div>
-                                        )}
-                                        <div
-                                        className={`max-w-[85%] rounded-lg p-2.5 text-sm ${
-                                            msg.author === 'user'
-                                            ? 'bg-primary text-primary-foreground'
-                                            : 'bg-muted'
-                                        }`}
-                                        >
-                                        {msg.content}
-                                        </div>
+            {/* Chat Panel */}
+            <div className="flex flex-col flex-1 gap-2 overflow-hidden border-t pt-4">
+                <h3 className="font-semibold text-sm">Chat</h3>
+                <ScrollArea className="flex-1 pr-4" ref={scrollAreaRef}>
+                    <div className="space-y-4">
+                        {chatHistory.map((msg, index) => (
+                            <div key={index}>
+                                <div
+                                    className={`flex items-start gap-2 ${
+                                    msg.author === 'user' ? 'justify-end' : ''
+                                    }`}
+                                >
+                                    {msg.author === 'assistant' && (
+                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0">
+                                        <Bot size={16} />
                                     </div>
-                                    {msg.author === 'assistant' && msg.suggestedReplies && msg.suggestedReplies.length > 0 && !isGenerating && (
-                                        <div className="mt-2 flex flex-wrap gap-2">
-                                            {msg.suggestedReplies.map((reply, i) => (
-                                                <Button key={i} variant="outline" size="sm" onClick={() => handleSuggestedReplyClick(reply)}>
-                                                    {reply}
-                                                </Button>
-                                            ))}
-                                        </div>
                                     )}
-                                </div>
-                            ))}
-                            {isGenerating && (
-                                <div className="flex items-start gap-3">
-                                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                                    <Bot size={16} />
-                                    </div>
-                                    <div className="flex items-center space-x-2 rounded-lg bg-muted p-3 text-sm">
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                    <span>Thinking...</span>
+                                    <div
+                                    className={`max-w-[85%] rounded-lg p-2.5 text-sm ${
+                                        msg.author === 'user'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-muted'
+                                    }`}
+                                    >
+                                    {msg.content}
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    </ScrollArea>
-                    <div className="flex items-center gap-2 pt-2 border-t">
-                        <Textarea
-                            value={userInput}
-                            onChange={(e) => setUserInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                            placeholder="Ask a question or paste text..."
-                            disabled={isGenerating}
-                            rows={1}
-                            className="resize-none"
-                        />
-                        <Button onClick={handleSendMessage} disabled={isGenerating || !userInput.trim()} size="icon">
-                            <Send size={18} />
-                        </Button>
+                                {msg.author === 'assistant' && msg.suggestedReplies && msg.suggestedReplies.length > 0 && !isGenerating && (
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {msg.suggestedReplies.map((reply, i) => (
+                                            <Button key={i} variant="outline" size="sm" onClick={() => handleSuggestedReplyClick(reply)}>
+                                                {reply}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {isGenerating && (
+                            <div className="flex items-start gap-3">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                <Bot size={16} />
+                                </div>
+                                <div className="flex items-center space-x-2 rounded-lg bg-muted p-3 text-sm">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <span>Thinking...</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
+                </ScrollArea>
+                <div className="flex items-center gap-2 pt-2 border-t">
+                    <Textarea
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                        placeholder="Ask a question or paste text..."
+                        disabled={isGenerating}
+                        rows={1}
+                        className="resize-none"
+                    />
+                    <Button onClick={handleSendMessage} disabled={isGenerating || !userInput.trim()} size="icon">
+                        <Send size={18} />
+                    </Button>
                 </div>
             </div>
+        </div>
+    )
+}
+
+/**
+ * A simple header component for the desktop sidebar that does not rely on Sheet context.
+ */
+function DesktopSidebarHeader() {
+    return (
+         <div className="p-4 border-b text-left">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2"><Bot /> AI Co-pilot</h2>
+            <p className="text-sm text-muted-foreground">
+                Your assistant for crafting the perfect professional bio.
+            </p>
         </div>
     )
 }
@@ -313,21 +322,29 @@ export function CoPilotSidebar() {
   const { isCoPilotSidebarOpen, setIsCoPilotSidebarOpen } = useAppContext();
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
-  // For mobile, use a sheet. For desktop, a static sidebar.
+  // For mobile, use a sheet which provides the necessary context for SheetHeader, etc.
   if (!isDesktop) {
       return (
         <Sheet open={isCoPilotSidebarOpen} onOpenChange={setIsCoPilotSidebarOpen}>
-            <SheetContent className="w-full p-0 sm:max-w-md">
+            <SheetContent className="w-full p-0 sm:max-w-md flex flex-col">
+                 <SheetHeader className="p-4 border-b text-left">
+                    <SheetTitle className="flex items-center gap-2"><Bot /> AI Co-pilot</SheetTitle>
+                    <SheetDescription>
+                        Your assistant for crafting the perfect professional bio.
+                    </SheetDescription>
+                </SheetHeader>
                 <SidebarContentWrapper />
             </SheetContent>
         </Sheet>
       );
   }
 
+  // For desktop, use a static sidebar and provide a simple, non-contextual header.
   return (
-    <aside className={cn("fixed top-0 right-0 z-20 h-full w-96 border-l bg-card text-card-foreground shadow-lg transition-transform duration-300 ease-in-out", 
+    <aside className={cn("fixed top-0 right-0 z-20 h-full w-96 border-l bg-card text-card-foreground shadow-lg transition-transform duration-300 ease-in-out flex flex-col", 
         isCoPilotSidebarOpen ? "translate-x-0" : "translate-x-full"
     )}>
+       <DesktopSidebarHeader />
        <SidebarContentWrapper />
     </aside>
   );
