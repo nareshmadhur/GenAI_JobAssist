@@ -2,17 +2,32 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { KeyRound, Sparkles, Trash2, Save, List, Loader2, AlertTriangle, FileText, Briefcase, Lightbulb, MessageSquareMore, Bot } from 'lucide-react';
+import {
+  Briefcase,
+  FileText,
+  Lightbulb,
+  Loader2,
+  MessageSquareMore,
+  Save,
+  Trash2,
+  Bot,
+  AlertTriangle,
+} from 'lucide-react';
+import Link from 'next/link';
 import React, { useEffect, useRef, useState, useTransition } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
-import Link from 'next/link';
 
-import { AllGenerationResults, generateAction, extractJobDetailsAction } from '@/app/actions';
+import {
+  AllGenerationResults,
+  extractJobDetailsAction,
+  generateAction,
+} from '@/app/actions';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { InputForm } from '@/components/input-form';
 import { JobSparkLogo } from '@/components/job-spark-logo';
 import { OutputView } from '@/components/output-view';
-import { Button } from '@/components/ui/button';
+import { SavedJobsCarousel } from '@/components/saved-jobs-carousel';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,15 +39,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-
+import { Button } from '@/components/ui/button';
+import { useAppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import type { JobApplicationData, SavedJob } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
-import { ActiveView, GenerationType } from '@/components/job-spark-app';
-import { ThemeToggleButton } from '@/components/theme-toggle-button';
-import { SavedJobsCarousel } from '@/components/saved-jobs-carousel';
-import { useAppContext } from '@/context/app-context';
-
+import type { ActiveView, GenerationType } from '@/components/job-spark-app';
 
 const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
 const LOCAL_STORAGE_KEY_JOBS = 'jobspark_saved_jobs';
@@ -46,13 +58,38 @@ export default function JobMatcherPage() {
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
-  const { bio, setBio, setIsCoPilotSidebarOpen } = useAppContext();
-
+  const { bio, setBio, setIsCoPilotSidebarOpen, handleCoPilotSubmit } =
+    useAppContext();
 
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
     resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
     defaultValues: { jobDescription: '', bio: '', questions: '' },
   });
+
+  // Connect Co-pilot to the form
+  useEffect(() => {
+    const toolContext = {
+      getFormFields: () => formMethods.getValues(),
+      updateFormFields: (updates: Record<string, string>) => {
+        Object.entries(updates).forEach(([fieldName, value]) => {
+          formMethods.setValue(fieldName as any, value);
+        });
+      },
+      generateJobMaterial: (generationType: string) => {
+        handleGeneration(generationType as GenerationType);
+      },
+    };
+
+    // Monkey-patch the submit handler to include the context
+    const originalSubmit = handleCoPilotSubmit;
+    (window as any)._handleCoPilotSubmit = (message: string) =>
+      originalSubmit(message, toolContext);
+
+    return () => {
+      delete (window as any)._handleCoPilotSubmit;
+    };
+  }, [formMethods, handleCoPilotSubmit]); // Re-create if formMethods or the handler changes
+
 
   // When the global bio changes (e.g., from the sidebar), update the form
   useEffect(() => {
@@ -71,7 +108,6 @@ export default function JobMatcherPage() {
     }
   }, []);
 
-
   useEffect(() => {
     try {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_FORM);
@@ -83,7 +119,7 @@ export default function JobMatcherPage() {
           questions: parsedData.questions || '',
         });
         if (parsedData.bio) {
-            setBio(parsedData.bio); // Sync loaded bio with global state
+          setBio(parsedData.bio); // Sync loaded bio with global state
         }
         if (parsedData.allResults) {
           setAllResults(parsedData.allResults);
@@ -106,16 +142,19 @@ export default function JobMatcherPage() {
         };
         // Also update the global bio state when the form field changes
         if (value.bio !== bio) {
-            setBio(value.bio || '');
+          setBio(value.bio || '');
         }
-        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify(dataToSave));
+        localStorage.setItem(
+          LOCAL_STORAGE_KEY_FORM,
+          JSON.stringify(dataToSave)
+        );
       } catch (e) {
         console.error('Failed to save data to localStorage', e);
       }
     });
     return () => subscription.unsubscribe();
   }, [formMethods, formMethods.watch, allResults, bio, setBio]);
-  
+
   // This effect handles scrolling to the output view when it becomes active.
   // It runs after the component re-renders, ensuring the ref is attached.
   useEffect(() => {
@@ -143,7 +182,7 @@ export default function JobMatcherPage() {
       }
 
       const data = { ...formMethods.getValues(), generationType };
-      
+
       setActiveView(generationType);
       setGenerationError(null);
 
@@ -199,7 +238,9 @@ export default function JobMatcherPage() {
 
       startSaving(async () => {
         const { jobDescription, bio, questions } = formMethods.getValues();
-        const detailsResponse = await extractJobDetailsAction({ jobDescription });
+        const detailsResponse = await extractJobDetailsAction({
+          jobDescription,
+        });
 
         if (!detailsResponse.success) {
           toast({
@@ -220,7 +261,10 @@ export default function JobMatcherPage() {
 
         const updatedSavedJobs = [newSavedJob, ...savedJobs];
         setSavedJobs(updatedSavedJobs);
-        localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
+        localStorage.setItem(
+          LOCAL_STORAGE_KEY_JOBS,
+          JSON.stringify(updatedSavedJobs)
+        );
 
         toast({
           title: 'Job Saved!',
@@ -242,21 +286,32 @@ export default function JobMatcherPage() {
 
   const handleLoadJob = (job: SavedJob) => {
     formMethods.reset(job.formData);
-    setBio(job.formData.bio) // Sync with global state
+    setBio(job.formData.bio); // Sync with global state
     setAllResults(job.allResults);
-    setActiveView(Object.keys(job.allResults)[0] as ActiveView || 'none');
-     try {
-        localStorage.setItem(LOCAL_STORAGE_KEY_FORM, JSON.stringify({ ...job.formData, allResults: job.allResults }));
-      } catch (e) {
-        console.error('Failed to save loaded data to localStorage', e);
-      }
-    toast({ title: "Job Loaded!", description: `Loaded application for ${job.jobTitle}`})
+    setActiveView(
+      (Object.keys(job.allResults)[0] as ActiveView) || 'none'
+    );
+    try {
+      localStorage.setItem(
+        LOCAL_STORAGE_KEY_FORM,
+        JSON.stringify({ ...job.formData, allResults: job.allResults })
+      );
+    } catch (e) {
+      console.error('Failed to save loaded data to localStorage', e);
+    }
+    toast({
+      title: 'Job Loaded!',
+      description: `Loaded application for ${job.jobTitle}`,
+    });
   };
 
   const handleDeleteJob = (jobId: string) => {
     const updatedSavedJobs = savedJobs.filter((job) => job.id !== jobId);
     setSavedJobs(updatedSavedJobs);
-    localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(updatedSavedJobs));
+    localStorage.setItem(
+      LOCAL_STORAGE_KEY_JOBS,
+      JSON.stringify(updatedSavedJobs)
+    );
     toast({ title: 'Job Deleted' });
   };
 
@@ -275,7 +330,7 @@ export default function JobMatcherPage() {
     'h-auto flex-col rounded-full py-2 text-primary-foreground hover:bg-primary/70 hover:text-primary-foreground/90 data-[active=true]:bg-primary-foreground data-[active=true]:text-primary data-[active=true]:hover:bg-primary-foreground/90';
 
   return (
-    <div className="flex flex-col flex-1 bg-muted/20">
+    <div className="flex flex-1 flex-col bg-muted/20">
       <header className="sticky top-0 z-10 w-full border-b border-b-accent bg-primary px-4 py-4 sm:px-6 md:px-8">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
@@ -293,10 +348,15 @@ export default function JobMatcherPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button
-                variant="outline"
-                onClick={() => setIsCoPilotSidebarOpen(true)}
+              variant="outline"
+              onClick={() => {
+                const submitFn = (window as any)._handleCoPilotSubmit;
+                if (submitFn) {
+                    setIsCoPilotSidebarOpen(true)
+                }
+              }}
             >
-                <Bot className="mr-2 h-4 w-4" /> Co-pilot
+              <Bot className="mr-2 h-4 w-4" /> Co-pilot
             </Button>
             <ThemeToggleButton />
             <FeedbackDialog
@@ -312,7 +372,7 @@ export default function JobMatcherPage() {
         <FormProvider {...formMethods}>
           <div className="flex flex-col gap-8">
             <InputForm />
-            <div className="flex justify-end items-center gap-4">
+            <div className="flex items-center justify-end gap-4">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" size="sm">
@@ -322,7 +382,7 @@ export default function JobMatcherPage() {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle className='flex items-center gap-2'>
+                    <AlertDialogTitle className="flex items-center gap-2">
                       <AlertTriangle className="h-6 w-6 text-destructive" />
                       Are you sure?
                     </AlertDialogTitle>
@@ -333,7 +393,10 @@ export default function JobMatcherPage() {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    <AlertDialogAction
+                      onClick={handleClear}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
                       Clear Everything
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -347,12 +410,16 @@ export default function JobMatcherPage() {
                 disabled={isSaving}
                 aria-label="Save Job"
               >
-                {isSaving ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2" />}
+                {isSaving ? (
+                  <Loader2 className="mr-2 animate-spin" />
+                ) : (
+                  <Save className="mr-2" />
+                )}
                 Save Job
               </Button>
             </div>
-            
-            <div className="sticky bottom-0 z-10 w-full bg-gradient-to-t from-background via-background/90 to-transparent -mb-8 py-4">
+
+            <div className="sticky bottom-0 z-10 -mb-8 w-full bg-gradient-to-t from-background via-background/90 to-transparent py-4">
               <div className="mx-auto grid w-full max-w-lg grid-cols-2 gap-1 rounded-full bg-primary p-1 shadow-lg sm:grid-cols-4">
                 <Button
                   onClick={() => handleGeneration('coverLetter')}
@@ -433,17 +500,16 @@ export default function JobMatcherPage() {
       </main>
 
       {savedJobs.length > 0 && (
-          <section className="w-full py-8 bg-muted/60 border-t">
-              <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8">
-                 <SavedJobsCarousel 
-                    savedJobs={savedJobs}
-                    onLoadJob={handleLoadJob}
-                    onDeleteJob={handleDeleteJob}
-                  />
-              </div>
-          </section>
+        <section className="w-full border-t bg-muted/60 py-8">
+          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8">
+            <SavedJobsCarousel
+              savedJobs={savedJobs}
+              onLoadJob={handleLoadJob}
+              onDeleteJob={handleDeleteJob}
+            />
+          </div>
+        </section>
       )}
-
     </div>
   );
 }

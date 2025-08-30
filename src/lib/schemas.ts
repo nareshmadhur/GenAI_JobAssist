@@ -119,31 +119,24 @@ export interface SavedBio {
 }
 
 
-// Schemas for the Bio Creator chatbot
-export const BioChatMessageSchema = z.object({
+// Schemas for the Co-pilot chatbot
+export const CoPilotMessageSchema = z.object({
   author: z.enum(['user', 'assistant']),
   content: z.string(),
-  suggestedReplies: z.array(z.string()).optional(),
 });
-export type BioChatMessage = z.infer<typeof BioChatMessageSchema>;
+export type CoPilotMessage = z.infer<typeof CoPilotMessageSchema>;
 
-export const BioChatInputSchema = z.object({
-  chatHistory: z.array(BioChatMessageSchema).describe("The full history of the conversation."),
-  currentBio: z.string().describe("The current, full text of the user's bio in plain text format."),
+export const CoPilotInputSchema = z.object({
+  chatHistory: z.array(CoPilotMessageSchema).describe("The full history of the conversation."),
 });
-export type BioChatInput = z.infer<typeof BioChatInputSchema>;
+export type CoPilotInput = z.infer<typeof CoPilotInputSchema>;
 
-export const BioChatOutputSchema = z.object({
+export const CoPilotOutputSchema = z.object({
   response: z.string().describe("The chatbot's next concise message to the user."),
-  updatedBio: z.string().describe("The new, complete version of the user's bio, updated with the latest information."),
-  suggestedReplies: z.array(z.string()).optional().describe("A list of short, suggested replies for the user to click."),
+  toolRequest: z.any().optional().describe('A request from the model to use a tool.'),
   error: z.string().optional().describe("An error message if the model failed to process the request."),
 });
-export type BioChatOutput = z.infer<typeof BioChatOutputSchema>;
-
-
-// Server action wrapper for bio chat
-export const generateBioChatResponse = z.function(BioChatInputSchema, BioChatOutputSchema);
+export type CoPilotOutput = z.infer<typeof CoPilotOutputSchema>;
 
 // Schemas for bio completeness analysis
 export const BioCompletenessInputSchema = z.object({
