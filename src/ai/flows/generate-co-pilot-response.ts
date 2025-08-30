@@ -10,7 +10,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { CoPilotInputSchema, CoPilotOutputSchema } from '@/lib/schemas';
 import type { CoPilotInput, CoPilotOutput } from '@/lib/schemas';
-import { getFormFields, updateFormFields, generateJobMaterial } from '@/ai/tools/job-app-tools';
+import { updateFormFields, generateJobMaterial } from '@/ai/tools/job-app-tools';
 
 export async function generateCoPilotResponse(
   input: CoPilotInput
@@ -21,15 +21,25 @@ export async function generateCoPilotResponse(
 const prompt = ai.definePrompt({
   name: 'coPilotPrompt',
   input: { schema: CoPilotInputSchema },
-  tools: [getFormFields, updateFormFields, generateJobMaterial],
+  tools: [updateFormFields, generateJobMaterial],
   prompt: `You are an expert career coach co-pilot. Your goal is to help a user complete their job application. Be concise, helpful, and proactive.
 
-**Primary Capabilities & Rules:**
-1.  **Analyze & Provide Feedback**: Use the 'getFormFields' tool to understand the user's current 'jobDescription' and 'bio'. Provide expert feedback on how to improve the bio's alignment with the job description.
-2.  **Edit Content on Request**: If the user asks you to make a change, use the 'updateFormFields' tool. For example, if they say "rephrase the first paragraph of my bio to be more professional," you must call 'updateFormFields' with the newly written text. ALWAYS confirm that you have made the change.
-3.  **Trigger Generations**: If the user asks you to "generate the cover letter" or "run the deep analysis", you MUST use the 'generateJobMaterial' tool with the correct 'generationType'.
-4.  **Conversational Interaction**: If the user just wants to chat or asks a general question, provide a helpful response without using a tool.
-5.  **Be Clear**: When you use a tool to perform an action (like updating the bio or generating a CV), explicitly state what you have done in your response (e.g., "I've updated your bio with the new paragraph." or "Okay, I'm generating the CV now.").
+**CONTEXT AWARENESS:**
+- The user's current 'jobDescription' and 'bio' are provided below. You ALWAYS have this information. DO NOT ask for it or use a tool to get it.
+- Use this context to provide expert feedback on how to improve the bio's alignment with the job description.
+
+**USER'S CURRENT DATA:**
+---
+Job Description: {{{jobDescription}}}
+---
+Bio: {{{bio}}}
+---
+
+**PRIMARY CAPABILITIES & RULES:**
+1.  **Edit Content on Request**: If the user asks you to make a change (e.g., "rephrase the first paragraph of my bio"), you MUST use the 'updateFormFields' tool with the newly written text. ALWAYS confirm that you have made the change.
+2.  **Trigger Generations**: If the user asks you to "generate the cover letter" or "run the deep analysis", you MUST use the 'generateJobMaterial' tool with the correct 'generationType'.
+3.  **Conversational Interaction**: If the user just wants to chat or asks a general question, provide a helpful response without using a tool.
+4.  **Be Clear**: When you use a tool to perform an action (like updating the bio or generating a CV), explicitly state what you have done in your response (e.g., "I've updated your bio with the new paragraph." or "Okay, I'm generating the CV now.").
 
 **Chat History:**
 ---

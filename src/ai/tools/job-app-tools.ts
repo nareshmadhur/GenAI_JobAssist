@@ -11,18 +11,6 @@ import { z } from 'zod';
 // The Genkit flow will generate a tool_request, but the actual execution is handled
 // by the client application, which provides the necessary context (like form data).
 
-export const getFormFields = ai.defineTool({
-  name: 'getFormFields',
-  description:
-    "Retrieves the current text from the 'jobDescription', 'bio', and 'questions' fields.",
-  inputSchema: z.object({}),
-  outputSchema: z.object({
-    jobDescription: z.string(),
-    bio: z.string(),
-    questions: z.string(),
-  }),
-});
-
 export const updateFormFields = ai.defineTool({
   name: 'updateFormFields',
   description:

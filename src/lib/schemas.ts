@@ -129,6 +129,8 @@ export type CoPilotMessage = z.infer<typeof CoPilotMessageSchema>;
 
 export const CoPilotInputSchema = z.object({
   chatHistory: z.array(CoPilotMessageSchema).describe("The full history of the conversation."),
+  jobDescription: z.string().describe("The current text in the job description field."),
+  bio: z.string().describe("The current text in the bio field."),
 });
 export type CoPilotInput = z.infer<typeof CoPilotInputSchema>;
 

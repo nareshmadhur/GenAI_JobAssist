@@ -98,15 +98,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [bio, chatHistory, isLoading]);
 
   const handleCoPilotSubmit = (message: string) => {
+    if (!toolContext?.getFormFields) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Form context is not available. Cannot submit.',
+        });
+        return;
+    }
+
     const newUserMessage: CoPilotMessage = { author: 'user', content: message };
     const currentChatHistory = [...chatHistory, newUserMessage];
     setChatHistory(currentChatHistory);
 
     startGenerating(async () => {
+      const { bio, jobDescription } = toolContext.getFormFields!();
+
       // This function will be called recursively if a tool is used.
       const runGeneration = async (history: CoPilotMessage[]) => {
         const response = await generateCoPilotResponse({
           chatHistory: history,
+          bio,
+          jobDescription,
         });
 
         // Check if the AI requested a tool.
@@ -121,20 +134,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Execute the requested tool on the client-side.
           if (toolContext) {
             const { name, input } = toolRequest;
-            if (name === 'getFormFields' && toolContext.getFormFields) {
-              toolOutput = toolContext.getFormFields();
-            } else if (
-              name === 'updateFormFields' &&
-              toolContext.updateFormFields
-            ) {
+            if (name === 'updateFormFields' && toolContext.updateFormFields) {
               toolContext.updateFormFields(input);
-              toolOutput = `Successfully updated fields: ${Object.keys(
-                input
-              ).join(', ')}`;
-            } else if (
-              name === 'generateJobMaterial' &&
-              toolContext.generateJobMaterial
-            ) {
+              toolOutput = `Successfully updated fields: ${Object.keys(input).join(', ')}`;
+            } else if (name === 'generateJobMaterial' && toolContext.generateJobMaterial) {
               toolContext.generateJobMaterial(input.generationType);
               toolOutput = `Generating ${input.generationType}...`;
             } else {
@@ -159,10 +162,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // IMPORTANT: Recursively call runGeneration with the *new* history
           // that includes the tool's output.
           await runGeneration(historyWithToolResponse);
+
         } else if (response.response) {
           // If no tool was requested, this is the final response.
           // The `history` here is the most up-to-date version.
-          setChatHistory((prev) => [
+          setChatHistory([
             ...history,
             { author: 'assistant', content: response.response },
           ]);
