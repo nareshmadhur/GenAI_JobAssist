@@ -12,6 +12,7 @@ import React, {
 import type { CoPilotMessage } from '@/lib/schemas';
 import { generateCoPilotResponse } from '@/ai/flows/generate-co-pilot-response';
 import { useToast } from '@/hooks/use-toast';
+import { GenkitError, ToolRequestPart } from 'genkit';
 
 interface AppContextType {
   bio: string;
@@ -107,42 +108,68 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setChatHistory(newChatHistory);
 
     startGenerating(async () => {
-      const response = await generateCoPilotResponse({
+      // Step 1: Send the user's message and get the initial response.
+      const initialResponse = await generateCoPilotResponse({
         chatHistory: newChatHistory,
       });
 
-      if (response.error) {
+      if (initialResponse.error) {
         toast({
           variant: 'destructive',
           title: 'An error occurred',
-          description: response.error,
+          description: initialResponse.error,
         });
-        // Revert to previous history on error
-        setChatHistory(chatHistory);
+        setChatHistory(chatHistory); // Revert history
         return;
       }
-      
-      // Handle tool requests
-      if (response.toolRequest) {
-        const toolRequest = response.toolRequest;
-        const toolName = toolRequest.name;
-        const toolInput = toolRequest.input;
 
+      // Step 2: Check if the AI requested a tool.
+      if (initialResponse.toolRequest) {
+        const toolRequest = initialResponse.toolRequest as ToolRequestPart;
+        let toolOutput: any = null;
+
+        // Step 3: Execute the requested tool on the client-side.
         if (toolContext) {
-            if (toolName === 'getFormFields' && toolContext.getFormFields) {
-                const formData = toolContext.getFormFields();
-                toolRequest.resolve(formData);
-            } else if (toolName === 'updateFormFields' && toolContext.updateFormFields) {
-                toolContext.updateFormFields(toolInput);
-                toolRequest.resolve(toolInput);
-            } else if (toolName === 'generateJobMaterial' && toolContext.generateJobMaterial) {
-                toolContext.generateJobMaterial(toolInput.generationType);
-                toolRequest.resolve(toolInput);
-            }
+          const { name, input } = toolRequest;
+          if (name === 'getFormFields' && toolContext.getFormFields) {
+            toolOutput = toolContext.getFormFields();
+          } else if (name === 'updateFormFields' && toolContext.updateFormFields) {
+            toolContext.updateFormFields(input);
+            toolOutput = `Successfully updated fields: ${Object.keys(input).join(', ')}`;
+          } else if (name === 'generateJobMaterial' && toolContext.generateJobMaterial) {
+            toolContext.generateJobMaterial(input.generationType);
+            toolOutput = `Generating ${input.generationType}...`;
+          } else {
+            toolOutput = { error: `Tool '${name}' not found or implemented.` };
+          }
+        } else {
+            toolOutput = { error: 'Tool context not available.' };
         }
-      }
 
-      setChatHistory((prev) => [...prev, { author: 'assistant', content: response.response }]);
+        // Step 4: Send the tool's output back to the AI to get the final response.
+        const historyWithToolResponse: CoPilotMessage[] = [
+            ...newChatHistory,
+            { author: 'tool', content: JSON.stringify(toolOutput), toolRequestId: toolRequest.id },
+        ];
+        
+        const finalResponse = await generateCoPilotResponse({
+           chatHistory: historyWithToolResponse
+        });
+
+        if (finalResponse.error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error after tool use',
+                description: finalResponse.error
+            });
+            setChatHistory(chatHistory); // Revert
+        } else {
+            setChatHistory(prev => [...prev, { author: 'assistant', content: finalResponse.response }]);
+        }
+      } else {
+        // If no tool was requested, just add the AI's response to the history.
+        setChatHistory(prev => [...prev, { author: 'assistant', content: initialResponse.response }]);
+      }
     });
   };
 

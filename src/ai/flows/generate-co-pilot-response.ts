@@ -59,23 +59,27 @@ const coPilotFlow = ai.defineFlow(
     outputSchema: CoPilotOutputSchema,
   },
   async (input) => {
-    let llmResponse = await prompt(input);
-
-    while (llmResponse.toolRequest) {
-      const toolResponse = llmResponse.toolRequest;
-      // The client-side will intercept this tool call and provide the data.
-      // The flow will appear to 'pause' here until the client resolves the tool promise.
-      const toolOutput = await toolResponse.next();
-      
-      // Send the tool's output back to the LLM to continue the generation.
-      llmResponse = await toolResponse.next(toolOutput);
+    // If the last message is from a tool, it means we are in the second step of the tool-use flow.
+    const lastMessage = input.chatHistory[input.chatHistory.length - 1];
+    if (lastMessage.author === 'tool') {
+       const llmResponse = await prompt(input);
+       return { response: llmResponse.text };
     }
 
+    // This is the first step: check if the user's message requires a tool.
+    const llmResponse = await prompt(input);
+
+    // If a tool is requested, return the request to the client.
+    if (llmResponse.toolRequest) {
+      return {
+        response: '', // No immediate text response
+        toolRequest: llmResponse.toolRequest,
+      };
+    }
+
+    // If no tool is needed, just return the text response.
     return {
       response: llmResponse.text,
-      // Pass the original tool request back to the client if it exists,
-      // so the client knows what action to take.
-      toolRequest: llmResponse.toolRequest,
     };
   }
 );

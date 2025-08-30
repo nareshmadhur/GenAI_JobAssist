@@ -121,8 +121,9 @@ export interface SavedBio {
 
 // Schemas for the Co-pilot chatbot
 export const CoPilotMessageSchema = z.object({
-  author: z.enum(['user', 'assistant']),
+  author: z.enum(['user', 'assistant', 'tool']),
   content: z.string(),
+  toolRequestId: z.string().optional(),
 });
 export type CoPilotMessage = z.infer<typeof CoPilotMessageSchema>;
 
