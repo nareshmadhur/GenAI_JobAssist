@@ -40,7 +40,7 @@ export function SavedJobsCarousel({ savedJobs, onLoadJob, onDeleteJob }: SavedJo
 
   return (
     <div className='space-y-4'>
-        <h2 className="text-2xl font-bold text-center">Your Saved Applications</h2>
+        <h2 className="text-2xl font-bold text-left">Your Saved Applications</h2>
         <Carousel
         opts={{
             align: 'start',
@@ -52,7 +52,7 @@ export function SavedJobsCarousel({ savedJobs, onLoadJob, onDeleteJob }: SavedJo
             {savedJobs.map((job) => (
             <CarouselItem key={job.id} className="md:basis-1/2 lg:basis-1/3">
                 <div className="p-1">
-                <Card className="h-full flex flex-col">
+                <Card className="h-full flex flex-col text-left">
                     <CardHeader>
                         <CardTitle className="truncate">{job.jobTitle}</CardTitle>
                         <CardDescription className='truncate'>{job.companyName}</CardDescription>
