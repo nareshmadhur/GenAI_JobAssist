@@ -100,11 +100,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [bio, chatHistory, isLoading]);
 
   const handleCoPilotSubmit = (message: string) => {
-    // If a page-specific handler exists on the window, use it. Otherwise, use this default.
+    // If a page-specific handler exists on the window, use it.
      if ((window as any)._handleCoPilotSubmit) {
        (window as any)._handleCoPilotSubmit(message);
      } else {
-        // Fallback for pages without form context
+        // Fallback for pages without form context (e.g., Privacy Policy)
        _handleCoPilotSubmitInternal(message);
      }
   };
@@ -166,7 +166,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             toolOutput = { error: 'Tool context not available.' };
           }
           
-          // Add the tool's output to the history and run generation again.
           const historyWithToolResponse: CoPilotMessage[] = [
             ...history,
             {
@@ -176,7 +175,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             },
           ];
           
-          // IMPORTANT: Pass the *new* history with the tool response to the recursive call.
           await runGeneration(historyWithToolResponse); 
         } else if (response.response) {
           // If no tool was requested, this is the final response.
