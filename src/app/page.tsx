@@ -58,8 +58,12 @@ export default function JobMatcherPage() {
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
-  const { bio, setBio, setIsCoPilotSidebarOpen, handleCoPilotSubmit } =
-    useAppContext();
+  const {
+    bio,
+    setBio,
+    setIsCoPilotSidebarOpen,
+    _handleCoPilotSubmitInternal,
+  } = useAppContext();
 
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
     resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
@@ -83,16 +87,14 @@ export default function JobMatcherPage() {
     };
 
     // Replace the default handler with one that includes our tool context.
-    const originalSubmit = handleCoPilotSubmit;
     (window as any)._handleCoPilotSubmit = (message: string) =>
-      originalSubmit(message, toolContext);
+      _handleCoPilotSubmitInternal(message, toolContext);
 
     // Cleanup function to restore the original handler if the component unmounts.
     return () => {
       delete (window as any)._handleCoPilotSubmit;
     };
-  }, [formMethods, handleCoPilotSubmit]); // Dependencies ensure this runs if the form or handler changes.
-
+  }, [formMethods, _handleCoPilotSubmitInternal]); // Dependencies ensure this runs if the form or handler changes.
 
   // When the global bio changes (e.g., from the sidebar), update the form
   useEffect(() => {

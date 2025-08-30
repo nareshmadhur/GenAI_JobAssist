@@ -31,7 +31,8 @@ interface AppContextType {
   isLoading: boolean;
   setIsLoading: (isLoading: boolean) => void;
   isGenerating: boolean;
-  handleCoPilotSubmit: (
+  handleCoPilotSubmit: (message: string) => void;
+  _handleCoPilotSubmitInternal: (
     message: string,
     toolContext?: ToolContext
   ) => void;
@@ -98,17 +99,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [bio, chatHistory, isLoading]);
 
-  const handleCoPilotSubmit = (
-    message: string,
-    toolContext?: ToolContext,
-  ) => {
+  const handleCoPilotSubmit = (message: string) => {
     // This is a trick to allow the page to inject its context-specific tool handlers.
-    // If a page-specific handler exists on the window, use it. Otherwise, use this default.
+    // If a page-specific handler exists on the window, use it. Otherwise, use the default internal one.
     if ((window as any)._handleCoPilotSubmit) {
       (window as any)._handleCoPilotSubmit(message);
-      return;
+    } else {
+      _handleCoPilotSubmitInternal(message);
     }
+  };
 
+  const _handleCoPilotSubmitInternal = (
+    message: string,
+    toolContext?: ToolContext
+  ) => {
     const newUserMessage: CoPilotMessage = { author: 'user', content: message };
     const currentChatHistory = [...chatHistory, newUserMessage];
     setChatHistory(currentChatHistory);
@@ -139,46 +143,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const { name, input } = toolRequest;
           if (name === 'getFormFields' && toolContext.getFormFields) {
             toolOutput = toolContext.getFormFields();
-          } else if (name === 'updateFormFields' && toolContext.updateFormFields) {
+          } else if (
+            name === 'updateFormFields' &&
+            toolContext.updateFormFields
+          ) {
             toolContext.updateFormFields(input);
-            toolOutput = `Successfully updated fields: ${Object.keys(input).join(', ')}`;
-          } else if (name === 'generateJobMaterial' && toolContext.generateJobMaterial) {
+            toolOutput = `Successfully updated fields: ${Object.keys(
+              input
+            ).join(', ')}`;
+          } else if (
+            name === 'generateJobMaterial' &&
+            toolContext.generateJobMaterial
+          ) {
             toolContext.generateJobMaterial(input.generationType);
             toolOutput = `Generating ${input.generationType}...`;
           } else {
             toolOutput = { error: `Tool '${name}' not found or implemented.` };
           }
         } else {
-            toolOutput = { error: 'Tool context not available.' };
+          toolOutput = { error: 'Tool context not available.' };
         }
-        
+
         // Step 4: Send the tool's output back to the AI to get the final response.
         const historyWithToolResponse: CoPilotMessage[] = [
-            ...currentChatHistory,
-            { author: 'tool', content: JSON.stringify(toolOutput), toolRequestId: toolRequest.id },
+          ...currentChatHistory,
+          {
+            author: 'tool',
+            content: JSON.stringify(toolOutput),
+            toolRequestId: toolRequest.id,
+          },
         ];
-        
+
         const finalResponse = await generateCoPilotResponse({
-           chatHistory: historyWithToolResponse
+          chatHistory: historyWithToolResponse,
         });
 
         if (finalResponse.error) {
-            toast({
-                variant: 'destructive',
-                title: 'Error after tool use',
-                description: finalResponse.error
-            });
-            setChatHistory(chatHistory); // Revert
+          toast({
+            variant: 'destructive',
+            title: 'Error after tool use',
+            description: finalResponse.error,
+          });
+          setChatHistory(chatHistory); // Revert
         } else {
-            setChatHistory(prev => [...prev, { author: 'assistant', content: finalResponse.response }]);
+          setChatHistory((prev) => [
+            ...prev,
+            { author: 'assistant', content: finalResponse.response },
+          ]);
         }
       } else {
         // If no tool was requested, just add the AI's response to the history.
-        setChatHistory(prev => [...prev, { author: 'assistant', content: initialResponse.response }]);
+        setChatHistory((prev) => [
+          ...prev,
+          { author: 'assistant', content: initialResponse.response },
+        ]);
       }
     });
   };
-
 
   const value = {
     bio,
@@ -191,6 +212,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsLoading,
     isGenerating,
     handleCoPilotSubmit,
+    _handleCoPilotSubmitInternal,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
