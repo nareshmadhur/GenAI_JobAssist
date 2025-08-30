@@ -14,7 +14,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
-import React, { useEffect, useRef, useState, useTransition } from 'react';
+import React, { useEffect, useRef, useState, useTransition, useCallback } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 
 import {
@@ -69,6 +69,45 @@ export default function JobMatcherPage() {
     defaultValues: { jobDescription: '', bio: '', questions: '' },
   });
 
+  const handleGeneration = useCallback((generationType: GenerationType) => {
+    formMethods.trigger(['jobDescription', 'bio']).then((isValid) => {
+      if (!isValid) {
+        toast({
+          variant: 'destructive',
+          title: 'Please fill out both Job Description and Bio fields.',
+        });
+        return;
+      }
+
+      if (generationType === 'qAndA' && !formMethods.getValues('questions')) {
+        toast({
+          variant: 'destructive',
+          title: 'Please provide specific questions to answer.',
+        });
+        return;
+      }
+
+      const data = { ...formMethods.getValues(), generationType };
+
+      setActiveView(generationType);
+
+      setAllResults((prev) => {
+        const newResults = { ...prev };
+        delete newResults[generationType];
+        return newResults;
+      });
+
+      startGenerating(async () => {
+        const response = await generateAction(data);
+        setAllResults((prev) => ({
+          ...prev,
+          [generationType]: response,
+        }));
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formMethods, toast]);
+
   // This effect is the key to connecting the AI tools to the form.
   // It creates a context with the necessary functions and passes it to the global submit handler.
   useEffect(() => {
@@ -93,8 +132,7 @@ export default function JobMatcherPage() {
     return () => {
       delete (window as any)._handleCoPilotSubmit;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formMethods, _handleCoPilotSubmitInternal]); // Dependencies ensure this runs if the form or handler changes.
+  }, [formMethods, _handleCoPilotSubmitInternal, handleGeneration]);
 
   // When the global bio changes (e.g., from the sidebar), update the form
   useEffect(() => {
@@ -167,44 +205,6 @@ export default function JobMatcherPage() {
       outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [activeView]);
-
-  const handleGeneration = (generationType: GenerationType) => {
-    formMethods.trigger(['jobDescription', 'bio']).then((isValid) => {
-      if (!isValid) {
-        toast({
-          variant: 'destructive',
-          title: 'Please fill out both Job Description and Bio fields.',
-        });
-        return;
-      }
-
-      if (generationType === 'qAndA' && !formMethods.getValues('questions')) {
-        toast({
-          variant: 'destructive',
-          title: 'Please provide specific questions to answer.',
-        });
-        return;
-      }
-
-      const data = { ...formMethods.getValues(), generationType };
-
-      setActiveView(generationType);
-
-      setAllResults((prev) => {
-        const newResults = { ...prev };
-        delete newResults[generationType];
-        return newResults;
-      });
-
-      startGenerating(async () => {
-        const response = await generateAction(data);
-        setAllResults((prev) => ({
-          ...prev,
-          [generationType]: response,
-        }));
-      });
-    });
-  };
 
   const handleClear = () => {
     formMethods.reset({ jobDescription: '', bio: '', questions: '' });
