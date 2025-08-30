@@ -11,6 +11,7 @@ import React, {
 } from 'react';
 import type { CoPilotMessage } from '@/lib/schemas';
 import { generateCoPilotResponse } from '@/ai/flows/generate-co-pilot-response';
+import { enrichCopilotPrompt } from '@/ai/flows/enrich-copilot-prompt';
 import { useToast } from '@/hooks/use-toast';
 import type { ToolRequestPart } from 'genkit';
 
@@ -104,7 +105,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     startGenerating(async () => {
       // This function will be called recursively if a tool is used.
-      const runGeneration = async (history: CoPilotMessage[]) => {
+      const runGeneration = async (history: CoPilotMessage[], enrichedPrompt?: string) => {
         if (!toolContext?.getFormFields) {
           toast({
             variant: 'destructive',
@@ -115,10 +116,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         const { bio, jobDescription } = toolContext.getFormFields();
 
+        let finalEnrichedPrompt = enrichedPrompt;
+        
+        // Step 1: Enrich the prompt (if not already done in a recursive call)
+        if (!finalEnrichedPrompt) {
+            const enrichmentResponse = await enrichCopilotPrompt({
+                chatHistory: history,
+                jobDescription,
+                bio,
+            });
+
+            finalEnrichedPrompt = enrichmentResponse.enrichedPrompt;
+            const thinkingMessage: CoPilotMessage = {
+                author: 'assistant',
+                type: 'tool-step',
+                content: enrichmentResponse.thinkingMessage,
+            };
+            // Show the "thinking" message immediately
+            setChatHistory(prev => [...prev, thinkingMessage]);
+        }
+        
+        // Step 2: Generate the final response using the enriched prompt
         const response = await generateCoPilotResponse({
-          chatHistory: history,
-          bio,
-          jobDescription,
+          enrichedPrompt: finalEnrichedPrompt!,
         });
 
         // Check if the AI requested a tool.
@@ -136,14 +156,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             toolStepContent = `Generating the **${input.generationType}**...`;
           }
 
-          const toolStepMessage: CoPilotMessage = {
-            author: 'assistant',
-            type: 'tool-step',
-            content: toolStepContent,
-          };
-          
-          let historyWithSteps = [...history, toolStepMessage];
-          setChatHistory(historyWithSteps);
+          // Replace the "thinking" message with the model's pre-tool text response, if any.
+          if (response.response) {
+            setChatHistory(prev => [...prev.slice(0, -1), { author: 'assistant', content: response.response! }]);
+          } else {
+             // Remove the "thinking" message if there's no pre-tool text
+             setChatHistory(prev => prev.slice(0, -1));
+          }
           
           // Execute the requested tool on the client-side.
           if (name === 'updateFormFields' && toolContext.updateFormFields) {
@@ -157,7 +176,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         
           const historyWithToolResponse: CoPilotMessage[] = [
-            ...history, // Start from the history before the tool step message
+            ...history,
             {
               author: 'tool',
               content: JSON.stringify(toolOutput),
@@ -165,17 +184,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             },
           ];
           
-          // IMPORTANT: Recursively call runGeneration with the *new* history
-          // that includes the tool's output, but not our UX step messages.
-          await runGeneration(historyWithToolResponse);
+          await runGeneration(historyWithToolResponse, finalEnrichedPrompt);
 
         } else if (response.response) {
-          // If no tool was requested, this is the final response.
-          // The `history` here is the most up-to-date version.
-          setChatHistory([
-            ...history,
-            { author: 'assistant', content: response.response },
-          ]);
+            // Replace the "thinking" message with the final response
+            setChatHistory(prev => [...prev.slice(0, -1), { author: 'assistant', content: response.response! }]);
+        } else {
+            // If there's no response, remove the thinking message
+            setChatHistory(prev => prev.slice(0, -1));
         }
       };
 

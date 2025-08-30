@@ -14,6 +14,8 @@ export * from './flows/generate-q-and-a';
 export * from './flows/extract-job-details';
 export * from './flows/generate-co-pilot-response';
 export * from './flows/analyze-bio-completeness';
+export * from './flows/enrich-copilot-prompt';
+
 
 import './flows/generate-cover-letter.ts';
 import './flows/generate-cv.ts';
@@ -25,3 +27,4 @@ import './flows/generate-q-and-a.ts';
 import './flows/extract-job-details.ts';
 import './flows/generate-co-pilot-response.ts';
 import './flows/analyze-bio-completeness.ts';
+import './flows/enrich-copilot-prompt.ts';

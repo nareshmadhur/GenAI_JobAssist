@@ -8,12 +8,12 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import type { CoPilotOutput } from '@/lib/schemas';
 import { CoPilotInputSchema, CoPilotOutputSchema } from '@/lib/schemas';
-import type { CoPilotInput, CoPilotOutput } from '@/lib/schemas';
-import { updateFormFields, generateJobMaterial } from '@/ai/tools/job-app-tools';
+import { generateJobMaterial, updateFormFields } from '@/ai/tools/job-app-tools';
 
 export async function generateCoPilotResponse(
-  input: CoPilotInput
+  input: z.infer<typeof CoPilotInputSchema>
 ): Promise<CoPilotOutput> {
   return coPilotFlow(input);
 }
@@ -22,33 +22,22 @@ const prompt = ai.definePrompt({
   name: 'coPilotPrompt',
   input: { schema: CoPilotInputSchema },
   tools: [updateFormFields, generateJobMaterial],
-  prompt: `You are an expert career coach co-pilot. Your goal is to help a user complete their job application. Be concise, helpful, and proactive.
+  prompt: `You are an expert career coach co-pilot. Your primary goal is to help a user with their job application.
 
-**CONTEXT AWARENESS:**
-- The user's current 'jobDescription' and 'bio' are provided below. You ALWAYS have this information. DO NOT ask for it or use a tool to get it.
-- Use this context to provide expert feedback on how to improve the bio's alignment with the job description.
+**CRITICAL INSTRUCTIONS:**
+1.  **Be Concise & Structured**: Your responses MUST be concise and well-structured for a narrow sidebar view. Use Markdown (like **bolding** and bullet points) to improve readability.
+2.  **Use Tools When Necessary**: Use the 'updateFormFields' or 'generateJobMaterial' tools when the user explicitly asks for changes or new content.
+3.  **Conversational Help**: If the user asks a question or wants advice, provide a helpful, conversational response without using a tool.
+4.  **Clarity on Actions**: When you use a tool, your text response should clearly and simply state what action you have taken (e.g., "I've updated your bio with your new experience.").
 
-**USER'S CURRENT DATA:**
----
-Job Description: {{{jobDescription}}}
----
-Bio: {{{bio}}}
----
+**CONTEXT:**
+You have been given a detailed, enriched prompt that clarifies the user's intent and provides all necessary context (their bio, the job description, and chat history). Use this information to directly address the user's request.
 
-**PRIMARY CAPABILITIES & RULES:**
-1.  **Edit Content on Request**: If the user asks you to make a change (e.g., "rephrase the first paragraph of my bio"), you MUST use the 'updateFormFields' tool with the newly written text. ALWAYS confirm that you have made the change.
-2.  **Trigger Generations**: If the user asks you to "generate the cover letter" or "run the deep analysis", you MUST use the 'generateJobMaterial' tool with the correct 'generationType'.
-3.  **Conversational Interaction**: If the user just wants to chat or asks a general question, provide a helpful response without using a tool.
-4.  **Be Clear**: When you use a tool to perform an action (like updating the bio or generating a CV), explicitly state what you have done in your response (e.g., "I've updated your bio with the new paragraph." or "Okay, I'm generating the CV now.").
-
-**Chat History:**
+Enriched Prompt for this turn:
 ---
-{{#each chatHistory}}
-**{{author}}**: {{content}}
-{{/each}}
+{{{enrichedPrompt}}}
 ---
-
-Based on the last message from the user, decide whether to use a tool or provide a conversational response.`,
+`,
 });
 
 const coPilotFlow = ai.defineFlow(
@@ -64,7 +53,7 @@ const coPilotFlow = ai.defineFlow(
       // If the model wants to use a tool, we ONLY return the tool request.
       // The client is responsible for executing it and sending the result back.
       return {
-        response: '', // No immediate text response
+        response: llmResponse.text, // Include any text the model generated before the tool request.
         toolRequest: llmResponse.toolRequest,
       };
     }
