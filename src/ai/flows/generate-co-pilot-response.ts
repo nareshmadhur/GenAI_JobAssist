@@ -31,7 +31,9 @@ export async function generateCoPilotResponse(
 const prompt = ai.definePrompt({
   name: 'coPilotPrompt',
   input: { schema: CoPilotInputSchema },
-  output: { schema: CoPilotOutputSchema },
+  output: { schema: z.object({
+    response: z.string().describe("The chatbot's next concise message to the user."),
+  }) },
   tools: [getFormFields, updateFormFields, generateJobMaterial],
   prompt: `You are an expert career coach co-pilot. Your goal is to help a user complete their job application. Be concise, helpful, and proactive.
 
@@ -72,7 +74,7 @@ const coPilotFlow = ai.defineFlow(
 
     // If no tool is requested, we return the model's text response.
     return {
-      response: llmResponse.text,
+      response: llmResponse.output?.response ?? llmResponse.text,
     };
   }
 );
