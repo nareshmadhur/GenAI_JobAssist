@@ -31,8 +31,6 @@ export async function generateCoPilotResponse(
 const prompt = ai.definePrompt({
   name: 'coPilotPrompt',
   input: { schema: CoPilotInputSchema },
-  // This simplified schema ensures the model returns only a string.
-  output: { schema: z.string() },
   tools: [getFormFields, updateFormFields, generateJobMaterial],
   prompt: `You are an expert career coach co-pilot. Your goal is to help a user complete their job application. Be concise, helpful, and proactive.
 
