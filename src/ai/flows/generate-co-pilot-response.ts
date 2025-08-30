@@ -62,12 +62,15 @@ const coPilotFlow = ai.defineFlow(
     const llmResponse = await prompt(input);
 
     if (llmResponse.toolRequest) {
+      // If the model wants to use a tool, we ONLY return the tool request.
+      // The client is responsible for executing it and sending the result back.
       return {
-        response: '', // No immediate text response, client will handle tool.
+        response: '', // No immediate text response
         toolRequest: llmResponse.toolRequest,
       };
     }
 
+    // If no tool is requested, we return the model's text response.
     return {
       response: llmResponse.text,
     };
