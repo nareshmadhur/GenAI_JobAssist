@@ -132,7 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 type: 'tool-step',
                 content: enrichmentResponse.thinkingMessage,
             };
-            // Show the "thinking" message immediately
+            // Show the "thinking" message immediately and persistently.
             setChatHistory(prev => [...prev, thinkingMessage]);
         }
         
@@ -145,23 +145,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (response.toolRequest) {
           const toolRequest = response.toolRequest as ToolRequestPart;
           let toolOutput: any = null;
-          let toolStepContent = `Using tool: **${toolRequest.name}**...`;
           
           const { name, input } = toolRequest;
 
-          if (name === 'updateFormFields') {
-            const fields = Object.keys(input).join(', ');
-            toolStepContent = `Updating the **${fields}** field...`;
-          } else if (name === 'generateJobMaterial') {
-            toolStepContent = `Generating the **${input.generationType}**...`;
-          }
-
-          // Replace the "thinking" message with the model's pre-tool text response, if any.
+          // Add any text the model generated before the tool request as a new message.
           if (response.response) {
-            setChatHistory(prev => [...prev.slice(0, -1), { author: 'assistant', content: response.response! }]);
-          } else {
-             // Remove the "thinking" message if there's no pre-tool text
-             setChatHistory(prev => prev.slice(0, -1));
+            setChatHistory(prev => [...prev, { author: 'assistant', content: response.response! }]);
           }
           
           // Execute the requested tool on the client-side.
@@ -187,11 +176,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           await runGeneration(historyWithToolResponse, finalEnrichedPrompt);
 
         } else if (response.response) {
-            // Replace the "thinking" message with the final response
-            setChatHistory(prev => [...prev.slice(0, -1), { author: 'assistant', content: response.response! }]);
+            // Add the final response as a new message.
+            setChatHistory(prev => [...prev, { author: 'assistant', content: response.response! }]);
         } else {
-            // If there's no response, remove the thinking message
-            setChatHistory(prev => prev.slice(0, -1));
+            // If there's no response, do nothing (the thinking message is already there).
         }
       };
 
