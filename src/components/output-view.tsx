@@ -233,7 +233,7 @@ function QAndAView({
     return (
       <Card>
         <CardContent className="p-4 text-center text-muted-foreground">
-          <p>No questions were provided to be answered.</p>
+          <p>No questions were found or provided to be answered.</p>
         </CardContent>
       </Card>
     );

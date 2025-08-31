@@ -37,6 +37,8 @@ export function SavedJobsCarousel({ savedJobs, onLoadJob, onDeleteJob }: SavedJo
   if (savedJobs.length === 0) {
     return null;
   }
+  
+  const sortedJobs = [...savedJobs].sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime());
 
   return (
     <div className='space-y-4'>
@@ -49,7 +51,7 @@ export function SavedJobsCarousel({ savedJobs, onLoadJob, onDeleteJob }: SavedJo
         className="w-full"
         >
         <CarouselContent>
-            {savedJobs.map((job) => (
+            {sortedJobs.map((job) => (
             <CarouselItem key={job.id} className="md:basis-1/2 lg:basis-1/3">
                 <div className="p-1">
                 <Card className="h-full flex flex-col text-left">
