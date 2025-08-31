@@ -176,3 +176,13 @@ export const BioChatOutputSchema = z.object({
     error: z.string().optional().describe("An error message if the model failed to process the request."),
 });
 export type BioChatOutput = z.infer<typeof BioChatOutputSchema>;
+
+
+// Schema for user signup
+export const signupSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email.' }),
+  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  privacyPolicy: z.boolean().refine((val) => val === true, {
+    message: 'You must accept the privacy policy to continue.',
+  }),
+});

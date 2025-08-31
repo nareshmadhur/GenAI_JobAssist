@@ -17,19 +17,13 @@ import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PrivacyDialog } from '@/components/privacy-dialog';
+import { signupSchema } from '@/lib/schemas';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(1, { message: 'Password is required.' }),
 });
 
-const signupSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
-  privacyPolicy: z.literal(true, {
-    errorMap: () => ({ message: 'You must accept the privacy policy to continue.' }),
-  }),
-});
 
 type LoginData = z.infer<typeof loginSchema>;
 type SignupData = z.infer<typeof signupSchema>;
@@ -96,7 +90,7 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
                 I have read and agree to the{' '}
                 <PrivacyDialog
                   trigger={
-                    <span className="cursor-pointer text-primary underline">
+                    <span className="cursor-pointer text-accent underline">
                       Privacy Policy
                     </span>
                   }

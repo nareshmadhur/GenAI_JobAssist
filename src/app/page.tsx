@@ -356,7 +356,7 @@ export default function JobMatcherPage() {
           )}
       >
         <div className="flex flex-col items-center justify-center gap-2 p-4">
-          <Icon className="h-6 w-6 text-primary transition-colors group-data-[active=true]:text-primary-foreground" />
+          <Icon className="h-6 w-6 text-accent transition-colors group-data-[active=true]:text-primary-foreground" />
           <span className="font-semibold text-sm">{label}</span>
           {isGenerating && activeView === generationType && (
               <div className="absolute inset-0 flex items-center justify-center bg-card/80">
