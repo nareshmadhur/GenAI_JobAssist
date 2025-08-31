@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -24,7 +24,7 @@ const authSchema = z.object({
 type AuthData = z.infer<typeof authSchema>;
 
 function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { login, signup } = useAuth();
 
@@ -33,23 +33,22 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
     defaultValues: { email: '', password: '' },
   });
 
-  const onSubmit = (data: AuthData) => {
+  const onSubmit = async (data: AuthData) => {
     setError(null);
-    startTransition(async () => {
-      const action = mode === 'login' ? login : signup;
-      const result = await action(data.email, data.password);
-      
-      console.log("Auth result received in form:", result); // Debugging log
+    setIsPending(true);
 
-      if (result?.error) {
-        // Clean up Firebase error messages for better UX
-        const friendlyError = result.error
-          .replace('Firebase: Error ', '')
-          .replace(/\(auth\/[^)]+\)\.?/, '')
-          .trim();
-        setError(friendlyError);
-      }
-    });
+    const action = mode === 'login' ? login : signup;
+    const result = await action(data.email, data.password);
+
+    if (result?.error) {
+      const friendlyError = result.error
+        .replace('Firebase: Error ', '')
+        .replace(/\(auth\/[^)]+\)\.?/, '')
+        .trim();
+      setError(friendlyError);
+    }
+    
+    setIsPending(false);
   };
 
   return (
