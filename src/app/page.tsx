@@ -378,7 +378,7 @@ export default function JobMatcherPage() {
                 <Button asChild variant="outline">
                   <Link href="/login">Log In</Link>
                 </Button>
-                <Button asChild>
+                <Button asChild variant="outline">
                   <Link href="/signup">Sign Up</Link>
                 </Button>
               </>
