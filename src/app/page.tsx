@@ -55,13 +55,20 @@ import { useAuth, useAppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import type { JobApplicationData, SavedJob } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
-import type { ActiveView, GenerationType } from '@/components/job-spark-app';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
-const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
-const LOCAL_STORAGE_KEY_QUERY_COUNT = 'jobspark_query_count';
+export type GenerationType =
+  | 'coverLetter'
+  | 'cv'
+  | 'deepAnalysis'
+  | 'qAndA';
+export type ActiveView = GenerationType | 'none';
+
+
+const LOCAL_STORAGE_KEY_FORM = 'ai_job_assist_form_data';
+const LOCAL_STORAGE_KEY_QUERY_COUNT = 'ai_job_assist_query_count';
 const FREE_QUERY_LIMIT = 5;
 
 export default function JobMatcherPage() {

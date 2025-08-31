@@ -43,8 +43,8 @@ import { SavedBiosSheet } from '@/components/saved-bios-sheet';
 import { useAppContext } from '@/context/app-context';
 
 
-const LOCAL_STORAGE_KEY_JOB_MATCHER_FORM = 'jobspark_form_data';
-const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
+const LOCAL_STORAGE_KEY_JOB_MATCHER_FORM = 'ai_job_assist_form_data';
+const LOCAL_STORAGE_KEY_CHAT = 'ai_job_assist_bio_creator_chat';
 
 
 function BioCreatorCore() {

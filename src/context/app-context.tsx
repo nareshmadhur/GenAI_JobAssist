@@ -70,9 +70,9 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY_APP = 'jobspark_app_data';
-const LOCAL_STORAGE_KEY_JOBS = 'jobspark_saved_jobs';
-const LOCAL_STORAGE_KEY_BIOS = 'jobspark_saved_bios';
+const LOCAL_STORAGE_KEY_APP = 'ai_job_assist_app_data';
+const LOCAL_STORAGE_KEY_JOBS = 'ai_job_assist_saved_jobs';
+const LOCAL_STORAGE_KEY_BIOS = 'ai_job_assist_saved_bios';
 
 const getFriendlyErrorMessage = (error: any): string => {
     if (!error || !error.message) {
