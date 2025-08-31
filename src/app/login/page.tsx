@@ -40,7 +40,7 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
         ? await login(data.email, data.password) 
         : await signup(data.email, data.password);
         
-      if (result.error) {
+      if (result?.error) {
         // Clean up Firebase error messages for better UX
         const friendlyError = result.error
           .replace('Firebase: Error ', '')

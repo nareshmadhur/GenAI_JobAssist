@@ -42,8 +42,8 @@ export type ToolContext = {
 interface AuthContextType {
   user: User | null;
   authLoading: boolean;
-  signup: (email: string, pass: string) => Promise<{ error?: string }>;
-  login: (email: string, pass: string) => Promise<{ error?: string }>;
+  signup: (email: string, pass: string) => Promise<{ error?: string } | void>;
+  login: (email: string, pass: string) => Promise<{ error?: string } | void>;
   logout: () => void;
 }
 
@@ -162,9 +162,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const signup = async (email: string, pass: string) => {
     try {
       await createUserWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle data merging
+      // onAuthStateChanged will handle data merging and auth state
       router.push('/account');
-      return {};
     } catch (e: any) {
       return { error: e.message };
     }
@@ -173,9 +172,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, pass: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle data merging
+      // onAuthStateChanged will handle data merging and auth state
       router.push('/account');
-      return {};
     } catch (e: any) {
       return { error: e.message };
     }
