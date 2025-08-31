@@ -312,7 +312,7 @@ export default function JobMatcherPage() {
           onClick={() => handleGeneration(generationType)}
           data-active={activeView === generationType}
           className={cn(
-            'group cursor-pointer text-center transition-all duration-200 hover:shadow-lg hover:-translate-y-1',
+            'group cursor-pointer text-center transition-all duration-200 hover:shadow-lg hover:-translate-y-1 bg-card-alt',
             'data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-lg data-[active=true]:-translate-y-1'
           )}
       >

@@ -8,6 +8,7 @@
     --foreground: 215 28% 17%; /* slate-800 */
     --card: 0 0% 100%;
     --card-foreground: 215 28% 17%;
+    --card-alt-background: 0 0% 100%;
     --popover: 0 0% 100%;
     --popover-foreground: 215 28% 17%;
     --primary: 221 83% 53%; /* blue-600 */
@@ -36,6 +37,7 @@
     --foreground: 210 40% 98%; /* slate-50 */
     --card: 217 33% 12%; /* slate-900 */
     --card-foreground: 210 40% 98%;
+    --card-alt-background: 217 33% 20%; /* slate-700 */
     --popover: 217 33% 12%;
     --popover-foreground: 210 40% 98%;
     --primary: 217 33% 12%; /* slate-900 */
