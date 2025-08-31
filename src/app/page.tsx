@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   User,
   LogOut,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect, useRef, useState, useTransition, useCallback } from 'react';
@@ -57,8 +58,11 @@ import { JobApplicationSchema } from '@/lib/schemas';
 import type { ActiveView, GenerationType } from '@/components/job-spark-app';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
+const LOCAL_STORAGE_KEY_QUERY_COUNT = 'jobspark_query_count';
+const FREE_QUERY_LIMIT = 5;
 
 export default function JobMatcherPage() {
   const [isGenerating, startGenerating] = useTransition();
@@ -66,9 +70,13 @@ export default function JobMatcherPage() {
   const [activeView, setActiveView] = useState<ActiveView>('none');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
+  const [queryCount, setQueryCount] = useState(0);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+
   
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const { user, authLoading, logout } = useAuth();
   const {
     bio,
@@ -84,7 +92,23 @@ export default function JobMatcherPage() {
     defaultValues: { jobDescription: '', bio: '', questions: '' },
   });
 
+  // Load query count from localStorage on mount
+  useEffect(() => {
+    if (!user) {
+      const savedCount = localStorage.getItem(LOCAL_STORAGE_KEY_QUERY_COUNT);
+      setQueryCount(savedCount ? parseInt(savedCount, 10) : 0);
+    } else {
+      setQueryCount(0); // Reset for logged-in users
+    }
+  }, [user]);
+
   const handleGeneration = useCallback((generationType: GenerationType) => {
+    // Check query limit for guest users
+    if (!user && queryCount >= FREE_QUERY_LIMIT) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    
     formMethods.trigger(['jobDescription', 'bio']).then((isValid) => {
       if (!isValid) {
         toast({
@@ -119,10 +143,25 @@ export default function JobMatcherPage() {
             ...prev,
             [generationType]: response,
         }));
+        
+        // Increment query count for guest users
+        if (!user) {
+          const newCount = queryCount + 1;
+          setQueryCount(newCount);
+          localStorage.setItem(LOCAL_STORAGE_KEY_QUERY_COUNT, newCount.toString());
+          // Show feedback reminder on the 3rd query
+          if (newCount === 3) {
+            toast({
+              title: "Enjoying the app?",
+              description: "Your feedback helps us improve. Click the heart icon to share your thoughts!",
+              duration: 8000,
+            });
+          }
+        }
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formMethods, toast]);
+  }, [formMethods, toast, user, queryCount]);
 
   // This effect provides the tool functions to the global context.
   useEffect(() => {
@@ -346,6 +385,12 @@ export default function JobMatcherPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {!user && !authLoading && (
+              <div className="flex items-center gap-2 rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-semibold text-primary-foreground">
+                <Sparkles className="h-4 w-4" />
+                <span>{Math.max(0, FREE_QUERY_LIMIT - queryCount)} Free Queries Left</span>
+              </div>
+            )}
             <Button
               variant="outline"
               onClick={() => setIsCoPilotSidebarOpen(true)}
@@ -476,6 +521,23 @@ export default function JobMatcherPage() {
           </div>
         </section>
       )}
+      
+      <AlertDialog open={showLoginPrompt} onOpenChange={setShowLoginPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Free Queries Limit Reached</AlertDialogTitle>
+            <AlertDialogDescription>
+              You've used all your free queries for this session. Please log in or sign up to continue generating unlimited content and save your work.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Link href="/login">Log In / Sign Up</Link>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
