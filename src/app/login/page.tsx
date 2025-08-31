@@ -39,6 +39,8 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
       const action = mode === 'login' ? login : signup;
       const result = await action(data.email, data.password);
       
+      console.log("Auth result received in form:", result); // Debugging log
+
       if (result?.error) {
         // Clean up Firebase error messages for better UX
         const friendlyError = result.error
