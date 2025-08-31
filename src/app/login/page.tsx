@@ -34,11 +34,13 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   });
 
   const onSubmit = async (data: AuthData) => {
+    console.log(`[AuthForm] onSubmit triggered for mode: ${mode}`);
     setError(null);
     setIsPending(true);
 
     const action = mode === 'login' ? login : signup;
     const result = await action(data.email, data.password);
+    console.log('[AuthForm] Received result from auth action:', result);
 
     if (result?.error) {
       const friendlyError = result.error
@@ -46,9 +48,11 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
         .replace(/\(auth\/[^)]+\)\.?/, '')
         .trim();
       setError(friendlyError);
+      console.log(`[AuthForm] Setting error state to: "${friendlyError}"`);
     }
     
     setIsPending(false);
+    console.log('[AuthForm] Set isPending to false.');
   };
 
   return (

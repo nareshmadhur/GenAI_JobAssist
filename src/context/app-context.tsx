@@ -160,8 +160,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signup = async (email: string, pass: string) => {
+    console.log('[AuthContext] Attempting to sign up user...');
     try {
       await createUserWithEmailAndPassword(auth, email, pass);
+      console.log('[AuthContext] Signup successful.');
       // onAuthStateChanged will handle data merging and auth state
       toast({
         title: 'Welcome!',
@@ -169,17 +171,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       router.push('/');
     } catch (e: any) {
-      return { error: e.message };
+      console.error('[AuthContext] Signup Error:', e.message);
+      const result = { error: e.message };
+      console.log('[AuthContext] Returning signup error:', result);
+      return result;
     }
   };
 
   const login = async (email: string, pass: string) => {
+    console.log('[AuthContext] Attempting to log in user...');
     try {
       await signInWithEmailAndPassword(auth, email, pass);
+      console.log('[AuthContext] Login successful.');
       router.push('/');
       return; // Explicitly return nothing on success
     } catch (e: any) {
-      return { error: e.message }; // Return the error object on failure
+      console.error('[AuthContext] Login Error:', e.message); // Debugging log
+      const result = { error: e.message };
+      console.log('[AuthContext] Returning login error:', result);
+      return result; // Return the error object on failure
     }
   };
   
