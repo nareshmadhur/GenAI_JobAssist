@@ -50,7 +50,6 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 const LOCAL_STORAGE_KEY_FORM = 'jobspark_form_data';
-const LOCAL_STORAGE_KEY_JOBS = 'jobspark_saved_jobs';
 
 export default function JobMatcherPage() {
   const [isGenerating, startGenerating] = useTransition();
@@ -58,7 +57,7 @@ export default function JobMatcherPage() {
   const [activeView, setActiveView] = useState<ActiveView>('none');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
-  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
+  
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
   const { user, authLoading } = useAuth();
@@ -67,6 +66,8 @@ export default function JobMatcherPage() {
     setBio,
     setIsCoPilotSidebarOpen,
     setToolContext,
+    savedJobs,
+    setSavedJobs,
   } = useAppContext();
 
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
@@ -137,17 +138,6 @@ export default function JobMatcherPage() {
   useEffect(() => {
     formMethods.setValue('bio', bio);
   }, [bio, formMethods]);
-
-  useEffect(() => {
-    try {
-      const savedJobsData = localStorage.getItem(LOCAL_STORAGE_KEY_JOBS);
-      if (savedJobsData) {
-        setSavedJobs(JSON.parse(savedJobsData));
-      }
-    } catch (e) {
-      console.error('Failed to load saved jobs from localStorage', e);
-    }
-  }, []);
 
   useEffect(() => {
     try {
@@ -245,12 +235,7 @@ export default function JobMatcherPage() {
             savedAt: new Date().toISOString(),
         };
 
-        const updatedSavedJobs = [newSavedJob, ...savedJobs];
-        setSavedJobs(updatedSavedJobs);
-        localStorage.setItem(
-            LOCAL_STORAGE_KEY_JOBS,
-            JSON.stringify(updatedSavedJobs)
-        );
+        setSavedJobs(prev => [newSavedJob, ...prev]);
 
         toast({
             title: 'Job Saved!',
@@ -290,12 +275,7 @@ export default function JobMatcherPage() {
   };
 
   const handleDeleteJob = (jobId: string) => {
-    const updatedSavedJobs = savedJobs.filter((job) => job.id !== jobId);
-    setSavedJobs(updatedSavedJobs);
-    localStorage.setItem(
-      LOCAL_STORAGE_KEY_JOBS,
-      JSON.stringify(updatedSavedJobs)
-    );
+    setSavedJobs(prev => prev.filter((job) => job.id !== jobId));
     toast({ title: 'Job Deleted' });
   };
 

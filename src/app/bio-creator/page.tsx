@@ -40,10 +40,10 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SavedBiosSheet } from '@/components/saved-bios-sheet';
+import { useAppContext } from '@/context/app-context';
 
 
 const LOCAL_STORAGE_KEY_JOB_MATCHER_FORM = 'jobspark_form_data';
-const LOCAL_STORAGE_KEY_SAVED_BIOS = 'jobspark_saved_bios';
 const LOCAL_STORAGE_KEY_CHAT = 'jobspark_bio_creator_chat';
 
 
@@ -54,9 +54,10 @@ function BioCreatorCore() {
   const [isGenerating, startGenerating] = useTransition();
   const [isAnalyzing, startAnalyzing] = useTransition();
   const [completeness, setCompleteness] = useState<BioCompletenessOutput | null>(null);
-  const [savedBios, setSavedBios] = useState<SavedBio[]>([]);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [bioNameToSave, setBioNameToSave] = useState('');
+  
+  const { savedBios, setSavedBios } = useAppContext();
 
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -93,12 +94,6 @@ function BioCreatorCore() {
   // Load state from localStorage on mount
   useEffect(() => {
     try {
-      // Load saved bios list
-      const savedBiosData = localStorage.getItem(LOCAL_STORAGE_KEY_SAVED_BIOS);
-      if (savedBiosData) {
-        setSavedBios(JSON.parse(savedBiosData));
-      }
-      
       const fromMatcher = searchParams.get('from') === 'matcher';
       let bioToLoad = '';
       let chatToLoad: BioChatMessage[] | null = null;
@@ -264,9 +259,7 @@ function BioCreatorCore() {
       savedAt: new Date().toISOString(),
     };
 
-    const updatedSavedBios = [...savedBios, newSavedBio];
-    setSavedBios(updatedSavedBios);
-    localStorage.setItem(LOCAL_STORAGE_KEY_SAVED_BIOS, JSON.stringify(updatedSavedBios));
+    setSavedBios(prev => [newSavedBio, ...prev]);
 
     toast({ title: 'Bio Saved!', description: `"${newSavedBio.name}" has been saved.` });
     setIsSaveDialogOpen(false);
@@ -280,9 +273,7 @@ function BioCreatorCore() {
   };
 
   const handleDeleteBio = (bioId: string) => {
-    const updatedSavedBios = savedBios.filter((b) => b.id !== bioId);
-    setSavedBios(updatedSavedBios);
-    localStorage.setItem(LOCAL_STORAGE_KEY_SAVED_BIOS, JSON.stringify(updatedSavedBios));
+    setSavedBios(prev => prev.filter((b) => b.id !== bioId));
     toast({ title: 'Bio Deleted' });
   };
 
