@@ -3,9 +3,9 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { ThemeProvider } from '@/components/theme-provider';
-import Link from 'next/link';
 import { AppProvider } from '@/context/app-context';
 import { CoPilotSidebar } from '@/components/co-pilot-sidebar';
+import { PrivacyDialog } from '@/components/privacy-dialog';
 
 export const metadata: Metadata = {
   title: 'AI Job Assist',
@@ -50,9 +50,13 @@ export default function RootLayout({
                     </a>
                     </p>
                     <div className="flex items-center gap-4">
-                    <Link href="/privacy" className="underline hover:text-foreground">
-                        Privacy Policy
-                    </Link>
+                      <PrivacyDialog
+                        trigger={
+                          <button className="underline hover:text-foreground">
+                            Privacy Policy
+                          </button>
+                        }
+                      />
                     </div>
                 </div>
                 </footer>

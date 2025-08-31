@@ -15,30 +15,52 @@ import { Loader2 } from 'lucide-react';
 import { AiJobAssistLogo } from '@/components/ai-job-assist-logo';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PrivacyDialog } from '@/components/privacy-dialog';
 
-const authSchema = z.object({
+const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  password: z.string().min(1, { message: 'Password is required.' }),
 });
 
-type AuthData = z.infer<typeof authSchema>;
+const signupSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email.' }),
+  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  privacyPolicy: z.literal(true, {
+    errorMap: () => ({ message: 'You must accept the privacy policy to continue.' }),
+  }),
+});
+
+type LoginData = z.infer<typeof loginSchema>;
+type SignupData = z.infer<typeof signupSchema>;
 
 function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { login, signup } = useAuth();
 
-  const form = useForm<AuthData>({
-    resolver: zodResolver(authSchema),
-    defaultValues: { email: '', password: '' },
+  const isLoginMode = mode === 'login';
+  const schema = isLoginMode ? loginSchema : signupSchema;
+
+  const form = useForm<LoginData | SignupData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      email: '',
+      password: '',
+      ...(isLoginMode ? {} : { privacyPolicy: false }),
+    },
   });
 
-  const onSubmit = async (data: AuthData) => {
+  const onSubmit = async (data: LoginData | SignupData) => {
     setError(null);
     setIsPending(true);
 
-    const action = mode === 'login' ? login : signup;
-    const result = await action(data.email, data.password);
+    let result;
+    if (isLoginMode) {
+      result = await login(data.email, data.password);
+    } else {
+      result = await signup(data.email, data.password);
+    }
 
     if (result?.error) {
       setError(result.error);
@@ -46,20 +68,48 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
     
     setIsPending(false);
   };
+  
+  const { formState: { errors } } = form;
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor={`${mode}-email`}>Email</Label>
         <Input id={`${mode}-email`} type="email" {...form.register('email')} />
-        {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
+        {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
       </div>
       <div className="space-y-2">
         <Label htmlFor={`${mode}-password`}>Password</Label>
         <Input id={`${mode}-password`} type="password" {...form.register('password')} />
-        {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
-        {error && <p className="text-xs text-destructive pt-1">{error}</p>}
+        {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
       </div>
+
+      {!isLoginMode && (
+        <div className="space-y-2">
+          <div className="flex items-start space-x-2">
+            <Checkbox id="privacyPolicy" {...form.register('privacyPolicy')} />
+            <div className="grid gap-1.5 leading-none">
+              <label
+                htmlFor="privacyPolicy"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                I have read and agree to the{' '}
+                <PrivacyDialog
+                  trigger={
+                    <span className="cursor-pointer text-primary underline">
+                      Privacy Policy
+                    </span>
+                  }
+                />
+              </label>
+            </div>
+          </div>
+          {(errors as any).privacyPolicy && <p className="text-xs text-destructive">{(errors as any).privacyPolicy.message}</p>}
+        </div>
+      )}
+
+      {error && <p className="text-xs text-destructive pt-1">{error}</p>}
+      
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         {mode === 'login' ? 'Log In' : 'Sign Up'}
