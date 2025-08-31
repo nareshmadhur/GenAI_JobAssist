@@ -41,9 +41,9 @@ export default function PrivacyPolicyPage() {
       </header>
       <main className="flex-1">
         <div className="mx-auto max-w-4xl py-12 px-4 sm:px-6 lg:px-8">
-          <div className="prose prose-lg dark:prose-invert">
+          <div className="prose dark:prose-invert">
             <h1>Privacy Policy</h1>
-            <p>Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p className="text-sm text-muted-foreground">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
 
             <h2>Introduction</h2>
             <p>
@@ -58,20 +58,13 @@ export default function PrivacyPolicyPage() {
             </p>
             <ul>
               <li>
-                <strong>Input Data:</strong> All data you provide, such as job descriptions, personal bios, and
-                specific questions, is processed to provide the service. This data is used for the AI generation
-                process and is stored temporarily in your browser's local storage to preserve your session.
-              </li>
-              <li>
-                <strong>Usage of Google's Gemini API:</strong> To provide our services, we send your input data (job
-                descriptions, bios, etc.) to Google's Gemini API. Google processes this data in accordance with its
-                own Privacy Policy and Terms of Service. We do not store this data on our servers after the request
-                is completed.
+                <strong>Input Data:</strong> All data you provide, such as job descriptions and personal bios, is processed to provide the service. This data is used for the AI generation
+                process and is stored temporarily in your browser's local storage to preserve your session. If you are logged in, this data is stored securely in your personal Firebase account.
               </li>
               <li>
                 <strong>Local Storage:</strong> To provide a seamless user experience, we store your form data and saved
                 applications directly in your browser's local storage. This data remains on your device and is not
-                transmitted to our servers. Clearing your browser's cache or storage will permanently delete this data.
+                transmitted to our servers unless you are logged in.
               </li>
                <li>
                 <strong>Analytics:</strong> We may collect anonymized usage data to understand how our application is used and to improve its functionality. This data does not include the content of your job descriptions or bios.
@@ -93,10 +86,19 @@ export default function PrivacyPolicyPage() {
             <h2>Data Sharing and Disclosure</h2>
             <p>
               We do not sell, trade, or otherwise transfer your personally identifiable information to outside parties.
-              The only external service we share your input data with is Google's Gemini API for the sole purpose of
-              generating content as requested by you. We are not responsible for the data handling practices of Google.
-              We encourage you to review Google's privacy policies.
+              The only external services we share your input data with are for the sole purpose of
+              providing the application's core functionality:
             </p>
+             <ul>
+                <li>
+                    <strong>Google's Gemini API:</strong> To provide our services, we send your input data (job
+                    descriptions, bios, etc.) to Google's Gemini API for content generation.
+                </li>
+                <li>
+                    <strong>Firebase:</strong> If you create an account, your data is stored in Google's Firebase services.
+                </li>
+            </ul>
+            <p>We are not responsible for the data handling practices of these services. We encourage you to review their privacy policies.</p>
 
             <h2>Data Security</h2>
             <p>
@@ -106,17 +108,9 @@ export default function PrivacyPolicyPage() {
               of data transmission can be guaranteed against any interception or other type of misuse.
             </p>
 
-            <h2>Policy for Children</h2>
-            <p>
-              We do not knowingly solicit information from or market to children under the age of 13. If you become
-              aware of any data we have collected from children under age 13, please contact us using the contact
-              information provided below.
-            </p>
-
             <h2>Changes to This Privacy Policy</h2>
             <p>
-              We may update this Privacy Policy from time to time in order to reflect, for example, changes to our
-              practices or for other operational, legal, or regulatory reasons. We will notify you of any changes by
+              We may update this Privacy Policy from time to time. We will notify you of any changes by
               posting the new Privacy Policy on this page.
             </p>
 

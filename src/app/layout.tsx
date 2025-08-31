@@ -44,13 +44,13 @@ export default function RootLayout({
                         href="https://www.nareshmadhur.com"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-medium underline hover:text-accent-foreground"
+                        className="font-medium underline hover:text-foreground"
                     >
                         Naresh Madhur
                     </a>
                     </p>
                     <div className="flex items-center gap-4">
-                    <Link href="/privacy" className="underline hover:text-accent-foreground">
+                    <Link href="/privacy" className="underline hover:text-foreground">
                         Privacy Policy
                     </Link>
                     </div>
