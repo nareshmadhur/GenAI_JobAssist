@@ -163,6 +163,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       await createUserWithEmailAndPassword(auth, email, pass);
       // onAuthStateChanged will handle data merging and auth state
+      toast({
+        title: 'Welcome!',
+        description: 'Your account has been created successfully.',
+      });
       router.push('/');
     } catch (e: any) {
       return { error: e.message };
