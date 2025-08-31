@@ -74,6 +74,25 @@ const LOCAL_STORAGE_KEY_APP = 'jobspark_app_data';
 const LOCAL_STORAGE_KEY_JOBS = 'jobspark_saved_jobs';
 const LOCAL_STORAGE_KEY_BIOS = 'jobspark_saved_bios';
 
+const getFriendlyErrorMessage = (error: any): string => {
+    if (!error || !error.message) {
+        return 'An unexpected error occurred.';
+    }
+    const message = error.message;
+    if (message.includes('auth/invalid-credential')) {
+        return 'Invalid credentials. Please check your email and password.';
+    }
+    if (message.includes('auth/user-not-found')) {
+        return 'No user found with this email.';
+    }
+     if (message.includes('auth/email-already-in-use')) {
+        return 'This email address is already in use.';
+    }
+    // Fallback for other Firebase errors
+    return message.replace(/Firebase: Error \((auth\/[^)]+)\)\.?/, '$1').replace(/-/g, ' ');
+};
+
+
 export function AppProvider({ children }: { children: ReactNode }) {
   // App State
   const [bio, setBio] = useState('');
@@ -169,7 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       router.push('/');
     } catch (e: any) {
-      return { error: e.message };
+      return { error: getFriendlyErrorMessage(e) };
     }
   };
 
@@ -177,9 +196,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
       router.push('/');
-      return; // Explicitly return nothing on success
+      return; 
     } catch (e: any) {
-      return { error: e.message }; // Return the error object on failure
+      return { error: getFriendlyErrorMessage(e) };
     }
   };
   

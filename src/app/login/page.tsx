@@ -41,12 +41,7 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
     const result = await action(data.email, data.password);
 
     if (result?.error) {
-      // Correctly parse the Firebase error message
-      const friendlyError = result.error
-        .replace('Firebase: Error ', '')
-        .replace(/\(auth\/.*\)\.?/, '')
-        .trim();
-      setError(friendlyError);
+      setError(result.error);
     }
     
     setIsPending(false);
