@@ -38,13 +38,13 @@
     --card-foreground: 210 40% 98%;
     --popover: 217 33% 12%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 221 83% 53%;
+    --primary: 217 33% 12%; /* slate-900 */
+    --primary-foreground: 210 40% 98%; /* slate-50 */
     --secondary: 217 33% 20%; /* slate-700 */
     --secondary-foreground: 210 40% 98%;
     --muted: 217 33% 20%;
     --muted-foreground: 215 20% 65.1%;
-    --accent: 217 33% 20%;
+    --accent: 221 83% 53%; /* blue-600 */
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
