@@ -374,14 +374,9 @@ export default function JobMatcherPage() {
                 </Link>
               </Button>
             ) : (
-              <>
-                <Button asChild variant="outline">
-                  <Link href="/login">Log In</Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link href="/signup">Sign Up</Link>
-                </Button>
-              </>
+              <Button asChild variant="outline">
+                <Link href="/login">Log In</Link>
+              </Button>
             )}
             <ThemeToggleButton />
             <FeedbackDialog

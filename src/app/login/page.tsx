@@ -12,37 +12,68 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/context/app-context';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AiJobAssistLogo } from '@/components/ai-job-assist-logo';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const loginSchema = z.object({
+const authSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
 
-type LoginData = z.infer<typeof loginSchema>;
+type AuthData = z.infer<typeof authSchema>;
 
-export default function LoginPage() {
-  const [isLoggingIn, startLoginTransition] = useTransition();
+function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
+  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const { login } = useAuth();
-  
-  const form = useForm<LoginData>({
-    resolver: zodResolver(loginSchema),
+  const { login, signup } = useAuth();
+
+  const form = useForm<AuthData>({
+    resolver: zodResolver(authSchema),
     defaultValues: { email: '', password: '' },
   });
 
-  const onSubmit = (data: LoginData) => {
+  const onSubmit = (data: AuthData) => {
     setError(null);
-    startLoginTransition(async () => {
-      const result = await login(data.email, data.password);
+    startTransition(async () => {
+      const result = mode === 'login' 
+        ? await login(data.email, data.password) 
+        : await signup(data.email, data.password);
+        
       if (result.error) {
-        setError(result.error);
+        // Clean up Firebase error messages for better UX
+        const friendlyError = result.error
+          .replace('Firebase: Error ', '')
+          .replace(/\(auth\/.*\)\.?/, '')
+          .trim();
+        setError(friendlyError);
       }
     });
   };
 
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor={`${mode}-email`}>Email</Label>
+        <Input id={`${mode}-email`} type="email" {...form.register('email')} />
+        {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor={`${mode}-password`}>Password</Label>
+        <Input id={`${mode}-password`} type="password" {...form.register('password')} />
+        {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
+        {error && <p className="text-xs text-destructive pt-1">{error}</p>}
+      </div>
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {mode === 'login' ? 'Log In' : 'Sign Up'}
+      </Button>
+    </form>
+  );
+}
+
+
+export default function AuthPage() {
   return (
     <div className="flex flex-1 flex-col bg-muted/20">
       <header className="sticky top-0 z-10 w-full border-b border-b-accent bg-primary px-4 py-4 sm:px-6 md:px-8">
@@ -56,7 +87,7 @@ export default function LoginPage() {
                 AI Job Assist
               </h1>
               <div className="text-xs text-primary-foreground/80">
-                Log In
+                Account
               </div>
             </div>
           </div>
@@ -66,42 +97,34 @@ export default function LoginPage() {
         </div>
       </header>
       <main className="flex flex-1 items-center justify-center p-4">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle>Log In</CardTitle>
-            <CardDescription>Enter your credentials to access your account.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {error && (
-                 <Alert variant="destructive">
-                    <AlertTitle>Login Failed</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" {...form.register('email')} />
-                {form.formState.errors.email && <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" {...form.register('password')} />
-                {form.formState.errors.password && <p className="text-xs text-destructive">{form.formState.errors.password.message}</p>}
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoggingIn}>
-                {isLoggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Log In
-              </Button>
-              <div className="mt-4 text-center text-sm">
-                Don't have an account?{' '}
-                <Link href="/signup" className="underline">
-                  Sign up
-                </Link>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="login" className="w-full max-w-sm">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="login">Log In</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          </TabsList>
+          <TabsContent value="login">
+             <Card>
+                <CardHeader>
+                    <CardTitle>Welcome Back</CardTitle>
+                    <CardDescription>Enter your credentials to access your account.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <AuthForm mode="login" />
+                </CardContent>
+             </Card>
+          </TabsContent>
+          <TabsContent value="signup">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Create an Account</CardTitle>
+                    <CardDescription>Sign up to save your progress and access your data from anywhere.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <AuthForm mode="signup" />
+                </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
