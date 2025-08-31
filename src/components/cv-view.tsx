@@ -78,7 +78,8 @@ const ExportButton = ({ cvData }: { cvData: CvOutput }) => {
   const handleExport = () => {
     try {
       const jsonString = JSON.stringify(cvData);
-      const base64String = btoa(jsonString);
+      // Use the utoa function to handle Unicode characters correctly
+      const base64String = btoa(unescape(encodeURIComponent(jsonString)));
       const url = `/cv/print?data=${encodeURIComponent(base64String)}`;
       window.open(url, '_blank');
     } catch (error) {

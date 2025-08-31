@@ -8,6 +8,13 @@ import type { CvOutput } from '@/lib/schemas';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
+ * A Unicode-safe version of atob.
+ */
+function atou(b64: string): string {
+  return decodeURIComponent(escape(atob(b64)));
+}
+
+/**
  * The actual view that uses search params and needs to be suspended.
  */
 function PrintView() {
@@ -19,7 +26,7 @@ function PrintView() {
     const data = searchParams.get('data');
     if (data) {
       try {
-        const decodedData = JSON.parse(atob(data));
+        const decodedData = JSON.parse(atou(data));
         setCvData(decodedData);
       } catch (e) {
         console.error('Failed to parse CV data', e);
