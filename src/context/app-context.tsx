@@ -169,7 +169,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       router.push('/');
     } catch (e: any) {
-      console.error("Signup Error:", e.message); // Debugging log
       return { error: e.message };
     }
   };
@@ -180,7 +179,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       router.push('/');
       return; // Explicitly return nothing on success
     } catch (e: any) {
-      console.error("Login Error:", e.message); // Debugging log
       return { error: e.message }; // Return the error object on failure
     }
   };
