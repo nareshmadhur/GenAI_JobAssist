@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/carousel';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Trash2 } from 'lucide-react';
+import { Download, Trash2, FileText, Briefcase, Lightbulb, MessageSquareMore } from 'lucide-react';
 import type { SavedJob } from '@/lib/schemas';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import type { GenerationType } from '@/components/job-spark-app';
 
 
 interface SavedJobsCarouselProps {
@@ -32,6 +33,14 @@ interface SavedJobsCarouselProps {
   onLoadJob: (job: SavedJob) => void;
   onDeleteJob: (jobId: string) => void;
 }
+
+const iconMap: Record<GenerationType, React.ReactNode> = {
+    coverLetter: <FileText className="h-4 w-4" title="Cover Letter" />,
+    cv: <Briefcase className="h-4 w-4" title="CV" />,
+    deepAnalysis: <Lightbulb className="h-4 w-4" title="Deep Analysis" />,
+    qAndA: <MessageSquareMore className="h-4 w-4" title="Q & A" />,
+};
+
 
 export function SavedJobsCarousel({ savedJobs, onLoadJob, onDeleteJob }: SavedJobsCarouselProps) {
   if (savedJobs.length === 0) {
@@ -59,8 +68,13 @@ export function SavedJobsCarousel({ savedJobs, onLoadJob, onDeleteJob }: SavedJo
                         <CardTitle className="truncate">{job.jobTitle}</CardTitle>
                         <CardDescription className='truncate'>{job.companyName}</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-grow">
-                        <p className="text-xs text-muted-foreground">
+                    <CardContent className="flex-grow space-y-2">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            {Object.keys(job.allResults).map((key) => (
+                                <span key={key}>{iconMap[key as GenerationType]}</span>
+                            ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground pt-2">
                             Saved {formatDistanceToNow(new Date(job.savedAt), { addSuffix: true })}
                         </p>
                     </CardContent>
