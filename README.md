@@ -24,6 +24,7 @@ The process is simple:
     -   Update your bio or the job description directly from the chat.
     -   Trigger new content generation.
     -   The Co-pilot shows its "thinking" process, giving you insight into how it interprets your requests.
+-   **Data Persistence**: Log in to save your bios and job applications. Your data is automatically synced across devices, allowing you to pick up where you left off.
 
 ---
 
@@ -38,6 +39,8 @@ This project is a modern web application built with a focus on server-side rende
 -   **Styling**: **Tailwind CSS**
 -   **UI Components**: **ShadCN UI**
 -   **Generative AI**: **Firebase Genkit** (with Google's Gemini models)
+-   **Authentication**: **Firebase Authentication**
+-   **Database**: **Cloud Firestore** (for user data persistence)
 -   **Form Management**: **React Hook Form** with **Zod** for validation
 
 ### Project Structure
@@ -47,6 +50,7 @@ src
 ├── app/
 │   ├── page.tsx          # Main entry for the Job Matching Assistant UI
 │   ├── bio-creator/      # UI for the AI Bio Creator page
+│   ├── login/            # UI for the login/signup page
 │   ├── layout.tsx        # Root layout
 │   └── actions.ts        # Server Actions that call Genkit flows
 ├── ai/
@@ -57,8 +61,10 @@ src
 │   ├── ui/               # Reusable ShadCN UI components
 │   └── co-pilot-sidebar.tsx # The main component for the AI Co-pilot
 ├── context/
-│   └── app-context.tsx   # Global React context for managing shared state
+│   └── app-context.tsx   # Global React context for managing shared state (auth, data, etc.)
 ├── lib/
+│   ├── firebase.ts       # Firebase SDK initialization
+│   ├── firestore-service.ts # Functions for interacting with Firestore
 │   ├── schemas.ts        # Zod schemas for form and API validation
 │   └── utils.ts          # Utility functions
 └── hooks/
@@ -80,14 +86,21 @@ src
     -   **Separation of Concerns**: By keeping AI prompts and logic separate from the UI, the application is easier to maintain. Prompt engineering can be done independently of UI development.
     -   **Observability**: Genkit includes a development UI (`genkit start`) for tracing and debugging AI calls, which is invaluable for refining prompts.
 
-#### 3. AI Co-pilot: Two-Step Enrichment
+#### 3. Firebase for Authentication and Data Persistence
 
--   **Decision**: The AI Co-pilot uses a two-step process for handling user requests. First, a dedicated "enrichment" flow (`enrich-copilot-prompt.ts`) translates the user's raw query into a detailed, context-aware prompt. This enriched prompt is then sent to the main generation flow (`generate-co-pilot-response.ts`).
+-   **Decision**: **Firebase Authentication** is used for user sign-up and login. User data (saved jobs and bios) is stored in **Cloud Firestore**.
+-   **Reasoning**: This provides a secure, scalable, and fully-managed backend without requiring a custom server.
+    -   **Authentication**: Firebase Auth offers a robust, easy-to-implement solution for user management.
+    -   **Data Syncing**: Firestore allows for seamless data persistence. When a user logs in, their locally stored data is merged with their Firestore document, enabling them to access their saved work from any device. For users who are not logged in, the application gracefully falls back to using the browser's `localStorage`.
+
+#### 4. AI Co-pilot: Two-Step Enrichment
+
+-   **Decision**: The AI Co-pilot uses a two-step process. First, an "enrichment" flow (`enrich-copilot-prompt.ts`) translates the user's raw query into a context-aware prompt. This is then sent to the main generation flow (`generate-co-pilot-response.ts`).
 -   **Reasoning**: This architecture has two main benefits:
-    1.  **Higher Quality Responses**: The enrichment step acts as a "planner," ensuring the final AI model has all the necessary information (bio, job description, chat history) to generate a concise, accurate, and well-formatted response suitable for the sidebar UI.
-    2.  **Improved Transparency**: The enrichment flow also generates a user-facing "thinking" message (e.g., "Okay, planning to rewrite the summary..."). This message is displayed in the UI as a persistent step, giving the user insight into the AI's reasoning process.
+    1.  **Higher Quality Responses**: The enrichment step acts as a "planner," ensuring the final AI model has all necessary information to generate a concise, accurate response suitable for the sidebar UI.
+    2.  **Improved Transparency**: The enrichment flow also generates a user-facing "thinking" message (e.g., "Okay, planning to rewrite the summary..."). This gives the user insight into the AI's reasoning process.
 
-#### 4. State Management with React Context
+#### 5. Global State Management with React Context
 
 -   **Decision**: A global state is managed via React Context (`src/context/app-context.tsx`).
--   **Reasoning**: A simple, centralized context is sufficient for this application's needs. It holds shared state like the user's `bio` and the Co-pilot's `chatHistory`, making it available to any component in the tree. This avoids prop-drilling and keeps the main page components cleaner. The user's input (job description, bio, generated results) is also persisted in `localStorage` to prevent data loss on page refresh.
+-   **Reasoning**: A centralized context is sufficient for this application's needs. It holds shared state like authentication status, user data (`savedJobs`, `savedBios`), and the Co-pilot's `chatHistory`. This avoids prop-drilling and keeps page components cleaner. The context also manages the hybrid data storage strategy, interacting with either Firestore or `localStorage` based on the user's auth state.
