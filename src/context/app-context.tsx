@@ -163,7 +163,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       await createUserWithEmailAndPassword(auth, email, pass);
       // onAuthStateChanged will handle data merging and auth state
-      router.push('/account');
+      router.push('/');
     } catch (e: any) {
       return { error: e.message };
     }
@@ -173,7 +173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
       // onAuthStateChanged will handle data merging and auth state
-      router.push('/account');
+      router.push('/');
     } catch (e: any) {
       return { error: e.message };
     }
