@@ -12,6 +12,7 @@ import {
   Trash2,
   Bot,
   AlertTriangle,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect, useRef, useState, useTransition, useCallback } from 'react';
@@ -40,7 +41,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { useAppContext } from '@/context/app-context';
+import { useAuth, useAppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
 import type { JobApplicationData, SavedJob } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
@@ -60,6 +61,7 @@ export default function JobMatcherPage() {
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
+  const { user, authLoading } = useAuth();
   const {
     bio,
     setBio,
@@ -361,6 +363,26 @@ export default function JobMatcherPage() {
             >
               <Bot className="mr-2 h-4 w-4" /> Co-pilot
             </Button>
+            {authLoading ? (
+              <Button variant="outline" size="icon" disabled>
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </Button>
+            ) : user ? (
+              <Button asChild variant="outline">
+                <Link href="/account">
+                  <User className="mr-2 h-4 w-4" /> Account
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild variant="outline">
+                  <Link href="/login">Log In</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/signup">Sign Up</Link>
+                </Button>
+              </>
+            )}
             <ThemeToggleButton />
             <FeedbackDialog
               jobDescription={jobDescription}
