@@ -176,16 +176,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, pass: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle data merging and auth state
       router.push('/');
+      return; // Explicitly return nothing on success
     } catch (e: any) {
-      return { error: e.message };
+      return { error: e.message }; // Return the error object on failure
     }
   };
+  
 
   const logout = () => {
     signOut(auth);
-    // onAuthStateChanged will clear user state and reload from local storage
     router.push('/');
   };
 

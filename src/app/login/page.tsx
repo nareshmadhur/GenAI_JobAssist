@@ -36,15 +36,14 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const onSubmit = (data: AuthData) => {
     setError(null);
     startTransition(async () => {
-      const result = mode === 'login' 
-        ? await login(data.email, data.password) 
-        : await signup(data.email, data.password);
-        
+      const action = mode === 'login' ? login : signup;
+      const result = await action(data.email, data.password);
+      
       if (result?.error) {
         // Clean up Firebase error messages for better UX
         const friendlyError = result.error
           .replace('Firebase: Error ', '')
-          .replace(/\(auth\/.*\)\.?/, '')
+          .replace(/\(auth\/[^)]+\)\.?/, '')
           .trim();
         setError(friendlyError);
       }
