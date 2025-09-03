@@ -105,7 +105,7 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
               <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md py-1">
                 <FormControl>
                   <Checkbox
-                    checked={field.value}
+                    checked={field.value as boolean}
                     onCheckedChange={field.onChange}
                   />
                 </FormControl>
@@ -163,7 +163,7 @@ export default function AuthPage() {
         </div>
       </header>
       <main className="flex flex-1 items-center justify-center p-4">
-        <Tabs defaultValue="login" className="w-full max-w-sm">
+        <Tabs defaultValue="login" className="w-full max-w-sm sm:w-96">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="login">Log In</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>

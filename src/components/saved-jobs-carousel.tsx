@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import type { GenerationType } from '@/components/job-spark-app';
+import type { GenerationType } from '@/app/page';
 
 
 interface SavedJobsCarouselProps {
@@ -111,8 +111,8 @@ export function SavedJobsCarousel({ savedJobs, onLoadJob, onDeleteJob }: SavedJo
             </CarouselItem>
             ))}
         </CarouselContent>
-        <CarouselPrevious className='-left-4' />
-        <CarouselNext className='-right-4' />
+        <CarouselPrevious className='-left-4 hidden sm:flex' />
+        <CarouselNext className='-right-4 hidden sm:flex' />
         </Carousel>
     </div>
   );

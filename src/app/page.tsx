@@ -15,6 +15,7 @@ import {
   User,
   LogOut,
   Sparkles,
+  MoreVertical
 } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect, useRef, useState, useTransition, useCallback } from 'react';
@@ -397,50 +398,95 @@ export default function JobMatcherPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {!user && !authLoading && (
-              <div className="flex items-center gap-2 rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-semibold text-primary-foreground">
-                <Sparkles className="h-4 w-4" />
-                <span>{Math.max(0, FREE_QUERY_LIMIT - queryCount)} Free Queries Left</span>
-              </div>
-            )}
-            <Button
-              variant="outline"
-              onClick={() => setIsCoPilotSidebarOpen(true)}
-            >
-              <Bot className="mr-2 h-4 w-4" /> Co-pilot
-            </Button>
-            {authLoading ? (
-              <Button variant="outline" size="icon" disabled>
-                <Loader2 className="h-4 w-4 animate-spin" />
+            <div className="hidden sm:flex items-center gap-2">
+              {!user && !authLoading && (
+                <div className="flex items-center gap-2 rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-semibold text-primary-foreground">
+                  <Sparkles className="h-4 w-4" />
+                  <span>{Math.max(0, FREE_QUERY_LIMIT - queryCount)} Free Queries Left</span>
+                </div>
+              )}
+              <Button
+                variant="outline"
+                onClick={() => setIsCoPilotSidebarOpen(true)}
+              >
+                <Bot className="mr-2 h-4 w-4" /> Co-pilot
               </Button>
-            ) : user ? (
+              {authLoading ? (
+                <Button variant="outline" size="icon" disabled>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </Button>
+              ) : user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <User className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuItem disabled>{user.email}</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button asChild variant="outline">
+                  <Link href="/login">Log In</Link>
+                </Button>
+              )}
+              <ThemeToggleButton />
+              <FeedbackDialog
+                jobDescription={jobDescription}
+                bio={bio}
+                lastGeneratedOutput={getLastGeneratedOutput()}
+              />
+            </div>
+
+            <div className="sm:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon">
-                    <User className="h-4 w-4" />
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuItem disabled>{user.email}</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsCoPilotSidebarOpen(true)}>
+                    <Bot className="mr-2 h-4 w-4" /> Co-pilot
+                  </DropdownMenuItem>
+                  {authLoading ? (
+                    <DropdownMenuItem disabled>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                    </DropdownMenuItem>
+                    ) : user ? (
+                    <>
+                      <DropdownMenuItem onClick={logout}>
+                        <LogOut className="mr-2 h-4 w-4" /> Log Out
+                      </DropdownMenuItem>
+                    </>
+                    ) : (
+                    <DropdownMenuItem asChild>
+                      <Link href="/login"><User className="mr-2 h-4 w-4" /> Log In / Sign Up</Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                  <DropdownMenuItem>
+                    <FeedbackDialog
+                      jobDescription={jobDescription}
+                      bio={bio}
+                      lastGeneratedOutput={getLastGeneratedOutput()}
+                    />
+                     <span className="ml-2">Give Feedback</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <ThemeToggleButton />
+                    <span className="ml-2">Toggle Theme</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : (
-              <Button asChild variant="outline">
-                <Link href="/login">Log In</Link>
-              </Button>
-            )}
-            <ThemeToggleButton />
-            <FeedbackDialog
-              jobDescription={jobDescription}
-              bio={bio}
-              lastGeneratedOutput={getLastGeneratedOutput()}
-            />
+            </div>
           </div>
         </div>
       </header>
@@ -484,7 +530,7 @@ export default function JobMatcherPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleSaveJob}
-                disabled={isSaving}
+                disabled={isSaving || !user}
                 aria-label="Save Job"
               >
                 {isSaving ? (

@@ -11,11 +11,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import type { BioChatMessage, BioCompletenessOutput, SavedBio } from '@/lib/schemas';
-import { Bot, Copy, ExternalLink, Loader2, Send, Trash2, User, AlertTriangle, List, Save } from 'lucide-react';
+import { Bot, Copy, ExternalLink, Loader2, Send, Trash2, User, AlertTriangle, List, Save, MoreVertical } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useRef, useState, useTransition, useCallback, Suspense } from 'react';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -299,71 +306,125 @@ function BioCreatorCore() {
             </div>
           </div>
            <div className="flex items-center gap-2">
-            <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={!bio} aria-label="Save Bio">
-                        <Save className="mr-2 h-4 w-4" /> Save Bio
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Save Your Bio</DialogTitle>
-                        <DialogDescription>
-                            Give this version of your bio a name so you can easily find it later.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="bio-name" className="text-right">Name</Label>
-                            <Input
-                                id="bio-name"
-                                value={bioNameToSave}
-                                onChange={(e) => setBioNameToSave(e.target.value)}
-                                className="col-span-3"
-                                placeholder={`Bio from ${new Date().toLocaleDateString()}`}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button type="button" onClick={handleSaveBio}>Save</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-            <SavedBiosSheet
-              savedBios={savedBios}
-              onLoadBio={handleLoadBio}
-              onDeleteBio={handleDeleteBio}
-            />
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="icon" aria-label="Start Over">
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                    <AlertDialogTitle className='flex items-center gap-2'>
-                        <AlertTriangle className="h-6 w-6 text-destructive" />
-                        Are you sure you want to start over?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This will permanently clear your current bio and chat history. This action cannot be undone. Saved named bios will not be affected.
-                    </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleStartOver} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Start Over
-                    </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-             <ThemeToggleButton />
+            <div className="hidden sm:flex items-center gap-2">
+              <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+                  <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" disabled={!bio} aria-label="Save Bio">
+                          <Save className="mr-2 h-4 w-4" /> Save Bio
+                      </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                      <DialogHeader>
+                          <DialogTitle>Save Your Bio</DialogTitle>
+                          <DialogDescription>
+                              Give this version of your bio a name so you can easily find it later.
+                          </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="bio-name" className="text-right">Name</Label>
+                              <Input
+                                  id="bio-name"
+                                  value={bioNameToSave}
+                                  onChange={(e) => setBioNameToSave(e.target.value)}
+                                  className="col-span-3"
+                                  placeholder={`Bio from ${new Date().toLocaleDateString()}`}
+                              />
+                          </div>
+                      </div>
+                      <DialogFooter>
+                          <Button type="button" onClick={handleSaveBio}>Save</Button>
+                      </DialogFooter>
+                  </DialogContent>
+              </Dialog>
+              <SavedBiosSheet
+                savedBios={savedBios}
+                onLoadBio={handleLoadBio}
+                onDeleteBio={handleDeleteBio}
+              />
+              <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="icon" aria-label="Start Over">
+                          <Trash2 className="h-4 w-4" />
+                      </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                      <AlertDialogHeader>
+                      <AlertDialogTitle className='flex items-center gap-2'>
+                          <AlertTriangle className="h-6 w-6 text-destructive" />
+                          Are you sure you want to start over?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                          This will permanently clear your current bio and chat history. This action cannot be undone. Saved named bios will not be affected.
+                      </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleStartOver} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Start Over
+                      </AlertDialogAction>
+                      </AlertDialogFooter>
+                  </AlertDialogContent>
+              </AlertDialog>
+               <ThemeToggleButton />
+            </div>
+            <div className="sm:hidden">
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setIsSaveDialogOpen(true)} disabled={!bio}>
+                          <Save className="mr-2 h-4 w-4" /> Save Bio
+                      </DropdownMenuItem>
+                       <DropdownMenuItem>
+                          <SavedBiosSheet
+                              savedBios={savedBios}
+                              onLoadBio={handleLoadBio}
+                              onDeleteBio={handleDeleteBio}
+                          >
+                            <div className="flex items-center">
+                              <List className="mr-2 h-4 w-4" /> Saved Bios
+                            </div>
+                          </SavedBiosSheet>
+                       </DropdownMenuItem>
+                       <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                             <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                               <Trash2 className="mr-2 h-4 w-4 text-destructive" />
+                               <span className="text-destructive">Start Over</span>
+                             </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                           <AlertDialogContent>
+                              <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                      This will permanently clear your current bio and chat history. This action cannot be undone. Saved bios will not be affected.
+                                  </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleStartOver} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                      Start Over
+                                  </AlertDialogAction>
+                              </AlertDialogFooter>
+                          </AlertDialogContent>
+                       </AlertDialog>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                          <ThemeToggleButton />
+                          <span className="ml-2">Toggle Theme</span>
+                      </DropdownMenuItem>
+                  </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
            </div>
         </div>
       </header>
       <main className="flex flex-1 flex-col p-4">
-        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-2">
+        <div className="grid flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-2">
           {/* Chat Panel */}
           <Card className="flex flex-col overflow-hidden">
             <CardHeader>

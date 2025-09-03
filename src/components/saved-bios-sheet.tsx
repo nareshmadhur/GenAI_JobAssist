@@ -35,15 +35,16 @@ interface SavedBiosSheetProps {
   savedBios: SavedBio[];
   onLoadBio: (bio: SavedBio) => void;
   onDeleteBio: (bioId: string) => void;
+  children?: React.ReactNode;
 }
 
-export function SavedBiosSheet({ savedBios, onLoadBio, onDeleteBio }: SavedBiosSheetProps) {
+export function SavedBiosSheet({ savedBios, onLoadBio, onDeleteBio, children }: SavedBiosSheetProps) {
   const router = useRouter();
   const { toast } = useToast();
 
   const handleUseForJob = (bio: SavedBio) => {
     try {
-        const LOCAL_STORAGE_KEY_BIO_FORM = 'jobspark_form_data';
+        const LOCAL_STORAGE_KEY_BIO_FORM = 'ai_job_assist_form_data';
         const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
         const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
         const dataToSave = { ...existingData, bio: bio.bio };
@@ -59,9 +60,13 @@ export function SavedBiosSheet({ savedBios, onLoadBio, onDeleteBio }: SavedBiosS
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" aria-label="View Saved Bios">
-          <List className="h-4 w-4" />
-        </Button>
+        {children ? (
+          <div className="w-full">{children}</div>
+        ) : (
+          <Button variant="outline" size="icon" aria-label="View Saved Bios">
+            <List className="h-4 w-4" />
+          </Button>
+        )}
       </SheetTrigger>
       <SheetContent className="flex flex-col">
         <SheetHeader>
