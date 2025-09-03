@@ -145,25 +145,30 @@ export default function JobMatcherPage() {
       });
 
       startGenerating(async () => {
-        const response = await generateAction(data);
-        setAllResults((prev) => ({
+        try {
+          const response = await generateAction(data);
+          setAllResults((prev) => ({
             ...prev,
             [generationType]: response,
-        }));
-        
-        // Increment query count for guest users
-        if (!user) {
-          const newCount = queryCount + 1;
-          setQueryCount(newCount);
-          localStorage.setItem(LOCAL_STORAGE_KEY_QUERY_COUNT, newCount.toString());
-          // Show feedback reminder on the 3rd query
-          if (newCount === 3) {
-            toast({
-              title: "Enjoying the app?",
-              description: "Your feedback helps us improve. Click the heart icon to share your thoughts!",
-              duration: 8000,
-            });
+          }));
+
+          // Increment query count for guest users
+          if (!user) {
+            const newCount = queryCount + 1;
+            setQueryCount(newCount);
+            localStorage.setItem(LOCAL_STORAGE_KEY_QUERY_COUNT, newCount.toString());
+            // Show feedback reminder on the 3rd query
+            if (newCount === 3) {
+              toast({
+                title: 'Enjoying the app?',
+                description: 'Your feedback helps us improve. Click the heart icon to share your thoughts!',
+                duration: 8000,
+              });
+            }
           }
+        } catch (error: any) {
+          console.error('Generation failed:', error);
+          setGenerationError(error.message || 'An unexpected error occurred.');
         }
       });
     });

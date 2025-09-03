@@ -71,27 +71,33 @@ export async function generateAction(
   const { jobDescription, bio, generationType, questions } =
     validationResult.data;
 
-  let response;
-  switch (generationType) {
-    case 'cv':
-      response = await generateCv({ jobDescription, userBio: bio });
-      break;
-    case 'deepAnalysis':
-      response = await generateDeepAnalysis({ jobDescription, userBio: bio });
-      break;
-    case 'qAndA':
-      response = await generateQAndA({
-        jobDescription,
-        userBio: bio,
-        questions,
-      });
-      break;
-    case 'coverLetter':
-    default:
-      response = await generateCoverLetter({ jobDescription, userBio: bio });
-      break;
+  try {
+    let response;
+    switch (generationType) {
+      case 'cv':
+        response = await generateCv({ jobDescription, userBio: bio });
+        break;
+      case 'deepAnalysis':
+        response = await generateDeepAnalysis({ jobDescription, userBio: bio });
+        break;
+      case 'qAndA':
+        response = await generateQAndA({
+          jobDescription,
+          userBio: bio,
+          questions,
+        });
+        break;
+      case 'coverLetter':
+      default:
+        response = await generateCoverLetter({ jobDescription, userBio: bio });
+        break;
+    }
+    return response;
+  } catch (error) {
+    console.error(`Error in generateAction for ${generationType}:`, error);
+    // Re-throw a more generic, user-friendly error
+    throw new Error('The AI model seems to be unavailable right now. Please try again in a moment.');
   }
-  return response;
 }
 
 /**
