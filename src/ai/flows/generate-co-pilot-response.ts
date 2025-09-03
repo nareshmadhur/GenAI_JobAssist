@@ -47,20 +47,30 @@ const coPilotFlow = ai.defineFlow(
     outputSchema: CoPilotOutputSchema,
   },
   async (input) => {
-    const llmResponse = await prompt(input);
+    try {
+      const llmResponse = await prompt(input);
 
-    if (llmResponse.toolRequest) {
-      // If the model wants to use a tool, we ONLY return the tool request.
-      // The client is responsible for executing it and sending the result back.
+      if (llmResponse.toolRequest) {
+        // If the model wants to use a tool, we ONLY return the tool request.
+        // The client is responsible for executing it and sending the result back.
+        return {
+          response: llmResponse.text, // Include any text the model generated before the tool request.
+          toolRequest: llmResponse.toolRequest,
+        };
+      }
+
+      // If no tool is requested, we return the model's text response.
       return {
-        response: llmResponse.text, // Include any text the model generated before the tool request.
-        toolRequest: llmResponse.toolRequest,
+        response: llmResponse.text,
+      };
+    } catch (error) {
+      console.error('Error in coPilotFlow:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'An unexpected error occurred.';
+      return {
+        response: `I'm sorry, I encountered an issue. The AI model might be temporarily unavailable. Please try again in a moment.`,
+        error: `Error: ${errorMessage}`,
       };
     }
-
-    // If no tool is requested, we return the model's text response.
-    return {
-      response: llmResponse.text,
-    };
   }
 );

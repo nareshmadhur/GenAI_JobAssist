@@ -18,6 +18,7 @@ const EnrichPromptInputSchema = z.object({
 const EnrichPromptOutputSchema = z.object({
   thinkingMessage: z.string().describe("A user-facing message explaining the AI's plan. Should start with 'Thinking...' or 'Okay...'. For example: 'Okay, planning to rewrite the summary section of the bio to be more results-oriented.'"),
   enrichedPrompt: z.string().describe('A detailed, enriched prompt for the next AI model to use, containing all necessary context.'),
+  error: z.string().optional().describe('An error message if the model failed to process the request.'),
 });
 export type EnrichPromptOutput = z.infer<typeof EnrichPromptOutputSchema>;
 
@@ -30,7 +31,7 @@ export async function enrichCopilotPrompt(
 const prompt = ai.definePrompt({
   name: 'enrichCopilotPrompt',
   input: { schema: EnrichPromptInputSchema },
-  output: { schema: EnrichPromptOutputSchema },
+  output: { schema: EnrichPromptOutputSchema.omit({ error: true }) },
   prompt: `You are the first-stage "planner" for an AI career coach. Your task is to take a user's request and all available context, then create two things:
 
 1.  A user-facing "thinking" message that explains your plan in a simple, high-level way.
@@ -64,7 +65,24 @@ const enrichPromptFlow = ai.defineFlow(
     outputSchema: EnrichPromptOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    try {
+      const { output } = await prompt(input);
+      if (!output) {
+        return {
+          thinkingMessage: 'I had trouble processing that.',
+          enrichedPrompt: '',
+          error: 'No output from model.',
+        };
+      }
+      return output;
+    } catch (error) {
+      console.error('Error in enrichCopilotPromptFlow:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
+      return {
+        thinkingMessage: "I'm sorry, I encountered an issue.",
+        enrichedPrompt: '',
+        error: `The AI model seems to be unavailable right now. Please try again in a moment. (Details: ${errorMessage})`,
+      };
+    }
   }
 );

@@ -137,6 +137,7 @@ export type CoPilotInput = z.infer<typeof CoPilotInputSchema>;
 export const CoPilotOutputSchema = z.object({
   response: z.string().describe("The chatbot's next concise message to the user."),
   toolRequest: z.any().optional().describe('A request from the model to use a tool.'),
+  error: z.string().optional().describe('An error message if the model failed to process the request.'),
 });
 export type CoPilotOutput = z.infer<typeof CoPilotOutputSchema>;
 

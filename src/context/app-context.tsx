@@ -287,6 +287,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 bio,
             });
 
+            if (enrichmentResponse.error) {
+                setChatHistory(prev => [...prev, { author: 'assistant', content: enrichmentResponse.error! }]);
+                return;
+            }
+
             finalEnrichedPrompt = enrichmentResponse.enrichedPrompt;
             const thinkingMessage: CoPilotMessage = {
                 author: 'assistant',
@@ -301,6 +306,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const response = await generateCoPilotResponse({
           enrichedPrompt: finalEnrichedPrompt!,
         });
+
+        if (response.error) {
+            setChatHistory(prev => [...prev, { author: 'assistant', content: response.error! }]);
+            return;
+        }
 
         // Check if the AI requested a tool.
         if (response.toolRequest) {

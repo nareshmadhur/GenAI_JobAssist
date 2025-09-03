@@ -69,10 +69,11 @@ const generateBioChatResponseFlow = ai.defineFlow(
       return output;
     } catch (error) {
       console.error('Error in generateBioChatResponseFlow:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
       return {
-        response: 'An unexpected error occurred. Please try again.',
+        response: `I'm sorry, I encountered an issue. The AI model might be temporarily unavailable. Please try again in a moment.`,
         updatedBio: input.currentBio,
-        error: error instanceof Error ? error.message : 'Unknown error.',
+        error: `Error: ${errorMessage}`,
       };
     }
   }
