@@ -20,8 +20,8 @@ import ReactMarkdown from 'react-markdown';
 import { compiler } from 'markdown-to-jsx';
 import ReactDOMServer from 'react-dom/server';
 
-import type { DeepAnalysisOutput } from '@/ai/flows';
 import { reviseAction } from '@/app/actions';
+import type { AllGenerationResults, GenerationType, ActiveView } from '@/app/page';
 import {
   Card,
   CardContent,
@@ -39,11 +39,9 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import type { CvOutput, QAndAOutput, ReviseResponseData } from '@/lib/schemas';
-import type { AllGenerationResults, GenerationType } from './job-spark-app';
+import type { CvOutput, DeepAnalysisOutput, QAndAOutput, ReviseResponseData } from '@/lib/schemas';
 import { Button } from './ui/button';
 import { CvView } from './cv-view';
-import type { ActiveView } from './job-spark-app';
 import { RevisionForm } from './revision-form';
 import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
@@ -503,18 +501,19 @@ export function OutputView({
    */
   const handleRevision = async (data: ReviseResponseData) => {
     const { generationType } = data;
-    try {
-        const result = await reviseAction(data);
-        setAllResults((prev) => ({
-            ...prev,
-            [generationType]: result as any,
-        }));
-    } catch (error: any) {
+    const result = await reviseAction(data);
+    
+    if ('error' in result) {
         toast({
             variant: 'destructive',
             title: 'Revision Failed',
-            description: error.message || 'An unexpected error occurred.',
+            description: result.error,
         });
+    } else {
+        setAllResults((prev) => ({
+            ...prev,
+            [generationType]: result,
+        }));
     }
   };
 

@@ -91,7 +91,11 @@ function BioCreatorCore() {
     if (currentBio && currentBio.length > 50) {
       startAnalyzing(async () => {
         const result = await analyzeBioCompletenessAction({ bio: currentBio });
-        setCompleteness(result);
+        if ('error' in result) {
+          console.error("Analysis failed:", result.error);
+        } else {
+          setCompleteness(result);
+        }
       });
     } else {
       setCompleteness(null);

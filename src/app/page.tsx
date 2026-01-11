@@ -146,8 +146,12 @@ export default function JobMatcherPage() {
       });
 
       startGenerating(async () => {
-        try {
-          const response = await generateAction(data);
+        const response = await generateAction(data);
+        
+        if ('error' in response) {
+          console.error('Generation failed:', response.error);
+          setGenerationError(response.error);
+        } else {
           setAllResults((prev) => ({
             ...prev,
             [generationType]: response,
@@ -167,9 +171,6 @@ export default function JobMatcherPage() {
               });
             }
           }
-        } catch (error: any) {
-          console.error('Generation failed:', error);
-          setGenerationError(error.message || 'An unexpected error occurred.');
         }
       });
     });
@@ -287,6 +288,15 @@ export default function JobMatcherPage() {
         const detailsResponse = await extractJobDetailsAction({
             jobDescription,
         });
+
+        if ('error' in detailsResponse) {
+          toast({
+            variant: 'destructive',
+            title: 'Could not save job',
+            description: detailsResponse.error,
+          });
+          return;
+        }
 
         const newSavedJob: SavedJob = {
             id: crypto.randomUUID(),

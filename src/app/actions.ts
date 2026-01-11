@@ -25,6 +25,8 @@ import {
   BioCompletenessInputSchema,
 } from '@/lib/schemas';
 
+type ActionError = { error: string };
+
 /**
  * Type union for a successful generation response.
  */
@@ -56,17 +58,17 @@ const SingleGenerationSchema = JobApplicationSchema.pick({
  * It validates the input and calls the corresponding Genkit flow.
  *
  * @param rawData - The raw input data from the form.
- * @returns A promise that resolves to a `GenerationResult`.
+ * @returns A promise that resolves to a `GenerationResult` or an error object.
  */
 export async function generateAction(
   rawData: unknown
-): Promise<GenerationResult> {
+): Promise<GenerationResult | ActionError> {
   const validationResult = SingleGenerationSchema.safeParse(rawData);
   if (!validationResult.success) {
     const errorMessage = validationResult.error.issues
       .map((issue) => issue.message)
       .join(' ');
-    throw new Error(errorMessage || 'Invalid input.');
+    return { error: errorMessage || 'Invalid input.' };
   }
   const { jobDescription, bio, generationType, questions } =
     validationResult.data;
@@ -93,10 +95,9 @@ export async function generateAction(
         break;
     }
     return response;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Error in generateAction for ${generationType}:`, error);
-    // Re-throw a more generic, user-friendly error
-    throw new Error('The AI model seems to be unavailable right now. Please try again in a moment.');
+    return { error: error.message || 'The AI model seems to be unavailable right now. Please try again in a moment.' };
   }
 }
 
@@ -105,58 +106,71 @@ export async function generateAction(
  * It validates the input and calls the revision Genkit flow.
  *
  * @param rawData - The raw input data for the revision.
- * @returns A promise that resolves to a `ReviseResponseOutput`.
+ * @returns A promise that resolves to a `ReviseResponseOutput` or an error object.
  */
 export async function reviseAction(
   rawData: unknown
-): Promise<ReviseResponseOutput> {
+): Promise<ReviseResponseOutput | ActionError> {
   const validationResult = ReviseResponseSchema.safeParse(rawData);
   if (!validationResult.success) {
     const errorMessage = validationResult.error.issues
       .map((issue) => issue.message)
       .join(' ');
-    throw new Error(errorMessage || 'Invalid input for revision.');
+    return { error: errorMessage || 'Invalid input for revision.' };
   }
 
   const validatedData = validationResult.data as ReviseResponseData;
   if (validatedData.generationType === 'cv' || validatedData.generationType === 'deepAnalysis') {
-    throw new Error('Revision is not supported for this format.');
+    return { error: 'Revision is not supported for this format.' };
   }
 
-  const response = await reviseResponse(validatedData);
-  return response;
+  try {
+    const response = await reviseResponse(validatedData);
+    return response;
+  } catch (error: any) {
+    console.error('Error in reviseAction:', error);
+    return { error: error.message || 'The AI model seems to be unavailable right now. Please try again in a moment.' };
+  }
 }
 
 /**
  * Server Action to extract company name and job title from a job description.
  *
  * @param rawData - The raw input containing the job description.
- * @returns A promise that resolves to an `JobDetailsOutput`.
+ * @returns A promise that resolves to a `JobDetailsOutput` or an error object.
  */
-export async function extractJobDetailsAction(rawData: unknown): Promise<JobDetailsOutput> {
+export async function extractJobDetailsAction(rawData: unknown): Promise<JobDetailsOutput | ActionError> {
   const validationResult = JobDetailsInputSchema.safeParse(rawData);
   if (!validationResult.success) {
-    throw new Error('Invalid job description provided.');
+    return { error: 'Invalid job description provided.' };
   }
-
-  const response = await extractJobDetails(validationResult.data);
-  return response;
+  try {
+    const response = await extractJobDetails(validationResult.data);
+    return response;
+  } catch (error: any) {
+    console.error('Error in extractJobDetailsAction:', error);
+    return { error: error.message || 'Could not extract job details.' };
+  }
 }
 
 /**
  * Server Action to analyze the completeness of a user's bio.
  *
  * @param rawData - The raw input containing the bio text.
- * @returns A promise that resolves to an `BioCompletenessOutput`.
+ * @returns A promise that resolves to a `BioCompletenessOutput` or an error object.
  */
 export async function analyzeBioCompletenessAction(
   rawData: unknown
-): Promise<BioCompletenessOutput> {
+): Promise<BioCompletenessOutput | ActionError> {
   const validationResult = BioCompletenessInputSchema.safeParse(rawData);
   if (!validationResult.success) {
-    throw new Error('Invalid bio provided for analysis.');
+    return { error: 'Invalid bio provided for analysis.' };
   }
-  
-  const response = await analyzeBioCompleteness(validationResult.data);
-  return response;
+  try {
+    const response = await analyzeBioCompleteness(validationResult.data);
+    return response;
+  } catch (error: any) {
+    console.error('Error in analyzeBioCompletenessAction:', error);
+    return { error: error.message || 'Could not analyze bio completeness.' };
+  }
 }
