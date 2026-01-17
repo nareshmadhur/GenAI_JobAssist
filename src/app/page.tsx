@@ -22,6 +22,7 @@ import {
   UserRoundCheck,
 } from 'lucide-react';
 import Link from 'next/link';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
 export default function WelcomePage() {
   const { user, authLoading, logout } = useAuth();
@@ -64,6 +65,7 @@ export default function WelcomePage() {
                 <Link href="/login">Log In</Link>
               </Button>
             )}
+            <ThemeToggleButton />
           </nav>
         </div>
       </header>
