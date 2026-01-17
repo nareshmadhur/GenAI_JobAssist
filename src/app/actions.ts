@@ -11,6 +11,7 @@ import { reviseResponse } from '@/ai/flows/revise-response';
 import type { JobDetailsOutput } from '@/lib/schemas';
 import { extractJobDetails } from '@/ai/flows/extract-job-details';
 import { analyzeBioCompleteness } from '@/ai/flows/analyze-bio-completeness';
+import { testModelAvailability } from '@/ai/flows/test-model-availability';
 import type {
   BioCompletenessOutput,
   CvOutput,
@@ -24,6 +25,7 @@ import {
   JobDetailsInputSchema,
   BioCompletenessInputSchema,
 } from '@/lib/schemas';
+import { z } from 'zod';
 
 type ActionError = { error: string };
 
@@ -45,6 +47,13 @@ export type AllGenerationResults = {
   deepAnalysis?: DeepAnalysisOutput;
   qAndA?: QAndAOutput;
 };
+
+export type TestModelOutput = {
+    success: boolean;
+    message: string;
+    model: string;
+};
+
 
 const SingleGenerationSchema = JobApplicationSchema.pick({
   jobDescription: true,
@@ -172,5 +181,27 @@ export async function analyzeBioCompletenessAction(
   } catch (error: any) {
     console.error('Error in analyzeBioCompletenessAction:', error);
     return { error: error.message || 'Could not analyze bio completeness.' };
+  }
+}
+
+/**
+ * Server Action to test the availability of a given AI model.
+ *
+ * @param rawData - The raw input containing the model name.
+ * @returns A promise that resolves to a `TestModelOutput` or an error object.
+ */
+export async function testModelAction(
+  rawData: unknown
+): Promise<TestModelOutput | ActionError> {
+  const validationResult = z.object({ modelName: z.string().min(1) }).safeParse(rawData);
+  if (!validationResult.success) {
+    return { error: 'Invalid model name provided.' };
+  }
+  try {
+    const response = await testModelAvailability(validationResult.data);
+    return response;
+  } catch (error: any) {
+    console.error('Error in testModelAction:', error);
+    return { error: error.message || 'An unexpected error occurred while testing the model.' };
   }
 }
