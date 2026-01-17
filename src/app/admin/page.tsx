@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { testModelAction } from '@/app/actions';
+import { testModelAction, listModelsAction } from '@/app/actions';
 import type { TestModelOutput } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,9 +20,14 @@ const modelsToTest = [
 ];
 
 export default function AdminPage() {
-    const [modelName, setModelName] = useState('gemini-1.5-flash');
+    const [modelName, setModelName] = useState('googleai/gemini-1.5-flash');
     const [isTesting, startTesting] = useTransition();
+    const [isListing, startListing] = useTransition();
     const [results, setResults] = useState<TestModelOutput[]>([]);
+    const [modelList, setModelList] = useState<string[] | null>(null);
+    const [listError, setListError] = useState<string | null>(null);
+
+    const isLoading = isTesting || isListing;
 
     const handleTestModel = (name: string) => {
         if (!name) return;
@@ -40,10 +45,23 @@ export default function AdminPage() {
         setResults([]);
         modelsToTest.forEach((model, index) => {
             setTimeout(() => {
-                handleTestModel(model);
+                handleTestModel(`googleai/${model}`);
             }, index * 1000); // Stagger requests
         });
     }
+
+    const handleListModels = () => {
+        setListError(null);
+        setModelList(null);
+        startListing(async () => {
+            const result = await listModelsAction();
+            if ('error' in result) {
+                setListError(result.error);
+            } else if (result.models) {
+                setModelList(result.models);
+            }
+        });
+    };
 
     return (
         <div className="flex flex-1 flex-col bg-muted/20 min-h-screen">
@@ -66,53 +84,99 @@ export default function AdminPage() {
             </header>
 
             <main className="mx-auto w-full max-w-4xl flex-1 p-4 sm:p-6 md:p-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Test Model Availability</CardTitle>
-                        <CardDescription>
-                            Enter a model name to check if it's available for use with your current API key and Genkit setup. Remember to prefix with `googleai/`.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center gap-2">
-                            <Input 
-                                value={modelName}
-                                onChange={(e) => setModelName(e.target.value)}
-                                placeholder="e.g., googleai/gemini-1.5-flash"
-                                disabled={isTesting}
-                            />
-                            <Button onClick={() => handleTestModel(modelName)} disabled={isTesting || !modelName}>
-                                {isTesting && results.length === 0 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Test Model
-                            </Button>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Quick test:</span>
-                            {modelsToTest.map(m => (
-                                <Button key={m} variant="outline" size="sm" onClick={() => setModelName(`googleai/${m}`)}>{m}</Button>
-                            ))}
-                            <Button variant="secondary" size="sm" onClick={handleTestAll} disabled={isTesting}>Test All Prefixed</Button>
-                        </div>
-
-                        {isTesting && <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /><span>Testing... ({results.length + 1}/{modelsToTest.length})</span></div>}
-
-                        {results.length > 0 && (
-                            <div className="space-y-2 pt-4">
-                                 <h3 className="font-semibold">Results:</h3>
-                                 <Button variant="outline" size="sm" onClick={() => setResults([])}>Clear Results</Button>
-                                {results.map((result, index) => (
-                                    <div key={index} className={cn("p-4 rounded-md border", result.success ? 'border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800' : 'border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800')}>
-                                        <p className="font-bold text-sm">Model: <code className="font-mono">{result.model}</code></p>
-                                        <p className={cn("font-semibold", result.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300')}>
-                                            Status: {result.success ? 'Success' : 'Failed'}
-                                        </p>
-                                        <p className="text-xs mt-1 text-muted-foreground break-words"><code className="font-mono">{result.message}</code></p>
-                                    </div>
-                                ))}
+                <div className="grid gap-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Test Single Model</CardTitle>
+                            <CardDescription>
+                                Enter a model name to check if it's available. Remember to prefix custom models with `googleai/`.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="flex items-center gap-2">
+                                <Input 
+                                    value={modelName}
+                                    onChange={(e) => setModelName(e.target.value)}
+                                    placeholder="e.g., googleai/gemini-1.5-flash"
+                                    disabled={isLoading}
+                                />
+                                <Button onClick={() => handleTestModel(modelName)} disabled={isLoading || !modelName}>
+                                    {isTesting && results.length === 0 ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    Test Model
+                                </Button>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-sm text-muted-foreground">Quick test:</span>
+                                {modelsToTest.map(m => (
+                                    <Button key={m} variant="outline" size="sm" onClick={() => setModelName(`googleai/${m}`)} disabled={isLoading}>{m}</Button>
+                                ))}
+                                <Button variant="secondary" size="sm" onClick={handleTestAll} disabled={isLoading}>Test All Prefixed</Button>
+                            </div>
+
+                            {isTesting && <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /><span>Testing...</span></div>}
+
+                            {results.length > 0 && (
+                                <div className="space-y-2 pt-4">
+                                     <div className="flex justify-between items-center">
+                                        <h3 className="font-semibold">Test Results:</h3>
+                                        <Button variant="outline" size="sm" onClick={() => setResults([])}>Clear Results</Button>
+                                    </div>
+                                    {results.map((result, index) => (
+                                        <div key={index} className={cn("p-4 rounded-md border", result.success ? 'border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800' : 'border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800')}>
+                                            <p className="font-bold text-sm">Model: <code className="font-mono">{result.model}</code></p>
+                                            <p className={cn("font-semibold", result.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300')}>
+                                                Status: {result.success ? 'Success' : 'Failed'}
+                                            </p>
+                                            <p className="text-xs mt-1 text-muted-foreground break-words"><code className="font-mono">{result.message}</code></p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>List Available Models</CardTitle>
+                            <CardDescription>
+                                Fetch a list of all generative models available to your API key.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Button onClick={handleListModels} disabled={isLoading}>
+                                {isListing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                List All Models
+                            </Button>
+
+                            {isListing && <div className="mt-4 flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /><span>Fetching models...</span></div>}
+                            
+                            {listError && (
+                                <div className="mt-4 p-4 rounded-md border border-red-200 bg-red-50 dark:bg-red-950 dark:border-red-800">
+                                    <p className="font-bold text-red-700 dark:text-red-300">Error</p>
+                                    <p className="text-xs mt-1 text-muted-foreground break-words"><code className="font-mono">{listError}</code></p>
+                                </div>
+                            )}
+                            
+                            {modelList && (
+                                <div className="mt-4 space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="font-semibold">Available Models ({modelList.length}):</h3>
+                                        <Button variant="outline" size="sm" onClick={() => { setModelList(null); setListError(null); }}>Clear List</Button>
+                                    </div>
+                                    <div className="p-4 rounded-md border bg-muted/50 max-h-60 overflow-y-auto">
+                                        <ul className="space-y-1">
+                                            {modelList.map(modelName => (
+                                                <li key={modelName} className="font-mono text-sm">
+                                                    {modelName}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </main>
         </div>
     )

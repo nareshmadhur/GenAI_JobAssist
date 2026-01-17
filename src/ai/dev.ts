@@ -17,6 +17,7 @@ export * from './flows/analyze-bio-completeness';
 export * from './flows/enrich-copilot-prompt';
 export * from './flows/generate-bio-chat-response';
 export * from './flows/test-model-availability';
+export * from './flows/list-models';
 
 
 import './flows/generate-cover-letter.ts';
@@ -32,3 +33,4 @@ import './flows/analyze-bio-completeness.ts';
 import './flows/enrich-copilot-prompt.ts';
 import './flows/generate-bio-chat-response.ts';
 import './flows/test-model-availability.ts';
+import './flows/list-models.ts';

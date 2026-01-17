@@ -12,6 +12,9 @@ import type { JobDetailsOutput } from '@/lib/schemas';
 import { extractJobDetails } from '@/ai/flows/extract-job-details';
 import { analyzeBioCompleteness } from '@/ai/flows/analyze-bio-completeness';
 import { testModelAvailability } from '@/ai/flows/test-model-availability';
+import { listAvailableModels } from '@/ai/flows/list-models';
+import type { ListModelsOutput } from '@/ai/flows/list-models';
+
 import type {
   BioCompletenessOutput,
   CvOutput,
@@ -53,6 +56,8 @@ export type TestModelOutput = {
     message: string;
     model: string;
 };
+
+export type ListModelsResult = ListModelsOutput;
 
 
 const SingleGenerationSchema = JobApplicationSchema.pick({
@@ -203,5 +208,20 @@ export async function testModelAction(
   } catch (error: any) {
     console.error('Error in testModelAction:', error);
     return { error: error.message || 'An unexpected error occurred while testing the model.' };
+  }
+}
+
+
+/**
+ * Server Action to list available AI models.
+ * @returns A promise that resolves to a `ListModelsResult` or an error object.
+ */
+export async function listModelsAction(): Promise<ListModelsResult | ActionError> {
+  try {
+    const response = await listAvailableModels();
+    return response;
+  } catch (error: any) {
+    console.error('Error in listModelsAction:', error);
+    return { error: error.message || 'An unexpected error occurred while listing models.' };
   }
 }
