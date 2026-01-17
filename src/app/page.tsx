@@ -1,11 +1,31 @@
 
+'use client';
+
 import { AiJobAssistLogo } from '@/components/ai-job-assist-logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Rocket, ScanText, UserRoundCheck } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/context/app-context';
+import {
+  Loader2,
+  LogOut,
+  Rocket,
+  ScanText,
+  User,
+  UserRoundCheck,
+} from 'lucide-react';
 import Link from 'next/link';
 
 export default function WelcomePage() {
+  const { user, authLoading, logout } = useAuth();
+
   return (
     <div className="flex flex-1 flex-col bg-background">
       <header className="sticky top-0 z-10 w-full bg-background/80 backdrop-blur-sm">
@@ -15,12 +35,35 @@ export default function WelcomePage() {
             <span className="text-xl font-bold">AI Job Assist</span>
           </Link>
           <nav className="flex items-center gap-2">
-             <Button asChild variant="ghost">
-                <Link href="/job-matcher">Job Matcher</Link>
+            <Button asChild variant="ghost">
+              <Link href="/job-matcher">Job Matcher</Link>
             </Button>
-            <Button asChild>
+            {authLoading ? (
+              <Button variant="outline" size="icon" disabled>
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </Button>
+            ) : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuItem disabled>{user.email}</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button asChild>
                 <Link href="/login">Log In</Link>
-            </Button>
+              </Button>
+            )}
           </nav>
         </div>
       </header>

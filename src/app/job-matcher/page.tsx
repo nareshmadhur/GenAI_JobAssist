@@ -395,10 +395,6 @@ export default function JobMatcherPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center gap-2">
-              <Button asChild variant="link" className="text-primary-foreground/80 hover:text-primary-foreground">
-                  <Link href="/job-matcher">Job Matcher</Link>
-              </Button>
-              
               {!user && !authLoading && (
                 <div className="flex items-center gap-2 rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-semibold text-primary-foreground">
                   <Sparkles className="h-4 w-4" />
