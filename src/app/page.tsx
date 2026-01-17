@@ -1,7 +1,7 @@
 
 import { AiJobAssistLogo } from '@/components/ai-job-assist-logo';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Rocket, ScanText, UserRoundCheck } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,6 +21,9 @@ export default function WelcomePage() {
             <Button asChild variant="ghost">
                 <Link href="/bio-creator">Bio Creator</Link>
             </Button>
+             <Button asChild variant="ghost">
+                <Link href="/admin">Admin</Link>
+            </Button>
             <Button asChild>
                 <Link href="/login">Log In</Link>
             </Button>
@@ -35,13 +38,13 @@ export default function WelcomePage() {
               Land Your Dream Job, Faster.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-              JobSpark is your personal AI assistant. We analyze job
+              AI Job Assist is your personal AI assistant. We analyze job
               descriptions, tailor your bio, and generate everything you need for
               a standout application.
             </p>
             <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
               <Button asChild size="lg">
-                <Link href="/bio-creator">Build Your Bio</Link>
+                <Link href="/bio-creator">Build Your Bio First</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="/job-matcher">Match a Job</Link>
@@ -62,42 +65,48 @@ export default function WelcomePage() {
               </p>
             </div>
             <div className="grid gap-8 md:grid-cols-3">
-              <Card>
-                <CardHeader className="items-center text-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <ScanText className="h-6 w-6" />
-                    </div>
-                  <CardTitle>1. Craft Your Bio</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center text-sm text-muted-foreground">
-                  Use our AI-powered chat to build a comprehensive professional
-                  bio from scratch, or simply paste your existing resume.
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="items-center text-center">
-                   <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <UserRoundCheck className="h-6 w-6" />
-                    </div>
-                  <CardTitle>2. Analyze the Role</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center text-sm text-muted-foreground">
-                  Provide a job description, and our AI will pinpoint the key
-                  skills, requirements, and company values.
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="items-center text-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Rocket className="h-6 w-6" />
-                    </div>
-                  <CardTitle>3. Generate & Apply</CardTitle>
-                </CardHeader>
-                <CardContent className="text-center text-sm text-muted-foreground">
-                  Instantly generate a tailored cover letter, CV, and answers
-                  to specific questions, giving you a powerful head start.
-                </CardContent>
-              </Card>
+              <Link href="/bio-creator" className="block group">
+                <Card className="h-full transition-all hover:shadow-lg hover:-translate-y-1">
+                  <CardHeader className="items-center text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
+                          <ScanText className="h-6 w-6" />
+                      </div>
+                    <CardTitle>1. Craft Your Bio</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center text-sm text-muted-foreground">
+                    Use our AI-powered chat to build a comprehensive professional
+                    bio from scratch, or simply paste your existing resume.
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link href="/job-matcher" className="block group">
+                <Card className="h-full transition-all hover:shadow-lg hover:-translate-y-1">
+                  <CardHeader className="items-center text-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
+                          <UserRoundCheck className="h-6 w-6" />
+                      </div>
+                    <CardTitle>2. Analyze the Role</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center text-sm text-muted-foreground">
+                    Provide a job description, and our AI will pinpoint the key
+                    skills, requirements, and company values.
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link href="/job-matcher" className="block group">
+                <Card className="h-full transition-all hover:shadow-lg hover:-translate-y-1">
+                  <CardHeader className="items-center text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
+                          <Rocket className="h-6 w-6" />
+                      </div>
+                    <CardTitle>3. Generate & Apply</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center text-sm text-muted-foreground">
+                    Instantly generate a tailored cover letter, CV, and answers
+                    to specific questions, giving you a powerful head start.
+                  </CardContent>
+                </Card>
+              </Link>
             </div>
           </div>
         </section>
