@@ -18,9 +18,6 @@ export default function WelcomePage() {
              <Button asChild variant="ghost">
                 <Link href="/job-matcher">Job Matcher</Link>
             </Button>
-            <Button asChild variant="ghost">
-                <Link href="/bio-creator">Bio Creator</Link>
-            </Button>
              <Button asChild variant="ghost">
                 <Link href="/admin">Admin</Link>
             </Button>
@@ -44,10 +41,7 @@ export default function WelcomePage() {
             </p>
             <div className="mt-8 flex flex-col justify-center gap-4 sm:flex-row">
               <Button asChild size="lg">
-                <Link href="/bio-creator">Build Your Bio First</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="/job-matcher">Match a Job</Link>
+                <Link href="/job-matcher">Get Started</Link>
               </Button>
             </div>
           </div>
@@ -65,7 +59,7 @@ export default function WelcomePage() {
               </p>
             </div>
             <div className="grid gap-8 md:grid-cols-3">
-              <Link href="/bio-creator" className="block group">
+              <Link href="/job-matcher" className="block group">
                 <Card className="h-full transition-all hover:shadow-lg hover:-translate-y-1">
                   <CardHeader className="items-center text-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
@@ -74,7 +68,7 @@ export default function WelcomePage() {
                     <CardTitle>1. Craft Your Bio</CardTitle>
                   </CardHeader>
                   <CardContent className="text-center text-sm text-muted-foreground">
-                    Use our AI-powered chat to build a comprehensive professional
+                    Use our integrated AI-powered chat to build a comprehensive professional
                     bio from scratch, or simply paste your existing resume.
                   </CardContent>
                 </Card>

@@ -50,8 +50,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AppContextType {
-  bio: string;
-  setBio: (bio: string) => void;
   chatHistory: CoPilotMessage[];
   setChatHistory: (history: CoPilotMessage[]) => void;
   isCoPilotSidebarOpen: boolean;
@@ -70,7 +68,7 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY_APP = 'ai_job_assist_app_data';
+const LOCAL_STORAGE_KEY_COPILOT_CHAT = 'ai_job_assist_copilot_chat';
 const LOCAL_STORAGE_KEY_JOBS = 'ai_job_assist_saved_jobs';
 const LOCAL_STORAGE_KEY_BIOS = 'ai_job_assist_saved_bios';
 
@@ -95,7 +93,6 @@ const getFriendlyErrorMessage = (error: any): string => {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   // App State
-  const [bio, setBio] = useState('');
   const [chatHistory, setChatHistory] = useState<CoPilotMessage[]>([]);
   const [isCoPilotSidebarOpen, setIsCoPilotSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -213,10 +210,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Load state from localStorage on initial mount
   useEffect(() => {
     try {
-      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_APP);
+      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_COPILOT_CHAT);
       if (savedData) {
-        const { bio: savedBio, history: savedHistory } = JSON.parse(savedData);
-        if (savedBio) setBio(savedBio);
+        const savedHistory = JSON.parse(savedData);
         if (savedHistory && savedHistory.length > 0) {
           setChatHistory(savedHistory);
         } else {
@@ -239,7 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ]);
       }
     } catch (e) {
-      console.error('Failed to load app data from localStorage', e);
+      console.error('Failed to load co-pilot chat from localStorage', e);
     }
     setIsLoading(false);
   }, []);
@@ -248,16 +244,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoading) {
       try {
-        const dataToSave = {
-          bio: bio,
-          history: chatHistory,
-        };
-        localStorage.setItem(LOCAL_STORAGE_KEY_APP, JSON.stringify(dataToSave));
+        localStorage.setItem(LOCAL_STORAGE_KEY_COPILOT_CHAT, JSON.stringify(chatHistory));
       } catch (e) {
-        console.error('Failed to save app data to localStorage', e);
+        console.error('Failed to save co-pilot chat to localStorage', e);
       }
     }
-  }, [bio, chatHistory, isLoading]);
+  }, [chatHistory, isLoading]);
 
   const handleCoPilotSubmit = (message: string) => {
     const newUserMessage: CoPilotMessage = { author: 'user', content: message };
@@ -359,8 +351,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const appContextValue = {
-    bio,
-    setBio,
     chatHistory,
     setChatHistory,
     isCoPilotSidebarOpen,

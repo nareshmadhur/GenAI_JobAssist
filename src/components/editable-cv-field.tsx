@@ -61,6 +61,11 @@ export function EditableCvField({
     }
   };
 
+  const handleEditClick = () => {
+    setCurrentValue(isMissing ? '' : value); // Clear placeholder text on edit
+    setIsEditing(true);
+  }
+
   if (isEditing) {
     const InputComponent = multiline ? Textarea : Input;
     const props = {
@@ -91,10 +96,7 @@ export function EditableCvField({
           'cursor-pointer font-semibold text-red-600 hover:underline',
           className
         )}
-        onClick={() => {
-          setCurrentValue(''); // Clear placeholder text on edit
-          setIsEditing(true);
-        }}
+        onClick={handleEditClick}
       >
         <AlertTriangle className="mr-1 inline-block h-4 w-4" />
         {fieldName}
@@ -105,7 +107,7 @@ export function EditableCvField({
   return (
     <Wrapper
       className={cn('cursor-pointer rounded-sm hover:bg-slate-100 p-1 -m-1', className)}
-      onClick={() => setIsEditing(true)}
+      onClick={handleEditClick}
     >
       {value}
     </Wrapper>

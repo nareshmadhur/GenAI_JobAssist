@@ -87,8 +87,6 @@ export default function JobMatcherPage() {
   const router = useRouter();
   const { user, authLoading, logout } = useAuth();
   const {
-    bio,
-    setBio,
     setIsCoPilotSidebarOpen,
     setToolContext,
     savedJobs,
@@ -196,11 +194,6 @@ export default function JobMatcherPage() {
     };
   }, [formMethods, setToolContext, handleGeneration]);
 
-
-  useEffect(() => {
-    formMethods.setValue('bio', bio);
-  }, [bio, formMethods]);
-
   useEffect(() => {
     try {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_FORM);
@@ -211,9 +204,6 @@ export default function JobMatcherPage() {
           bio: parsedData.bio || '',
           questions: parsedData.questions || '',
         });
-        if (parsedData.bio) {
-          setBio(parsedData.bio); 
-        }
         if (parsedData.allResults) {
           setAllResults(parsedData.allResults);
         }
@@ -233,9 +223,6 @@ export default function JobMatcherPage() {
           questions: value.questions,
           allResults: allResults,
         };
-        if (value.bio !== bio) {
-          setBio(value.bio || '');
-        }
         localStorage.setItem(
           LOCAL_STORAGE_KEY_FORM,
           JSON.stringify(dataToSave)
@@ -245,7 +232,7 @@ export default function JobMatcherPage() {
       }
     });
     return () => subscription.unsubscribe();
-  }, [formMethods, formMethods.watch, allResults, bio, setBio]);
+  }, [formMethods, formMethods.watch, allResults]);
 
   useEffect(() => {
     if (activeView !== 'none' && outputRef.current) {
@@ -326,7 +313,6 @@ export default function JobMatcherPage() {
 
   const handleLoadJob = (job: SavedJob) => {
     formMethods.reset(job.formData);
-    setBio(job.formData.bio);
     setAllResults(job.allResults);
     setActiveView(
       (Object.keys(job.allResults)[0] as ActiveView) || 'none'
@@ -350,7 +336,7 @@ export default function JobMatcherPage() {
     toast({ title: 'Job Deleted' });
   };
 
-  const { jobDescription } = formMethods.getValues();
+  const { jobDescription, bio } = formMethods.getValues();
 
   const getLastGeneratedOutput = (): string => {
     if (activeView === 'none' || !allResults[activeView]) return '';
@@ -412,10 +398,7 @@ export default function JobMatcherPage() {
               <Button asChild variant="link" className="text-primary-foreground/80 hover:text-primary-foreground">
                   <Link href="/job-matcher">Job Matcher</Link>
               </Button>
-              <Button asChild variant="link" className="text-primary-foreground/80 hover:text-primary-foreground">
-                  <Link href="/bio-creator">Bio Creator</Link>
-              </Button>
-
+              
               {!user && !authLoading && (
                 <div className="flex items-center gap-2 rounded-full bg-primary-foreground/10 px-3 py-1 text-xs font-semibold text-primary-foreground">
                   <Sparkles className="h-4 w-4" />
