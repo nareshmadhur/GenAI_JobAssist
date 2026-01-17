@@ -37,7 +37,8 @@ export function PrivacyDialog({ trigger }: PrivacyDialogProps) {
             <h2>Introduction</h2>
             <p>
               Welcome to AI Job Assist. We are committed to protecting your
-              privacy. This Privacy Policy explains how we collect, use,
+              privacy. This application uses paid, secure AI services to process
+              your data, offered to you at no cost by the developer, Naresh Madhur. This Privacy Policy explains how we collect, use,
               disclose, and safeguard your information when you use our
               application.
             </p>
@@ -95,7 +96,10 @@ export function PrivacyDialog({ trigger }: PrivacyDialogProps) {
               <li>
                 <strong>Google's Gemini API:</strong> To provide our services,
                 we send your input data (job descriptions, bios, etc.) to
-                Google's Gemini API for content generation.
+                Google's Gemini API for content generation. According to
+                Google's policies, data sent to their paid enterprise APIs is not
+                used for training their models and is secured in transit and at
+                rest.
               </li>
               <li>
                 <strong>Firebase:</strong> If you create an account, your data
