@@ -18,9 +18,6 @@ export default function WelcomePage() {
              <Button asChild variant="ghost">
                 <Link href="/job-matcher">Job Matcher</Link>
             </Button>
-             <Button asChild variant="ghost">
-                <Link href="/admin">Admin</Link>
-            </Button>
             <Button asChild>
                 <Link href="/login">Log In</Link>
             </Button>

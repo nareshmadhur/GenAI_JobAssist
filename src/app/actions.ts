@@ -11,9 +11,6 @@ import { reviseResponse } from '@/ai/flows/revise-response';
 import type { JobDetailsOutput } from '@/lib/schemas';
 import { extractJobDetails } from '@/ai/flows/extract-job-details';
 import { analyzeBioCompleteness } from '@/ai/flows/analyze-bio-completeness';
-import { testModelAvailability } from '@/ai/flows/test-model-availability';
-import { listAvailableModels } from '@/ai/flows/list-models';
-import type { ListModelsOutput } from '@/ai/flows/list-models';
 
 import type {
   BioCompletenessOutput,
@@ -28,7 +25,6 @@ import {
   JobDetailsInputSchema,
   BioCompletenessInputSchema,
 } from '@/lib/schemas';
-import { z } from 'zod';
 
 type ActionError = { error: string };
 
@@ -50,15 +46,6 @@ export type AllGenerationResults = {
   deepAnalysis?: DeepAnalysisOutput;
   qAndA?: QAndAOutput;
 };
-
-export type TestModelOutput = {
-    success: boolean;
-    message: string;
-    model: string;
-};
-
-export type ListModelsResult = ListModelsOutput;
-
 
 const SingleGenerationSchema = JobApplicationSchema.pick({
   jobDescription: true,
@@ -186,42 +173,5 @@ export async function analyzeBioCompletenessAction(
   } catch (error: any) {
     console.error('Error in analyzeBioCompletenessAction:', error);
     return { error: error.message || 'Could not analyze bio completeness.' };
-  }
-}
-
-/**
- * Server Action to test the availability of a given AI model.
- *
- * @param rawData - The raw input containing the model name.
- * @returns A promise that resolves to a `TestModelOutput` or an error object.
- */
-export async function testModelAction(
-  rawData: unknown
-): Promise<TestModelOutput | ActionError> {
-  const validationResult = z.object({ modelName: z.string().min(1) }).safeParse(rawData);
-  if (!validationResult.success) {
-    return { error: 'Invalid model name provided.' };
-  }
-  try {
-    const response = await testModelAvailability(validationResult.data);
-    return response;
-  } catch (error: any) {
-    console.error('Error in testModelAction:', error);
-    return { error: error.message || 'An unexpected error occurred while testing the model.' };
-  }
-}
-
-
-/**
- * Server Action to list available AI models.
- * @returns A promise that resolves to a `ListModelsResult` or an error object.
- */
-export async function listModelsAction(): Promise<ListModelsResult | ActionError> {
-  try {
-    const response = await listAvailableModels();
-    return response;
-  } catch (error: any) {
-    console.error('Error in listModelsAction:', error);
-    return { error: error.message || 'An unexpected error occurred while listing models.' };
   }
 }
