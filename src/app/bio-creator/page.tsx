@@ -242,7 +242,7 @@ function BioCreatorCore() {
 
       localStorage.setItem(LOCAL_STORAGE_KEY_JOB_MATCHER_FORM, JSON.stringify(dataToSave));
       toast({ title: 'Bio Ready!', description: 'Redirecting you to the Job Matcher...' });
-      router.push('/');
+      router.push('/job-matcher');
     } catch (e) {
       console.error('Failed to save bio for Job Matcher', e);
       toast({ variant: 'destructive', title: 'Could not load bio for Job Matcher.' });
@@ -311,6 +311,12 @@ function BioCreatorCore() {
           </div>
            <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center gap-2">
+              <Button asChild variant="link" className="text-primary-foreground/80 hover:text-primary-foreground">
+                  <Link href="/job-matcher">Job Matcher</Link>
+              </Button>
+              <Button asChild variant="link" className="text-primary-foreground/80 hover:text-primary-foreground">
+                  <Link href="/bio-creator">Bio Creator</Link>
+              </Button>
               <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
                   <DialogTrigger asChild>
                       <Button variant="outline" size="sm" disabled={!bio} aria-label="Save Bio">
