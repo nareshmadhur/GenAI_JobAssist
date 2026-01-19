@@ -23,8 +23,9 @@ import type { JobApplicationData } from '@/lib/schemas';
 import { ExpandableTextarea } from '@/components/expandable-textarea';
 import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { Bot, Wand2 } from 'lucide-react';
+import { Wand2, Sparkles } from 'lucide-react';
 import { BioCreatorModal } from './bio-creator-modal';
+import { exampleJobDescription, exampleBio } from '@/lib/example-data';
 
 /**
  * A component that renders the main input form for the application, including
@@ -38,6 +39,12 @@ export function InputForm(): JSX.Element {
   
   const handleBioUpdate = (newBio: string) => {
     formMethods.setValue('bio', newBio);
+  };
+
+  const handleLoadExample = () => {
+    formMethods.setValue('jobDescription', exampleJobDescription);
+    formMethods.setValue('bio', exampleBio);
+    formMethods.setValue('questions', '');
   };
 
   const bioCreatorTrigger = (
@@ -59,10 +66,18 @@ export function InputForm(): JSX.Element {
     <>
       <Card className="bg-card/80 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>Your Information</CardTitle>
-          <CardDescription className="prose-sm">
-            Provide your info, then choose what to generate from the actions below.
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle>Your Information</CardTitle>
+              <CardDescription className="prose-sm mt-1.5">
+                Provide your info, then choose what to generate from the actions below.
+              </CardDescription>
+            </div>
+             <Button variant="outline" size="sm" onClick={handleLoadExample} className="w-full sm:w-auto shrink-0">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Load Example
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Form {...formMethods}>
