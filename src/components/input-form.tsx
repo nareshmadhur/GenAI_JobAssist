@@ -26,6 +26,11 @@ import { Button } from './ui/button';
 import { Wand2, Sparkles } from 'lucide-react';
 import { BioCreatorModal } from './bio-creator-modal';
 import { exampleJobDescription, exampleBio } from '@/lib/example-data';
+import { Skeleton } from './ui/skeleton';
+
+interface InputFormProps {
+  isInitialLoading: boolean;
+}
 
 /**
  * A component that renders the main input form for the application, including
@@ -33,14 +38,17 @@ import { exampleJobDescription, exampleBio } from '@/lib/example-data';
  *
  * @returns {JSX.Element} The rendered input form.
  */
-export function InputForm(): JSX.Element {
+export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
   const { watch } = formMethods;
   const [isBioCreatorOpen, setIsBioCreatorOpen] = useState(false);
   
   const jobDescription = watch('jobDescription');
   const bio = watch('bio');
-  const showExampleLoader = !jobDescription && !bio;
+  
+  // Only show the loader if we're done with the initial load AND the fields are empty.
+  const showExampleLoader = !isInitialLoading && !jobDescription && !bio;
+
 
   const handleLoadExample = () => {
     formMethods.setValue('jobDescription', exampleJobDescription);
@@ -81,7 +89,13 @@ export function InputForm(): JSX.Element {
           </div>
         </CardHeader>
         <CardContent>
-          {showExampleLoader && (
+          {isInitialLoading ? (
+            <div className="space-y-6">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-24 w-full" />
+            </div>
+          ) : showExampleLoader ? (
             <div className="mb-8 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 p-6 text-center">
                 <div className="flex justify-center">
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -104,59 +118,62 @@ export function InputForm(): JSX.Element {
                     Load Example & Get Started
                 </Button>
             </div>
+          ) : null}
+
+          {!isInitialLoading && (
+            <Form {...formMethods}>
+              <form
+                onSubmit={(e) => e.preventDefault()}
+                className="space-y-6"
+              >
+                <FormField
+                  control={formMethods.control}
+                  name="jobDescription"
+                  render={({ field }) => (
+                    <ExpandableTextarea
+                      field={field}
+                      label="Job Description"
+                      placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
+                    />
+                  )}
+                />
+                <FormField
+                  control={formMethods.control}
+                  name="bio"
+                  render={({ field }) => (
+                    <ExpandableTextarea
+                      field={field}
+                      label="Your Bio / Resume"
+                      placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
+                      footer={bioCreatorTrigger}
+                    />
+                  )}
+                />
+                <FormField
+                  control={formMethods.control}
+                  name="questions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Specific Questions (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Have specific questions? Enter them here, one per line. The AI will answer them using your bio and the job description."
+                          className="min-h-[100px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription className="prose-sm">
+                        Use this to answer questions like "Why are you interested in
+                        this role?". If left blank, the AI will try to find
+                        questions in the job description.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </form>
+            </Form>
           )}
-          <Form {...formMethods}>
-            <form
-              onSubmit={(e) => e.preventDefault()}
-              className="space-y-6"
-            >
-              <FormField
-                control={formMethods.control}
-                name="jobDescription"
-                render={({ field }) => (
-                  <ExpandableTextarea
-                    field={field}
-                    label="Job Description"
-                    placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
-                  />
-                )}
-              />
-              <FormField
-                control={formMethods.control}
-                name="bio"
-                render={({ field }) => (
-                  <ExpandableTextarea
-                    field={field}
-                    label="Your Bio / Resume"
-                    placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
-                    footer={bioCreatorTrigger}
-                  />
-                )}
-              />
-              <FormField
-                control={formMethods.control}
-                name="questions"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Specific Questions (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Have specific questions? Enter them here, one per line. The AI will answer them using your bio and the job description."
-                        className="min-h-[100px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription className="prose-sm">
-                      Use this to answer questions like "Why are you interested in
-                      this role?". If left blank, the AI will try to find
-                      questions in the job description.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </form>
-          </Form>
         </CardContent>
       </Card>
       <BioCreatorModal

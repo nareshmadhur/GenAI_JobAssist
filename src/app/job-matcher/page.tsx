@@ -80,6 +80,7 @@ export default function JobMatcherPage() {
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
   const [queryCount, setQueryCount] = useState(0);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [isInitialFormLoad, setIsInitialFormLoad] = useState(true);
 
   
   const { toast } = useToast();
@@ -210,6 +211,8 @@ export default function JobMatcherPage() {
       }
     } catch (e) {
       console.error('Failed to load or parse data from localStorage', e);
+    } finally {
+        setIsInitialFormLoad(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formMethods]);
@@ -490,7 +493,7 @@ export default function JobMatcherPage() {
       <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-8 sm:p-6 md:p-8">
         <FormProvider {...formMethods}>
           <div className="flex flex-col gap-8">
-            <InputForm />
+            <InputForm isInitialLoading={isInitialFormLoad} />
             <div className="flex items-center justify-end gap-4">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
