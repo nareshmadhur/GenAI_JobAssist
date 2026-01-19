@@ -42,14 +42,14 @@ export function InputForm(): JSX.Element {
   const bio = watch('bio');
   const showExampleLoader = !jobDescription && !bio;
 
-  const handleBioUpdate = (newBio: string) => {
-    formMethods.setValue('bio', newBio);
-  };
-
   const handleLoadExample = () => {
     formMethods.setValue('jobDescription', exampleJobDescription);
     formMethods.setValue('bio', exampleBio);
     formMethods.setValue('questions', '');
+  };
+
+  const handleBioUpdate = (newBio: string) => {
+    formMethods.setValue('bio', newBio);
   };
 
   const bioCreatorTrigger = (
