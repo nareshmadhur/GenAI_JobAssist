@@ -35,8 +35,13 @@ import { exampleJobDescription, exampleBio } from '@/lib/example-data';
  */
 export function InputForm(): JSX.Element {
   const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
+  const { watch } = formMethods;
   const [isBioCreatorOpen, setIsBioCreatorOpen] = useState(false);
   
+  const jobDescription = watch('jobDescription');
+  const bio = watch('bio');
+  const showExampleLoader = !jobDescription && !bio;
+
   const handleBioUpdate = (newBio: string) => {
     formMethods.setValue('bio', newBio);
   };
@@ -73,13 +78,33 @@ export function InputForm(): JSX.Element {
                 Provide your info, then choose what to generate from the actions below.
               </CardDescription>
             </div>
-             <Button variant="outline" size="sm" onClick={handleLoadExample} className="w-full sm:w-auto shrink-0">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Load Example
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
+          {showExampleLoader && (
+            <div className="mb-8 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 p-6 text-center">
+                <div className="flex justify-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Sparkles className="h-6 w-6" />
+                    </div>
+                </div>
+                <h3 className="mt-4 text-lg font-semibold text-foreground">
+                    See the Magic Instantly
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+                    New here? Load a pre-filled example to see what AI Job Assist can do for you.
+                </p>
+                <Button 
+                    variant="default"
+                    size="sm" 
+                    onClick={handleLoadExample} 
+                    className="mt-4 animate-ring-pulse"
+                >
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Load Example & Get Started
+                </Button>
+            </div>
+          )}
           <Form {...formMethods}>
             <form
               onSubmit={(e) => e.preventDefault()}
