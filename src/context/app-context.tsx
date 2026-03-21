@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, {
@@ -8,9 +7,8 @@ import React, {
   useEffect,
   ReactNode,
   useTransition,
-  useCallback,
 } from 'react';
-import type { CoPilotMessage, SavedBio, SavedJob } from '@/lib/schemas';
+import type { CoPilotMessage, SavedRepository, SavedJob } from '@/lib/schemas';
 import { generateCoPilotResponse } from '@/ai/flows/generate-co-pilot-response';
 import { enrichCopilotPrompt } from '@/ai/flows/enrich-copilot-prompt';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +25,7 @@ import { useRouter } from 'next/navigation';
 import {
   getUserData,
   mergeLocalDataToFirestore,
-  updateSavedBios,
+  updateSavedRepositories,
   updateSavedJobs,
 } from '@/lib/firestore-service';
 
@@ -61,16 +59,16 @@ interface AppContextType {
   setToolContext: (context: ToolContext | null) => void;
   // New state for saved data
   savedJobs: SavedJob[];
-  savedBios: SavedBio[];
+  savedRepositories: SavedRepository[];
   setSavedJobs: (jobs: SavedJob[] | ((prev: SavedJob[]) => SavedJob[])) => void;
-  setSavedBios: (bios: SavedBio[] | ((prev: SavedBio[]) => SavedBio[])) => void;
+  setSavedRepositories: (repos: SavedRepository[] | ((prev: SavedRepository[]) => SavedRepository[])) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_KEY_COPILOT_CHAT = 'ai_job_assist_copilot_chat';
 const LOCAL_STORAGE_KEY_JOBS = 'ai_job_assist_saved_jobs';
-const LOCAL_STORAGE_KEY_BIOS = 'ai_job_assist_saved_bios';
+const LOCAL_STORAGE_KEY_REPOSITORIES = 'ai_job_assist_saved_repos_v2';
 
 const getFriendlyErrorMessage = (error: any): string => {
     if (!error || !error.message) {
@@ -101,7 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   // New state for saved data, to be synced with Firestore or localStorage
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
-  const [savedBios, setSavedBios] = useState<SavedBio[]>([]);
+  const [savedRepositories, setSavedRepositories] = useState<SavedRepository[]>([]);
 
 
   // Auth State
@@ -121,13 +119,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleSetSavedBios = (updater: SavedBio[] | ((prev: SavedBio[]) => SavedBio[])) => {
-    const newBios = typeof updater === 'function' ? updater(savedBios) : updater;
-    setSavedBios(newBios);
+  const handleSetSavedRepositories = (updater: SavedRepository[] | ((prev: SavedRepository[]) => SavedRepository[])) => {
+    const newRepos = typeof updater === 'function' ? updater(savedRepositories) : updater;
+    setSavedRepositories(newRepos);
     if (user) {
-      updateSavedBios(user.uid, newBios);
+      updateSavedRepositories(user.uid, newRepos);
     } else {
-      localStorage.setItem(LOCAL_STORAGE_KEY_BIOS, JSON.stringify(newBios));
+      localStorage.setItem(LOCAL_STORAGE_KEY_REPOSITORIES, JSON.stringify(newRepos));
     }
   };
 
@@ -139,18 +137,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // User is signed in, load/merge data from Firestore
         try {
           const localJobsRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOBS);
-          const localBiosRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIOS);
+          const localReposRaw = localStorage.getItem(LOCAL_STORAGE_KEY_REPOSITORIES);
           const localJobs = localJobsRaw ? JSON.parse(localJobsRaw) : [];
-          const localBios = localBiosRaw ? JSON.parse(localBiosRaw) : [];
+          const localRepos = localReposRaw ? JSON.parse(localReposRaw) : [];
           
-          const userData = await mergeLocalDataToFirestore(currentUser.uid, localJobs, localBios);
+          const userData = await mergeLocalDataToFirestore(currentUser.uid, localJobs, localRepos);
           
           setSavedJobs(userData.savedJobs);
-          setSavedBios(userData.savedBios);
+          setSavedRepositories(userData.savedRepositories || []);
 
           // Clear local storage after merging to avoid re-merging
           localStorage.removeItem(LOCAL_STORAGE_KEY_JOBS);
-          localStorage.removeItem(LOCAL_STORAGE_KEY_BIOS);
+          localStorage.removeItem(LOCAL_STORAGE_KEY_REPOSITORIES);
 
         } catch (error) {
           console.error("Failed to load or merge user data:", error);
@@ -160,13 +158,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // User is signed out, load data from localStorage
         try {
             const localJobsRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOBS);
-            const localBiosRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIOS);
+            const localReposRaw = localStorage.getItem(LOCAL_STORAGE_KEY_REPOSITORIES);
             setSavedJobs(localJobsRaw ? JSON.parse(localJobsRaw) : []);
-            setSavedBios(localBiosRaw ? JSON.parse(localBiosRaw) : []);
+            setSavedRepositories(localReposRaw ? JSON.parse(localReposRaw) : []);
         } catch (error) {
             console.error("Failed to load data from localStorage:", error);
             setSavedJobs([]);
-            setSavedBios([]);
+            setSavedRepositories([]);
         }
       }
       setAuthLoading(false);
@@ -220,7 +218,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             {
               author: 'assistant',
               content:
-                "Hello! I'm your Co-pilot. I can help you with your application. Try asking me to 'improve your bio' or 'generate a cover letter'.",
+                "Hello! I'm your Co-pilot. I can help you with your application. Try asking me to 'improve your work repository' or 'generate a cover letter'.",
             },
           ]);
         }
@@ -230,7 +228,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           {
             author: 'assistant',
             content:
-              "Hello! I'm your Co-pilot. I can help you with your application. Try asking me to 'improve your bio' or 'generate a cover letter'.",
+              "Hello! I'm your Co-pilot. I can help you with your application. Try asking me to 'improve your work repository' or 'generate a cover letter'.",
           },
         ]);
       }
@@ -267,7 +265,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           });
           return;
         }
-        const { bio, jobDescription } = toolContext.getFormFields();
+        const { workRepository, jobDescription } = toolContext.getFormFields();
 
         let finalEnrichedPrompt = enrichedPrompt;
         
@@ -276,7 +274,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const enrichmentResponse = await enrichCopilotPrompt({
                 chatHistory: history,
                 jobDescription,
-                bio,
+                workRepository,
             });
 
             if (enrichmentResponse.error) {
@@ -361,9 +359,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     handleCoPilotSubmit,
     setToolContext,
     savedJobs,
-    savedBios,
+    savedRepositories,
     setSavedJobs: handleSetSavedJobs,
-    setSavedBios: handleSetSavedBios,
+    setSavedRepositories: handleSetSavedRepositories,
   };
   
   const authContextValue = {

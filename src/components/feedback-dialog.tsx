@@ -1,4 +1,3 @@
-
 'use client';
 
 import { CheckCircle2, Loader2, MessageSquareHeart } from 'lucide-react';
@@ -20,7 +19,7 @@ import { Label } from './ui/label';
 
 interface FeedbackDialogProps {
   jobDescription: string;
-  bio: string;
+  workRepository: string;
   lastGeneratedOutput: string;
 }
 
@@ -36,7 +35,7 @@ const GOOGLE_FORM_URL =
  */
 export function FeedbackDialog({
   jobDescription,
-  bio,
+  workRepository,
   lastGeneratedOutput,
 }: FeedbackDialogProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -114,8 +113,8 @@ export function FeedbackDialog({
                 name="entry.685011891"
                 value={jobDescription}
               />
-              {/* Bio */}
-              <input type="hidden" name="entry.1458936165" value={bio} />
+              {/* Work Repository */}
+              <input type="hidden" name="entry.1458936165" value={workRepository} />
               {/* Generated Output */}
               <input
                 type="hidden"
@@ -151,7 +150,7 @@ export function FeedbackDialog({
                   htmlFor="include-data"
                   className="text-sm text-muted-foreground"
                 >
-                  Include job description & bio for better context.
+                  Include job description & work repository for better context.
                 </Label>
               </div>
 
@@ -164,7 +163,6 @@ export function FeedbackDialog({
         </DialogContent>
       </Dialog>
       <iframe
-        ref={iframeRef}
         name="feedback-iframe"
         onLoad={handleIframeLoad}
         style={{ display: 'none' }}

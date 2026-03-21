@@ -23,11 +23,11 @@ import type { JobApplicationData } from '@/lib/schemas';
 import { ExpandableTextarea } from '@/components/expandable-textarea';
 import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { Wand2, Sparkles, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { Wand2, Sparkles, Link as LinkIcon, Loader2, ClipboardPaste, ClipboardCheck, Trash2 } from 'lucide-react';
 import { BioCreatorModal } from './bio-creator-modal';
-import { exampleJobDescription, exampleBio } from '@/lib/example-data';
+import { exampleJobDescription, exampleWorkRepository } from '@/lib/example-data';
 import { Skeleton } from './ui/skeleton';
-import { extractUrlTextAction } from '@/app/actions';
+import { extractUrlTextAction, prettifyWorkRepositoryAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 
 interface InputFormProps {
@@ -48,24 +48,102 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   const { toast } = useToast();
   
   const jobDescription = watch('jobDescription');
-  const bio = watch('bio');
+  const workRepository = watch('workRepository');
+  const questions = watch('questions');
+  
+  const [isPrettifying, setIsPrettifying] = useState(false);
+  const [isPasting, setIsPasting] = useState<string | null>(null);
   
   // Only show the loader if we're done with the initial load AND the fields are empty.
-  const showExampleLoader = !isInitialLoading && !jobDescription && !bio;
+  const showExampleLoader = !isInitialLoading && !jobDescription && !workRepository;
 
 
   const handleLoadExample = () => {
     formMethods.setValue('jobDescription', exampleJobDescription);
-    formMethods.setValue('bio', exampleBio);
+    formMethods.setValue('workRepository', exampleWorkRepository);
     formMethods.setValue('questions', '');
   };
 
-  const handleBioUpdate = (newBio: string) => {
-    formMethods.setValue('bio', newBio);
+  const handleRepositoryUpdate = (newText: string) => {
+    formMethods.setValue('workRepository', newText);
   };
 
-  const bioCreatorTrigger = (
-    <div className='flex justify-end'>
+  const handlePaste = async (fieldName: keyof Omit<JobApplicationData, 'generationType'>) => {
+    try {
+      setIsPasting(fieldName);
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        formMethods.setValue(fieldName, text);
+        toast({
+          title: 'Pasted!',
+          description: `Successfully pasted content into ${fieldName === 'workRepository' ? 'Work Repository' : fieldName === 'jobDescription' ? 'Job Description' : 'Questions'}.`,
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Paste Failed',
+        description: 'Please ensure you have granted clipboard permissions.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPasting(null);
+    }
+  };
+
+  const handlePrettify = async () => {
+    const currentText = formMethods.getValues('workRepository').trim();
+    if (currentText.length < 20) {
+      toast({
+        title: 'Too Short',
+        description: 'Please provide more details in your repository to prettify.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsPrettifying(true);
+    const result = await prettifyWorkRepositoryAction(currentText);
+    setIsPrettifying(false);
+
+    if (result.error) {
+      toast({
+        title: 'Prettify Failed',
+        description: result.error,
+        variant: 'destructive',
+      });
+    } else if (result.text) {
+      formMethods.setValue('workRepository', result.text);
+      toast({
+        title: 'Structure Optimized',
+        description: 'Your work repository has been professionally structured.',
+      });
+    }
+  };
+
+  const repositoryTriggers = (
+    <div className='flex items-center justify-end gap-2'>
+        <Button 
+            type="button" 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => handlePaste('workRepository')}
+            disabled={isPasting === 'workRepository'}
+            className="-mt-2 text-muted-foreground hover:text-primary"
+        >
+            <ClipboardPaste className="mr-2 h-4 w-4" />
+            Paste
+        </Button>
+        <Button 
+            type="button" 
+            variant="secondary" 
+            size="sm" 
+            onClick={handlePrettify}
+            disabled={isPrettifying}
+            className="-mt-2"
+        >
+            {isPrettifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            Prettify & Structure
+        </Button>
         <Button 
             type="button" 
             variant="outline" 
@@ -74,24 +152,22 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
             className="-mt-2"
         >
             <Wand2 className="mr-2 h-4 w-4" />
-            Launch AI Bio Assistant
+            AI Assistant
         </Button>
     </div>
   );
 
   const handleExtractUrl = async () => {
-    const currentText = formMethods.getValues('jobDescription').trim();
-    if (!currentText.startsWith('http')) {
-      toast({
-        title: 'Invalid URL',
-        description: 'Please paste a valid URL (starting with http/https) into the Job Description field first.',
-        variant: 'destructive',
-      });
-      return;
+    let url = formMethods.getValues('jobDescription').trim();
+    
+    if (!url.startsWith('http')) {
+      const promptedUrl = window.prompt('Please paste the Job URL here:');
+      if (!promptedUrl || !promptedUrl.startsWith('http')) return;
+      url = promptedUrl;
     }
     
     setIsExtractingUrl(true);
-    const result = await extractUrlTextAction(currentText);
+    const result = await extractUrlTextAction(url);
     setIsExtractingUrl(false);
 
     if (result.error) {
@@ -110,7 +186,18 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   };
 
   const urlExtractorTrigger = (
-    <div className='flex justify-end'>
+    <div className='flex items-center justify-end gap-2'>
+        <Button 
+            type="button" 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => handlePaste('jobDescription')}
+            disabled={isPasting === 'jobDescription'}
+            className="-mt-2 text-muted-foreground hover:text-primary"
+        >
+            <ClipboardPaste className="mr-2 h-4 w-4" />
+            Paste J.D.
+        </Button>
         <Button 
             type="button" 
             variant="outline" 
@@ -185,18 +272,27 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
                       label="Job Description"
                       placeholder="Paste the full job description text or a URL here. If pasting a URL, click 'Extract from URL' below."
                       footer={urlExtractorTrigger}
+                      onAction={handleExtractUrl}
+                      isActionLoading={isExtractingUrl}
+                      actionLabel="Extract from URL"
+                      actionIcon={<LinkIcon className="mr-2 h-4 w-4" />}
+                      showTabs={false}
                     />
                   )}
                 />
                 <FormField
                   control={formMethods.control}
-                  name="bio"
+                  name="workRepository"
                   render={({ field }) => (
                     <ExpandableTextarea
                       field={field}
-                      label="Your Bio / Resume"
-                      placeholder="Provide your detailed bio or paste your resume. The more details, the better the result!"
-                      footer={bioCreatorTrigger}
+                      label="Work Repository (Experience & Skills)"
+                      placeholder="Paste your raw resume or work history here. Click 'Prettify' to let AI structure it professionally."
+                      footer={repositoryTriggers}
+                      onAction={handlePrettify}
+                      isActionLoading={isPrettifying}
+                      actionLabel="AI Prettify"
+                      actionIcon={<Sparkles className="mr-2 h-4 w-4 text-amber-500" />}
                     />
                   )}
                 />
@@ -205,18 +301,29 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
                   name="questions"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Specific Questions (Optional)</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Specific Questions (Optional)</FormLabel>
+                        <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handlePaste('questions')}
+                            disabled={isPasting === 'questions'}
+                            className="h-8 text-[10px] uppercase font-bold tracking-wider text-muted-foreground hover:text-primary"
+                        >
+                            <ClipboardPaste className="mr-2 h-3 w-3" />
+                            Paste
+                        </Button>
+                      </div>
                       <FormControl>
                         <Textarea
-                          placeholder="Have specific questions? Enter them here, one per line. The AI will answer them using your bio and the job description."
-                          className="min-h-[100px]"
+                          placeholder="Have specific questions? Enter them here, one per line."
+                          className="min-h-[100px] rounded-xl border-muted-foreground/20 bg-background/50 focus:bg-background transition-colors"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription className="prose-sm">
-                        Use this to answer questions like "Why are you interested in
-                        this role?". If left blank, the AI will try to find
-                        questions in the job description.
+                        Use this to answer specific application questions. If left blank, the AI will scan the J.D. for you.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -230,8 +337,8 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
       <BioCreatorModal
         isOpen={isBioCreatorOpen}
         onOpenChange={setIsBioCreatorOpen}
-        initialBio={formMethods.getValues('bio')}
-        onBioUpdate={handleBioUpdate}
+        initialWorkRepository={formMethods.getValues('workRepository')}
+        onWorkRepositoryUpdate={handleRepositoryUpdate}
       />
     </>
   );

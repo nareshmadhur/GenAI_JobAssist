@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Wand2, Loader2 } from 'lucide-react';
@@ -43,11 +42,11 @@ export function RevisionForm({
   onRevision,
 }: RevisionFormProps): JSX.Element {
   const [isRevising, startRevising] = useTransition();
-  // Get the main form's context to access bio and job description
+  // Get the main form's context to access workRepository and job description
   const mainForm = useFormContext<Omit<JobApplicationData, 'generationType'>>();
 
-  const revisionForm = useForm<Omit<ReviseResponseData, 'jobDescription' | 'bio'>>({
-    resolver: zodResolver(ReviseResponseSchema.omit({ jobDescription: true, bio: true })),
+  const revisionForm = useForm<Omit<ReviseResponseData, 'jobDescription' | 'workRepository'>>({
+    resolver: zodResolver(ReviseResponseSchema.omit({ jobDescription: true, workRepository: true })),
     defaultValues: {
       revisionComments: '',
       originalResponse: currentResponse,
@@ -62,14 +61,14 @@ export function RevisionForm({
 
   /**
    * Handles the submission of the revision form.
-   * @param {Omit<ReviseResponseData, 'jobDescription' | 'bio'>} data - The form data.
+   * @param {Omit<ReviseResponseData, 'jobDescription' | 'workRepository'>} data - The form data.
    */
-  async function onRevise(data: Omit<ReviseResponseData, 'jobDescription' | 'bio'>) {
-    const { jobDescription, bio } = mainForm.getValues();
+  async function onRevise(data: Omit<ReviseResponseData, 'jobDescription' | 'workRepository'>) {
+    const { jobDescription, workRepository } = mainForm.getValues();
     const fullData: ReviseResponseData = {
       ...data,
       jobDescription,
-      bio,
+      workRepository,
     };
 
     startRevising(async () => {

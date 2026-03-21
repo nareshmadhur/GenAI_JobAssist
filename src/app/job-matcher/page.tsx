@@ -16,9 +16,10 @@ import {
   LogOut,
   Sparkles,
   MoreVertical,
+  List,
 } from 'lucide-react';
 import Link from 'next/link';
-import React, { useEffect, useRef, useState, useTransition, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useTransition, useCallback, Suspense } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 
 import {
@@ -58,7 +59,7 @@ import type { JobApplicationData, SavedJob } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export type GenerationType =
   | 'coverLetter'
@@ -72,7 +73,7 @@ const LOCAL_STORAGE_KEY_FORM = 'ai_job_assist_form_data';
 const LOCAL_STORAGE_KEY_QUERY_COUNT = 'ai_job_assist_query_count';
 const FREE_QUERY_LIMIT = 5;
 
-export default function JobMatcherPage() {
+function JobMatcherContent() {
   const [isGenerating, startGenerating] = useTransition();
   const [isSaving, startSaving] = useTransition();
   const [activeView, setActiveView] = useState<ActiveView>('none');
@@ -93,10 +94,12 @@ export default function JobMatcherPage() {
     savedJobs,
     setSavedJobs,
   } = useAppContext();
+  const searchParams = useSearchParams();
+  const jobId = searchParams.get('jobId');
 
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
     resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
-    defaultValues: { jobDescription: '', bio: '', questions: '' },
+    defaultValues: { jobDescription: '', workRepository: '', questions: '' },
   });
 
   // Load query count from localStorage on mount
@@ -116,11 +119,11 @@ export default function JobMatcherPage() {
       return;
     }
     
-    formMethods.trigger(['jobDescription', 'bio']).then((isValid) => {
+    formMethods.trigger(['jobDescription', 'workRepository']).then((isValid) => {
       if (!isValid) {
         toast({
           variant: 'destructive',
-          title: 'Please fill out both Job Description and Bio fields.',
+          title: 'Please fill out both Job Description and Work Repository fields.',
         });
         return;
       }
@@ -202,7 +205,7 @@ export default function JobMatcherPage() {
         const parsedData = JSON.parse(savedData);
         formMethods.reset({
           jobDescription: parsedData.jobDescription || '',
-          bio: parsedData.bio || '',
+          workRepository: parsedData.workRepository || parsedData.bio || '',
           questions: parsedData.questions || '',
         });
         if (parsedData.allResults) {
@@ -222,7 +225,7 @@ export default function JobMatcherPage() {
       try {
         const dataToSave = {
           jobDescription: value.jobDescription,
-          bio: value.bio,
+          workRepository: value.workRepository,
           questions: value.questions,
           allResults: allResults,
         };
@@ -243,8 +246,19 @@ export default function JobMatcherPage() {
     }
   }, [activeView]);
 
+  // Handle loading job from URL param
+  useEffect(() => {
+    if (jobId && savedJobs.length > 0 && isInitialFormLoad) {
+      const jobToLoad = savedJobs.find(j => j.id === jobId);
+      if (jobToLoad) {
+        handleLoadJob(jobToLoad);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId, savedJobs, isInitialFormLoad]);
+
   const handleClear = () => {
-    formMethods.reset({ jobDescription: '', bio: '', questions: '' });
+    formMethods.reset({ jobDescription: '', workRepository: '', questions: '' });
     setAllResults({});
     setActiveView('none');
     setGenerationError(null);
@@ -274,7 +288,7 @@ export default function JobMatcherPage() {
       }
 
       startSaving(async () => {
-        const { jobDescription, bio, questions } = formMethods.getValues();
+        const { jobDescription, workRepository, questions } = formMethods.getValues();
         const detailsResponse = await extractJobDetailsAction({
             jobDescription,
         });
@@ -291,25 +305,25 @@ export default function JobMatcherPage() {
         const newSavedJob: SavedJob = {
             id: crypto.randomUUID(),
             ...detailsResponse,
-            formData: { jobDescription, bio, questions },
+            formData: { jobDescription, workRepository, questions },
             allResults,
             savedAt: new Date().toISOString(),
+            status: 'draft',
         };
 
         setSavedJobs(prev => [newSavedJob, ...prev]);
 
         toast({
-            title: 'Job Saved!',
-            description: `${newSavedJob.jobTitle} at ${newSavedJob.companyName} has been saved.`,
+            title: 'Application Saved to Tracker!',
+            description: (
+              <div className="mt-1 flex flex-col gap-3">
+                <p className="text-sm">"{newSavedJob.jobTitle}" has been added to your application pipeline.</p>
+                <Button asChild variant="secondary" size="sm" className="w-fit h-8 px-3 text-xs">
+                  <Link href="/admin">Go to Application Tracker</Link>
+                </Button>
+              </div>
+            ),
         });
-
-        formMethods.reset({
-            jobDescription: '',
-            bio: formMethods.getValues('bio'),
-            questions: '',
-        });
-        setAllResults({});
-        setActiveView('none');
       });
     });
   };
@@ -339,7 +353,7 @@ export default function JobMatcherPage() {
     toast({ title: 'Job Deleted' });
   };
 
-  const { jobDescription, bio } = formMethods.getValues();
+  const { jobDescription, workRepository } = formMethods.getValues();
 
   const getLastGeneratedOutput = (): string => {
     if (activeView === 'none' || !allResults[activeView]) return '';
@@ -358,26 +372,38 @@ export default function JobMatcherPage() {
       generationType: GenerationType,
       icon: React.ElementType,
       label: string
-  }) => (
+  }) => {
+      const hasResult = !!allResults[generationType];
+      return (
       <Card
           onClick={() => handleGeneration(generationType)}
           data-active={activeView === generationType}
           className={cn(
-            'group cursor-pointer text-center transition-all duration-200 hover:shadow-lg hover:-translate-y-1 bg-card/60 dark:bg-card-alt',
-            'data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-lg data-[active=true]:-translate-y-1'
+            'relative overflow-hidden group cursor-pointer transition-all duration-300 hover:shadow-md bg-card/60 backdrop-blur-sm border-muted-foreground/10',
+            'data-[active=true]:bg-primary/5 data-[active=true]:border-primary/50 data-[active=true]:shadow-primary/5'
           )}
       >
-        <div className="flex flex-col items-center justify-center gap-2 p-4">
-          <Icon className="h-6 w-6 text-accent transition-colors group-data-[active=true]:text-primary-foreground" />
-          <span className="font-semibold text-sm">{label}</span>
+        <div className="flex items-center gap-4 p-4 lg:p-5">
+          <div className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+            activeView === generationType ? "bg-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary",
+            hasResult && activeView !== generationType && "bg-success/10 text-success"
+          )}>
+            <Icon className="h-5 w-5" />
+          </div>
+          <div className="flex flex-col flex-1 text-left">
+            <span className={cn(
+                "font-semibold text-sm transition-colors",
+                activeView === generationType ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+            )}>{label}</span>
+            {hasResult && <span className="text-[10px] uppercase tracking-wider text-success font-bold mt-1">Ready</span>}
+          </div>
           {isGenerating && activeView === generationType && (
-              <div className="absolute inset-0 flex items-center justify-center bg-card/80">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
+              <Loader2 className="h-5 w-5 animate-spin text-primary ml-2" />
           )}
         </div>
       </Card>
-  );
+  )};
 
   return (
     <div className="flex flex-1 flex-col bg-muted/20">
@@ -392,7 +418,7 @@ export default function JobMatcherPage() {
                 AI Job Assist
               </h1>
               <div className="text-xs text-primary-foreground/80">
-                Job Matcher
+                Application Studio
               </div>
             </div>
           </div>
@@ -404,11 +430,10 @@ export default function JobMatcherPage() {
                   <span>{Math.max(0, FREE_QUERY_LIMIT - queryCount)} Free Queries Left</span>
                 </div>
               )}
-              <Button
-                variant="outline"
-                onClick={() => setIsCoPilotSidebarOpen(true)}
-              >
-                <Bot className="mr-2 h-4 w-4" /> Co-pilot
+              <Button asChild variant="outline" className="hidden lg:flex">
+                <Link href="/admin">
+                  <List className="mr-2 h-4 w-4" /> Application Tracker
+                </Link>
               </Button>
               {authLoading ? (
                 <Button variant="outline" size="icon" disabled>
@@ -425,6 +450,12 @@ export default function JobMatcherPage() {
                     <DropdownMenuLabel>My Account</DropdownMenuLabel>
                     <DropdownMenuItem disabled>{user.email}</DropdownMenuItem>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin">
+                        <List className="mr-2 h-4 w-4" /> Application Tracker
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={logout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
@@ -439,7 +470,7 @@ export default function JobMatcherPage() {
               <ThemeToggleButton />
               <FeedbackDialog
                 jobDescription={jobDescription}
-                bio={bio}
+                workRepository={workRepository}
                 lastGeneratedOutput={getLastGeneratedOutput()}
               />
             </div>
@@ -452,9 +483,6 @@ export default function JobMatcherPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setIsCoPilotSidebarOpen(true)}>
-                    <Bot className="mr-2 h-4 w-4" /> Co-pilot
-                  </DropdownMenuItem>
                   {authLoading ? (
                     <DropdownMenuItem disabled>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
@@ -474,7 +502,7 @@ export default function JobMatcherPage() {
                   <DropdownMenuItem>
                     <FeedbackDialog
                       jobDescription={jobDescription}
-                      bio={bio}
+                      workRepository={workRepository}
                       lastGeneratedOutput={getLastGeneratedOutput()}
                     />
                      <span className="ml-2">Give Feedback</span>
@@ -531,6 +559,7 @@ export default function JobMatcherPage() {
                 onClick={handleSaveJob}
                 disabled={isSaving || !user}
                 aria-label="Save Job"
+                className="shadow-sm shadow-primary/10"
               >
                 {isSaving ? (
                   <Loader2 className="mr-2 animate-spin" />
@@ -539,45 +568,59 @@ export default function JobMatcherPage() {
                 )}
                 Save Job
               </Button>
-            </div>
-
-            <div className="w-full">
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                    <ActionButton generationType="coverLetter" icon={FileText} label="Cover Letter" />
-                    <ActionButton generationType="cv" icon={Briefcase} label="CV" />
-                    <ActionButton generationType="deepAnalysis" icon={Lightbulb} label="Analysis" />
-                    <ActionButton generationType="qAndA" icon={MessageSquareMore} label="Q & A" />
-                </div>
-            </div>
-
-            <div ref={outputRef} className="pt-8">
-              {activeView !== 'none' && (
-                <OutputView
-                  activeView={activeView}
-                  setActiveView={setActiveView}
-                  allResults={allResults}
-                  setAllResults={setAllResults}
-                  isGenerating={isGenerating}
-                  generationError={generationError}
-                  onRetry={() => handleGeneration(activeView as GenerationType)}
-                />
+              {savedJobs.length > 0 && (
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary hover:bg-primary/5"
+                >
+                  <Link href="/admin">
+                    <List className="mr-2 h-4 w-4" /> Go to Tracker
+                  </Link>
+                </Button>
               )}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4">
+              <div className="lg:col-span-4 flex flex-col gap-4">
+                <div className="mb-2">
+                  <h3 className="font-headline text-xl font-bold text-foreground">Application Studio</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Select an artifact below to generate it using your supplied details.</p>
+                </div>
+                <ActionButton generationType="cv" icon={Briefcase} label="ATS-Optimized Resume" />
+                <ActionButton generationType="coverLetter" icon={FileText} label="Tailored Cover Letter" />
+                <ActionButton generationType="qAndA" icon={MessageSquareMore} label="Interview Simulator" />
+                <ActionButton generationType="deepAnalysis" icon={Lightbulb} label="Strategic Role Analysis" />
+              </div>
+
+              <div ref={outputRef} className="lg:col-span-8">
+                {activeView !== 'none' ? (
+                  <OutputView
+                    activeView={activeView}
+                    setActiveView={setActiveView}
+                    allResults={allResults}
+                    setAllResults={setAllResults}
+                    isGenerating={isGenerating}
+                    generationError={generationError}
+                    onRetry={() => handleGeneration(activeView as GenerationType)}
+                  />
+                ) : (
+                  <div className="flex h-full min-h-[400px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-muted-foreground/20 bg-card/30 p-8 text-center transition-colors hover:border-primary/30 hover:bg-card/50">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/5 text-primary/40 mb-6">
+                      <Bot className="h-10 w-10" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground tracking-tight">Ready to Build</h3>
+                    <p className="text-base text-muted-foreground max-w-sm mt-3">Provide your target job description and work repository, then select an artifact from the studio menu to begin generation.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </FormProvider>
       </main>
 
-      {savedJobs.length > 0 && (
-        <section className="w-full border-t bg-muted/60 py-8">
-          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8">
-            <SavedJobsCarousel
-              savedJobs={savedJobs}
-              onLoadJob={handleLoadJob}
-              onDeleteJob={handleDeleteJob}
-            />
-          </div>
-        </section>
-      )}
+
       
       <AlertDialog open={showLoginPrompt} onOpenChange={setShowLoginPrompt}>
         <AlertDialogContent>
@@ -596,5 +639,17 @@ export default function JobMatcherPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function JobMatcherPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <JobMatcherContent />
+    </Suspense>
   );
 }

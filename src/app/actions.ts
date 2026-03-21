@@ -15,6 +15,7 @@ import { fetchAndExtractTextFromUrl } from '@/lib/extract-url';
 import { reviseCvField, type ReviseCvFieldInput, type ReviseCvFieldOutput } from '@/ai/flows/revise-cv-field';
 import { fillQaGap, type FillQaGapInput, type FillQaGapOutput } from '@/ai/flows/fill-qa-gap';
 import { generateLearningPath, type GenerateLearningPathInput, type GenerateLearningPathOutput } from '@/ai/flows/generate-learning-path';
+import { prettifyWorkRepository } from '@/ai/flows/prettify-work-repository';
 
 import type {
   BioCompletenessOutput,
@@ -53,7 +54,7 @@ export type AllGenerationResults = {
 
 const SingleGenerationSchema = JobApplicationSchema.pick({
   jobDescription: true,
-  bio: true,
+  workRepository: true,
   generationType: true,
   questions: true,
 });
@@ -75,28 +76,28 @@ export async function generateAction(
       .join(' ');
     return { error: errorMessage || 'Invalid input.' };
   }
-  const { jobDescription, bio, generationType, questions } =
+  const { jobDescription, workRepository, generationType, questions } =
     validationResult.data;
 
   try {
     let response;
     switch (generationType) {
       case 'cv':
-        response = await generateCv({ jobDescription, userBio: bio });
+        response = await generateCv({ jobDescription, workRepository });
         break;
       case 'deepAnalysis':
-        response = await generateDeepAnalysis({ jobDescription, userBio: bio });
+        response = await generateDeepAnalysis({ jobDescription, workRepository });
         break;
       case 'qAndA':
         response = await generateQAndA({
           jobDescription,
-          userBio: bio,
+          workRepository,
           questions: questions || '',
         });
         break;
       case 'coverLetter':
       default:
-        response = await generateCoverLetter({ jobDescription, userBio: bio });
+        response = await generateCoverLetter({ jobDescription, workRepository });
         break;
     }
     return response;
@@ -199,6 +200,25 @@ export async function extractUrlTextAction(url: string): Promise<{ text?: string
   } catch (error: any) {
     console.error('Error in extractUrlTextAction:', error);
     return { error: error.message || 'Could not extract text from URL.' };
+  }
+}
+
+/**
+ * Server Action to prettify a work repository using AI.
+ * 
+ * @param rawText - The raw text to prettify.
+ * @returns A promise that resolves to the prettified text or an error.
+ */
+export async function prettifyWorkRepositoryAction(rawText: string): Promise<{ text?: string; error?: string }> {
+  if (!rawText || rawText.length < 20) {
+    return { error: 'Please provide more details to prettify.' };
+  }
+  try {
+    const result = await prettifyWorkRepository({ rawText });
+    return { text: result.structuredText };
+  } catch (error: any) {
+    console.error('Error in prettifyWorkRepositoryAction:', error);
+    return { error: error.message || 'Could not prettify text.' };
   }
 }
 

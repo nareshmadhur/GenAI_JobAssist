@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: 'Allow AI to boost your job application productivity',
 };
 
+import { CoPilotFab } from '@/components/co-pilot-fab';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -62,6 +64,7 @@ export default function RootLayout({
                 </footer>
             </div>
             <CoPilotSidebar />
+            <CoPilotFab />
             <Toaster />
             </ThemeProvider>
         </AppProvider>

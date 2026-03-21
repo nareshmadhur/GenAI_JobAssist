@@ -15,16 +15,16 @@ const FilterBioInformationInputSchema = z.object({
   jobDescription: z
     .string()
     .describe('The job description, either as a URL or pasted text.'),
-  bio: z.string().describe('The user\s detailed bio.'),
+  workRepository: z.string().describe('The user\s detailed work repository.'),
 });
 export type FilterBioInformationInput = z.infer<
   typeof FilterBioInformationInputSchema
 >;
 
 const FilterBioInformationOutputSchema = z.object({
-  filteredBio: z
+  filteredWorkRepository: z
     .string()
-    .describe('The user\s bio, filtered to include only the most relevant information for the job description.'),
+    .describe('The user\s work repository, filtered to include only the most relevant information for the job description.'),
   relevantInterests: z
     .string()
     .describe('A summary of the most relevant interests of the employer, as inferred from the job description.'),
@@ -43,21 +43,21 @@ const prompt = ai.definePrompt({
   name: 'filterBioInformationPrompt',
   input: {schema: FilterBioInformationInputSchema},
   output: {schema: FilterBioInformationOutputSchema},
-  prompt: `You are an expert career advisor. Your task is to analyze a job description and a user's bio, and then filter the bio to only include the most relevant information for the job description.
+  prompt: `You are an expert career advisor. Your task is to analyze a job description and a user's work repository, and then filter the repository to only include the most relevant information for the job description.
 
 Job Description: {{{jobDescription}}}
 
-User Bio: {{{bio}}}
+User Work Repository: {{{workRepository}}}
 
-First, summarize the most relevant interests and priorities of the employer based on the job description.  Pay attention to the tone, structure, and layout of the job description.  Identify repeated phrases, keywords, and any inferred values of the company.
+First, summarize the most relevant interests and priorities of the employer based on the job description. Pay attention to the tone, structure, and layout of the job description. Identify repeated phrases, keywords, and any inferred values of the company.
 
-Then, filter the user's bio to only include the information that is most relevant to the job description. Rephrase the user's bio to match the tone and style of the job description, without fabricating any information.
+Then, filter the user's work repository to only include the information that is most relevant to the job description. Rephrase the user's repository content to match the tone and style of the job description, without fabricating any information.
 
-Return the filtered bio and the summary of the employer's interests in a structured format.
+Return the filtered repository content and the summary of the employer's interests in a structured format.
 
 Output:
 Relevant Interests: {{output.relevantInterests}}
-Filtered Bio: {{output.filteredBio}}`,
+Filtered Work Repository: {{output.filteredWorkRepository}}`,
 });
 
 const filterBioInformationFlow = ai.defineFlow(

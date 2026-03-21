@@ -13,7 +13,7 @@ import {z} from 'genkit';
 
 const DeepAnalysisInputSchema = z.object({
   jobDescription: z.string().describe('The job description to analyze.'),
-  userBio: z.string().describe("The user's detailed bio."),
+  workRepository: z.string().describe("The user's detailed work repository."),
 });
 export type DeepAnalysisInput = z.infer<typeof DeepAnalysisInputSchema>;
 
@@ -89,8 +89,8 @@ const prompt = ai.definePrompt({
 Job Description:
 {{{jobDescription}}}
 
-User Bio:
-{{{userBio}}}
+User Work Repository:
+{{{workRepository}}}
 
 Generate the deep analysis now in the structured format requested.`,
 });

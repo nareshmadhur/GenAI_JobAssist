@@ -3,12 +3,12 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const GenerateLearningPathSchema = z.object({
+const GenerateLearningPathSchema = z.object({
   jobDescription: z.string(),
   missingRequirement: z.string(),
 });
 
-export const GenerateLearningPathOutputSchema = z.object({
+const GenerateLearningPathOutputSchema = z.object({
   learningPath: z.string()
 });
 

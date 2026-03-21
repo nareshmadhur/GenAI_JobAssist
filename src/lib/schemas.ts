@@ -7,10 +7,10 @@ export const JobApplicationSchema = z.object({
   jobDescription: z
     .string()
     .min(50, { message: 'Job description must be at least 50 characters long.' }),
-  bio: z
+  workRepository: z
     .string()
     .min(100, {
-      message: 'Your bio must be at least 100 characters long to provide enough detail.',
+      message: 'Your work repository must be at least 100 characters long to provide enough detail.',
     }),
   questions: z.string().optional(),
   generationType: z.enum(['coverLetter', 'cv', 'deepAnalysis', 'qAndA']),
@@ -45,7 +45,7 @@ export type QAndAOutput = z.infer<typeof QAndAOutputSchema>;
 // Schema for the revision flow
 export const ReviseResponseSchema = z.object({
   jobDescription: z.string(),
-  bio: z.string(),
+  workRepository: z.string(),
   originalResponse: z
     .string()
     .describe(
@@ -101,21 +101,24 @@ export const JobDetailsOutputSchema = z.object({
 export type JobDetailsOutput = z.infer<typeof JobDetailsOutputSchema>;
 
 
+export type JobStatus = 'draft' | 'applied' | 'interviewing' | 'offer' | 'rejected';
+
 // Schema for a saved job in localStorage
 export interface SavedJob {
   id: string;
   companyName: string;
   jobTitle: string;
+  status?: JobStatus;
   formData: Omit<JobApplicationData, 'generationType'>;
   allResults: AllGenerationResults;
   savedAt: string;
 }
 
-// Schema for a saved bio
-export interface SavedBio {
+// Schema for a saved repository
+export interface SavedRepository {
   id: string;
   name: string;
-  bio: string;
+  workRepository: string;
   savedAt: string;
 }
 
@@ -144,7 +147,7 @@ export type CoPilotOutput = z.infer<typeof CoPilotOutputSchema>;
 
 // Schemas for bio completeness analysis
 export const BioCompletenessInputSchema = z.object({
-  bio: z.string(),
+  workRepository: z.string(),
 });
 export type BioCompletenessInput = z.infer<typeof BioCompletenessInputSchema>;
 
@@ -167,7 +170,7 @@ export type BioChatMessage = z.infer<typeof BioChatMessageSchema>;
 
 export const BioChatInputSchema = z.object({
     chatHistory: z.array(BioChatMessageSchema),
-    currentBio: z.string(),
+    currentWorkRepository: z.string(),
 });
 
 export const BioChatOutputSchema = z.object({

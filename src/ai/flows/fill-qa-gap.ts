@@ -3,13 +3,13 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const FillQaGapSchema = z.object({
+const FillQaGapSchema = z.object({
   jobDescription: z.string(),
   question: z.string(),
   userContext: z.string(),
 });
 
-export const FillQaGapOutputSchema = z.object({
+const FillQaGapOutputSchema = z.object({
   answer: z.string()
 });
 

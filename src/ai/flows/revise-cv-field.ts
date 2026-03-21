@@ -3,13 +3,13 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const ReviseCvFieldSchema = z.object({
+const ReviseCvFieldSchema = z.object({
   originalText: z.string(),
   instruction: z.string().optional(),
   fieldName: z.string(),
 });
 
-export const ReviseCvFieldOutputSchema = z.object({
+const ReviseCvFieldOutputSchema = z.object({
   revisedText: z.string()
 });
 

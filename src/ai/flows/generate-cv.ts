@@ -16,7 +16,7 @@ import { CvOutputSchema } from '@/lib/schemas';
 
 const CvInputSchema = z.object({
   jobDescription: z.string().describe('The job description to tailor the CV for.'),
-  userBio: z.string().describe("The user's detailed bio, containing work experience, skills, projects, and education."),
+  workRepository: z.string().describe("The user's detailed work repository, containing experience, skills, projects, and education."),
 });
 export type CvInput = z.infer<typeof CvInputSchema>;
 
@@ -28,11 +28,11 @@ const prompt = ai.definePrompt({
   name: 'generateCvPrompt',
   input: {schema: CvInputSchema},
   output: {schema: CvOutputSchema},
-  prompt: `You are an expert CV writer. Your task is to analyze a user's bio and a job description, then generate a complete, professional CV in a structured format.
+  prompt: `You are an expert CV writer. Your task is to analyze a user's work repository and a job description, then generate a complete, professional CV in a structured format.
 
 **CRITICAL INSTRUCTIONS:**
-- You must ONLY use information explicitly present in the User Bio. Do not invent, infer, or exaggerate details.
-- If any piece of information cannot be found in the bio (including names, contact details, job titles, companies, durations, etc.), you MUST return one of the placeholders as described in the output schema.
+- You must ONLY use information explicitly present in the User Work Repository. Do not invent, infer, or exaggerate details.
+- If any piece of information cannot be found in the repository (including names, contact details, job titles, companies, durations, etc.), you MUST return one of the placeholders as described in the output schema.
 - For a missing full name, use '[Name not found in bio]'.
 - For ALL other missing fields (email, phone, location, job title, company, summary, etc.), use the exact string '[Information not found in bio]'.
 - DO NOT use words like "Unknown" or "N/A". Only use the specified placeholders.
@@ -48,8 +48,8 @@ Based on the user's bio and the job description, generate the following sections
 Job Description:
 {{{jobDescription}}}
 
-User Bio:
-{{{userBio}}}
+User Work Repository:
+{{{workRepository}}}
 
 Generate the structured CV now.`,
 });

@@ -15,7 +15,7 @@ import type { QAndAOutput } from '@/lib/schemas';
 
 const QAndAInputSchema = z.object({
   jobDescription: z.string().describe('The job description to provide context for answers.'),
-  userBio: z.string().describe("The user's bio to source answers from."),
+  workRepository: z.string().describe("The user's work repository to source answers from."),
   questions: z.string().describe('A list of specific questions from the user to answer.'),
 });
 export type QAndAInput = z.infer<typeof QAndAInputSchema>;
@@ -40,8 +40,8 @@ For each question, provide a clear and concise answer.
 Job Description:
 {{{jobDescription}}}
 
-User Bio:
-{{{userBio}}}
+User Work Repository:
+{{{workRepository}}}
 
 Questions to Answer:
 {{{questions}}}

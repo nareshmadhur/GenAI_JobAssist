@@ -1,87 +1,118 @@
+import { db } from './firebase';
+import {
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  deleteDoc,
+  updateDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
+import type { JobApplicationData, SavedJob, SavedRepository } from './schemas';
 
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import type { SavedBio, SavedJob } from '@/lib/schemas';
+// User data operations
+export const getUserData = async (userId: string) => {
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
 
-const USERS_COLLECTION = 'users';
-
-interface UserData {
-  savedJobs: SavedJob[];
-  savedBios: SavedBio[];
-}
-
-/**
- * Retrieves the entire data document for a given user.
- * @param userId - The ID of the user.
- * @returns The user's data or null if not found.
- */
-export const getUserData = async (userId: string): Promise<UserData | null> => {
-  const userDocRef = doc(db, USERS_COLLECTION, userId);
-  const docSnap = await getDoc(userDocRef);
-  if (docSnap.exists()) {
-    return docSnap.data() as UserData;
+  if (userSnap.exists()) {
+    return userSnap.data();
+  } else {
+    // Initialize default user data if not exists
+    const defaultData = {
+      savedJobs: [],
+      savedRepositories: [],
+    };
+    await setDoc(userRef, defaultData);
+    return defaultData;
   }
-  return null;
 };
 
-/**
- * Merges local data (from localStorage) into the user's Firestore document.
- * This is typically called upon user login.
- * @param userId - The ID of the user.
- * @param localJobs - An array of saved jobs from local storage.
- * @param localBios - An array of saved bios from local storage.
- * @returns The merged user data.
- */
+// Merge local storage data into Firestore
 export const mergeLocalDataToFirestore = async (
   userId: string,
   localJobs: SavedJob[],
-  localBios: SavedBio[]
-): Promise<UserData> => {
-  const userDocRef = doc(db, USERS_COLLECTION, userId);
-  const docSnap = await getDoc(userDocRef);
+  localRepositories: SavedRepository[]
+) => {
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
 
-  if (docSnap.exists()) {
-    // User exists, merge data. Firestore data is the source of truth.
-    const firestoreData = docSnap.data() as UserData;
-    const firestoreJobIds = new Set(firestoreData.savedJobs.map((j) => j.id));
-    const firestoreBioIds = new Set(firestoreData.savedBios.map((b) => b.id));
+  let firestoreJobs: SavedJob[] = [];
+  let firestoreRepositories: SavedRepository[] = [];
 
-    const jobsToMerge = localJobs.filter((j) => !firestoreJobIds.has(j.id));
-    const biosToMerge = localBios.filter((b) => !firestoreBioIds.has(b.id));
-
-    const mergedJobs = [...firestoreData.savedJobs, ...jobsToMerge];
-    const mergedBios = [...firestoreData.savedBios, ...biosToMerge];
-    
-    await updateDoc(userDocRef, {
-        savedJobs: mergedJobs,
-        savedBios: mergedBios
-    });
-
-    return { savedJobs: mergedJobs, savedBios: mergedBios };
-  } else {
-    // New user, just set the local data as their initial data.
-    const initialData = { savedJobs: localJobs, savedBios: localBios };
-    await setDoc(userDocRef, initialData);
-    return initialData;
+  if (userSnap.exists()) {
+    const data = userSnap.data();
+    firestoreJobs = data.savedJobs || [];
+    firestoreRepositories = data.savedRepositories || [];
   }
+
+  // Merge logic: Combine and remove duplicates by ID
+  const mergedJobs = [...localJobs, ...firestoreJobs].filter(
+    (job, index, self) => index === self.findIndex((j) => j.id === job.id)
+  );
+
+  const mergedRepositories = [...localRepositories, ...firestoreRepositories].filter(
+    (repo, index, self) => index === self.findIndex((r) => r.id === repo.id)
+  );
+
+  await setDoc(userRef, {
+    savedJobs: mergedJobs,
+    savedRepositories: mergedRepositories,
+  }, { merge: true });
+
+  return { savedJobs: mergedJobs, savedRepositories: mergedRepositories };
 };
 
-/**
- * Updates the 'savedJobs' array for a user in Firestore.
- * @param userId - The ID of the user.
- * @param savedJobs - The new array of saved jobs.
- */
-export const updateSavedJobs = async (userId: string, savedJobs: SavedJob[]): Promise<void> => {
-  const userDocRef = doc(db, USERS_COLLECTION, userId);
-  await updateDoc(userDocRef, { savedJobs });
+// Update saved jobs list
+export const updateSavedJobs = async (userId: string, jobs: SavedJob[]) => {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, { savedJobs: jobs });
 };
 
-/**
- * Updates the 'savedBios' array for a user in Firestore.
- * @param userId - The ID of the user.
- * @param savedBios - The new array of saved bios.
- */
-export const updateSavedBios = async (userId: string, savedBios: SavedBio[]): Promise<void> => {
-  const userDocRef = doc(db, USERS_COLLECTION, userId);
-  await updateDoc(userDocRef, { savedBios });
+// Update saved repositories list
+export const updateSavedRepositories = async (userId: string, repos: SavedRepository[]) => {
+  const userRef = doc(db, 'users', userId);
+  await updateDoc(userRef, { savedRepositories: repos });
+};
+
+// Detailed Job operations (Individual documents if needed in future)
+// For now we store as array in user doc for simplicity and speed, 
+// but we can move to subcollections if the arrays get too large (>1MB).
+
+// Saved Repository operations
+export const saveRepository = async (userId: string, name: string, workRepository: string) => {
+  // We can choose to store this in an array in the user doc or a subcollection.
+  // Given users might have many repositories, let's stick to the current pattern 
+  // until we need subcollections.
+  const userRef = doc(db, 'users', userId);
+  const userData = await getUserData(userId);
+  const currentRepos = userData.savedRepositories || [];
+  
+  const newRepo: SavedRepository = {
+    id: crypto.randomUUID(),
+    name,
+    workRepository,
+    savedAt: new Date().toISOString()
+  };
+
+  await updateDoc(userRef, {
+    savedRepositories: [newRepo, ...currentRepos]
+  });
+
+  return newRepo;
+};
+
+export const getSavedRepositories = async (userId: string): Promise<SavedRepository[]> => {
+  const userData = await getUserData(userId);
+  return userData.savedRepositories || [];
+};
+
+export const deleteSavedRepository = async (userId: string, repoId: string) => {
+  const userRef = doc(db, 'users', userId);
+  const userData = await getUserData(userId);
+  const filteredRepos = (userData.savedRepositories || []).filter((r: SavedRepository) => r.id !== repoId);
+  await updateDoc(userRef, { savedRepositories: filteredRepos });
 };

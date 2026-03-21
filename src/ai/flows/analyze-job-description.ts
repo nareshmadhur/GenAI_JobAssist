@@ -13,7 +13,7 @@ import {z} from 'genkit';
 
 const AnalyzeJobDescriptionInputSchema = z.object({
   jobDescription: z.string().describe('The job description to analyze, either a URL or the text content.'),
-  bio: z.string().describe("The user's bio to compare against the job description."),
+  workRepository: z.string().describe("The user's work repository to compare against the job description."),
 });
 export type AnalyzeJobDescriptionInput = z.infer<typeof AnalyzeJobDescriptionInputSchema>;
 
@@ -40,12 +40,12 @@ Present your findings as two distinct lists of simple, clear bullet points. **Bo
 Job Description:
 {{{jobDescription}}}
 
-User Bio:
-{{{bio}}}
+User Work Repository:
+{{{workRepository}}}
 
 Analysis:
-1.  **Matches**: Create a bulleted list of specific skills, experiences, or qualifications from the user's bio that directly align with the requirements mentioned in the job description. Be precise and ground every point in the provided bio.
-2.  **Gaps**: Create a bulleted list of key requirements from the job description that are not clearly addressed in the user's bio.
+1.  **Matches**: Create a bulleted list of specific skills, experiences, or qualifications from the user's work repository that directly align with the requirements mentioned in the job description. Be precise and ground every point in the provided content.
+2.  **Gaps**: Create a bulleted list of key requirements from the job description that are not clearly addressed in the user's work repository.
 
 Provide only the bulleted lists for matches and gaps.`,
 });

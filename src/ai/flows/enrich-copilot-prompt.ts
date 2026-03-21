@@ -12,7 +12,7 @@ import { CoPilotMessageSchema } from '@/lib/schemas';
 const EnrichPromptInputSchema = z.object({
   chatHistory: z.array(CoPilotMessageSchema),
   jobDescription: z.string(),
-  bio: z.string(),
+  workRepository: z.string(),
 });
 
 const EnrichPromptOutputSchema = z.object({
@@ -38,13 +38,13 @@ const prompt = ai.definePrompt({
 2.  A detailed, "enriched" prompt that will be passed to a second AI (the "executor") to generate the final response.
 
 **CRITICAL INSTRUCTIONS:**
-- The "enrichedPrompt" MUST contain all relevant information: the user's specific request, the relevant parts of the chat history, the bio, and the job description. It needs to be a self-contained instruction for the next AI.
+- The "enrichedPrompt" MUST contain all relevant information: the user's specific request, the relevant parts of the chat history, the work repository, and the job description. It needs to be a self-contained instruction for the next AI.
 
 **User's Current Data:**
 ---
 Job Description: {{{jobDescription}}}
 ---
-Bio: {{{bio}}}
+Work Repository: {{{workRepository}}}
 ---
 
 **Chat History:**

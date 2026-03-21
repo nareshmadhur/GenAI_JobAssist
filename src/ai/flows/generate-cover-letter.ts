@@ -12,7 +12,7 @@ import {z} from 'genkit';
 
 const CoverLetterInputSchema = z.object({
   jobDescription: z.string().describe('The job description, can be a URL or pasted text.'),
-  userBio: z.string().describe('The user bio, rich in detail.'),
+  workRepository: z.string().describe('The user work repository, rich in detail.'),
 });
 export type CoverLetterInput = z.infer<typeof CoverLetterInputSchema>;
 
@@ -29,11 +29,11 @@ const prompt = ai.definePrompt({
   name: 'generateCoverLetterPrompt',
   input: {schema: CoverLetterInputSchema},
   output: {schema: CoverLetterOutputSchema},
-  prompt: `You are a professional resume and cover letter writer. Your task is to write a compelling, professional, and copy-paste-ready cover letter based on a job description and a user's bio.
+  prompt: `You are a professional resume and cover letter writer. Your task is to write a compelling, professional, and copy-paste-ready cover letter based on a job description and a user's work repository.
 
-**Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** The cover letter must be a truthful representation of the user's bio.
+**Crucially, you must only use information explicitly present in the User Work Repository. Do not invent, exaggerate, or infer details that are not mentioned, such as specific years of experience.** The cover letter must be a truthful representation of the user's repository content.
 
-The cover letter should be concise and impactful, focusing only on the most effective and strong points from the user's bio that align with the job description.
+The cover letter should be concise and impactful, focusing only on the most effective and strong points from the user's work repository that align with the job description.
 
 Use professional paragraphs and standard Markdown for formatting. Specifically:
 - **Use a double newline character ('\\n\\n') to separate paragraphs.** This is critical for correct formatting.
@@ -44,8 +44,8 @@ Use professional paragraphs and standard Markdown for formatting. Specifically:
 Job Description:
 {{{jobDescription}}}
 
-User Bio:
-{{{userBio}}}
+User Work Repository:
+{{{workRepository}}}
 
 Generate the cover letter now.`,
 });

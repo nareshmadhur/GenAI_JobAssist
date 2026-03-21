@@ -35,7 +35,7 @@ We are seeking an experienced Senior Frontend Engineer to join our dynamic team.
 - Experience working in an agile environment.
 `;
 
-export const exampleBio = `
+export const exampleWorkRepository = `
 **John Doe**
 San Francisco, CA | (123) 456-7890 | john.doe@email.com | linkedin.com/in/johndoe
 
