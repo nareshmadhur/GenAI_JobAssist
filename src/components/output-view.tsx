@@ -19,9 +19,11 @@ import React, { Fragment, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { compiler } from 'markdown-to-jsx';
 import ReactDOMServer from 'react-dom/server';
+import { useFormContext } from 'react-hook-form';
 
-import { reviseAction } from '@/app/actions';
-import type { AllGenerationResults, GenerationType, ActiveView } from '@/app/page';
+import { reviseAction, fillQaGapAction, generateLearningPathAction } from '@/app/actions';
+import type { AllGenerationResults } from '@/app/actions';
+import type { GenerationType, ActiveView } from '@/app/job-matcher/page';
 import {
   Card,
   CardContent,
@@ -39,11 +41,14 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import type { CvOutput, DeepAnalysisOutput, QAndAOutput, ReviseResponseData } from '@/lib/schemas';
+import type { CvOutput, QAndAOutput, ReviseResponseData, JobApplicationData } from '@/lib/schemas';
+import type { DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
 import { Button } from './ui/button';
 import { CvView } from './cv-view';
 import { RevisionForm } from './revision-form';
 import { Textarea } from './ui/textarea';
+import { Input } from './ui/input';
+import { Loader2, Send } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { Badge } from './ui/badge';
@@ -144,6 +149,114 @@ function CopyButton({
   );
 }
 
+function MissingAnswerResolver({
+  question,
+  jobDescription,
+  onResolve,
+}: {
+  question: string;
+  jobDescription: string;
+  onResolve: (answer: string) => void;
+}) {
+  const [context, setContext] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const { toast } = useToast();
+
+  const handleGenerate = async () => {
+    if (!context.trim()) return;
+    setIsGenerating(true);
+    const result = await fillQaGapAction({
+      jobDescription,
+      question,
+      userContext: context,
+    });
+    setIsGenerating(false);
+
+    if (result && 'error' in result && result.error) {
+      toast({ title: 'Generation Failed', description: result.error, variant: 'destructive' });
+    } else if (result && 'answer' in result) {
+      onResolve(result.answer);
+      toast({ title: 'Answer Generated!' });
+    }
+  };
+
+  return (
+    <div className="mt-2 flex flex-col gap-2 rounded-md bg-orange-50 p-3 border border-orange-100 dark:bg-orange-950/20 dark:border-orange-900/30">
+        <p className="text-xs font-medium text-orange-800 dark:text-orange-400">
+            Missing Context. Provide a brief detail to generate an answer:
+        </p>
+        <div className="flex gap-2">
+            <Input 
+                placeholder="E.g. I used React for 3 years at Acme Corp..."
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+                disabled={isGenerating}
+                className="h-8 bg-white dark:bg-slate-900 w-full text-xs"
+            />
+            <Button size="sm" className="h-8 px-3 shrink-0" onClick={handleGenerate} disabled={isGenerating}>
+                {isGenerating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1" />}
+                Generate
+            </Button>
+        </div>
+    </div>
+  );
+}
+
+function LearningPathGenerator({
+  jobDescription,
+  missingRequirement,
+}: {
+  jobDescription: string;
+  missingRequirement: string;
+}) {
+  const [learningPath, setLearningPath] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const { toast } = useToast();
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    const result = await generateLearningPathAction({
+      jobDescription,
+      missingRequirement,
+    });
+    setIsGenerating(false);
+
+    if (result && 'error' in result && result.error) {
+      toast({ title: 'Generation Failed', description: result.error, variant: 'destructive' });
+    } else if (result && 'learningPath' in result) {
+      setLearningPath(result.learningPath);
+      toast({ title: 'Learning Path Generated!' });
+    }
+  };
+
+  if (learningPath) {
+    return (
+      <div className="mt-2 rounded-md bg-indigo-50 p-3 border border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/30 text-left">
+        <p className="text-xs font-semibold text-indigo-800 dark:text-indigo-400 mb-2 flex items-center gap-1">
+          <Sparkles className="h-3 w-3" /> Recommended Learning Path
+        </p>
+        <div className="prose prose-sm max-w-none text-xs dark:prose-invert">
+          <ReactMarkdown>{learningPath}</ReactMarkdown>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Button 
+      variant="outline" 
+      size="sm" 
+      className="mt-2 h-7 w-full text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 border-indigo-200" 
+      onClick={handleGenerate} 
+      disabled={isGenerating}
+    >
+      {isGenerating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Wand2 className="h-3 w-3 mr-1" />}
+      Generate Learning Path
+    </Button>
+  );
+}
+
 /**
  * Renders the generated cover letter with editing and revision capabilities.
  *
@@ -223,10 +336,15 @@ function GeneratedResponseView({
 function QAndAView({
   qAndA,
   onRevision,
+  onQaGapFill,
 }: {
   qAndA: QAndAOutput;
   onRevision: (data: ReviseResponseData) => Promise<void>;
+  onQaGapFill: (index: number, answer: string) => void;
 }) {
+  const formMethods = useFormContext<JobApplicationData>();
+  const jobDescription = formMethods?.getValues('jobDescription') || '';
+
   if (!qAndA || !qAndA.qaPairs || qAndA.qaPairs.length === 0) {
     return (
       <Card>
@@ -283,7 +401,14 @@ function QAndAView({
                 </p>
                 <div className="prose prose-sm max-w-none dark:prose-invert">
                   {pair.answer === NOT_FOUND_STRING ? (
-                    <span className="text-red-600 dark:text-red-400">{pair.answer}</span>
+                    <div>
+                        <span className="text-red-600 dark:text-red-400">{pair.answer}</span>
+                        <MissingAnswerResolver 
+                            question={pair.question} 
+                            jobDescription={jobDescription} 
+                            onResolve={(newAnswer) => onQaGapFill(index, newAnswer)} 
+                        />
+                    </div>
                   ) : (
                     <ReactMarkdown>{pair.answer}</ReactMarkdown>
                   )}
@@ -319,6 +444,9 @@ function DeepAnalysisView({
 }: {
   deepAnalysis: DeepAnalysisOutput;
 }) {
+  const formMethods = useFormContext<JobApplicationData>();
+  const jobDescription = formMethods?.getValues('jobDescription') || '';
+
   const sortedRequirements = [...deepAnalysis.requirements].sort((a, b) =>
     a.isMandatory === b.isMandatory ? 0 : a.isMandatory ? -1 : 1
   );
@@ -427,8 +555,14 @@ function DeepAnalysisView({
                       <XCircle className="h-5 w-5 text-destructive inline-block" />
                     )}
                   </TableCell>
-                  <TableCell className="py-2 px-4 text-sm">
+                  <TableCell className="py-2 px-4 text-sm align-top">
                     {item.justification}
+                    {!item.isMet && item.isMandatory && (
+                       <LearningPathGenerator 
+                           jobDescription={jobDescription} 
+                           missingRequirement={item.requirement} 
+                       />
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -522,7 +656,7 @@ export function OutputView({
    * @param {string} newValue - The new text for the cover letter.
    */
   const handleManualEdit = (newValue: string) => {
-    setAllResults((prev) => {
+    setAllResults((prev: AllGenerationResults) => {
       if (!prev.coverLetter) return prev;
       const newResult = { ...prev.coverLetter, responses: newValue };
       return { ...prev, coverLetter: newResult };
@@ -530,9 +664,17 @@ export function OutputView({
   };
 
   const handleCvUpdate = (newCvData: CvOutput) => {
-    setAllResults(prev => ({ ...prev, cv: newCvData }));
+    setAllResults((prev: AllGenerationResults) => ({ ...prev, cv: newCvData }));
   };
 
+  const handleQaGapFill = (index: number, newAnswer: string) => {
+    setAllResults((prev: AllGenerationResults) => {
+      if (!prev.qAndA) return prev;
+      const newQaPairs = [...prev.qAndA.qaPairs];
+      newQaPairs[index] = { ...newQaPairs[index], answer: newAnswer };
+      return { ...prev, qAndA: { ...prev.qAndA, qaPairs: newQaPairs } };
+    });
+  };
 
   const renderActiveView = () => {
     if (generationError) {
@@ -565,6 +707,7 @@ export function OutputView({
           <QAndAView
             qAndA={allResults.qAndA as QAndAOutput}
             onRevision={handleRevision}
+            onQaGapFill={handleQaGapFill}
           />
         );
       default:

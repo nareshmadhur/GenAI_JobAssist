@@ -23,10 +23,12 @@ import type { JobApplicationData } from '@/lib/schemas';
 import { ExpandableTextarea } from '@/components/expandable-textarea';
 import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { Wand2, Sparkles } from 'lucide-react';
+import { Wand2, Sparkles, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { BioCreatorModal } from './bio-creator-modal';
 import { exampleJobDescription, exampleBio } from '@/lib/example-data';
 import { Skeleton } from './ui/skeleton';
+import { extractUrlTextAction } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
 
 interface InputFormProps {
   isInitialLoading: boolean;
@@ -42,6 +44,8 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
   const { watch } = formMethods;
   const [isBioCreatorOpen, setIsBioCreatorOpen] = useState(false);
+  const [isExtractingUrl, setIsExtractingUrl] = useState(false);
+  const { toast } = useToast();
   
   const jobDescription = watch('jobDescription');
   const bio = watch('bio');
@@ -71,6 +75,52 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
         >
             <Wand2 className="mr-2 h-4 w-4" />
             Launch AI Bio Assistant
+        </Button>
+    </div>
+  );
+
+  const handleExtractUrl = async () => {
+    const currentText = formMethods.getValues('jobDescription').trim();
+    if (!currentText.startsWith('http')) {
+      toast({
+        title: 'Invalid URL',
+        description: 'Please paste a valid URL (starting with http/https) into the Job Description field first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setIsExtractingUrl(true);
+    const result = await extractUrlTextAction(currentText);
+    setIsExtractingUrl(false);
+
+    if (result.error) {
+      toast({
+        title: 'Extraction Failed',
+        description: result.error,
+        variant: 'destructive',
+      });
+    } else if (result.text) {
+      formMethods.setValue('jobDescription', result.text);
+      toast({
+        title: 'Extracted Successfully',
+        description: 'The job description has been populated from the URL.',
+      });
+    }
+  };
+
+  const urlExtractorTrigger = (
+    <div className='flex justify-end'>
+        <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExtractUrl}
+            disabled={isExtractingUrl}
+            className="-mt-2"
+        >
+            {isExtractingUrl ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
+            Extract from URL
         </Button>
     </div>
   );
@@ -133,7 +183,8 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
                     <ExpandableTextarea
                       field={field}
                       label="Job Description"
-                      placeholder="Paste the full job description here. The AI will analyze it to find the key requirements."
+                      placeholder="Paste the full job description text or a URL here. If pasting a URL, click 'Extract from URL' below."
+                      footer={urlExtractorTrigger}
                     />
                   )}
                 />
