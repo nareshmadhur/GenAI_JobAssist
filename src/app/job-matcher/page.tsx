@@ -817,7 +817,7 @@ function JobMatcherContent() {
 
       <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-8 sm:p-6 md:p-8">
         <FormProvider {...formMethods}>
-          <div className="mb-6 flex flex-wrap items-center gap-3">
+          <div className="mb-6 grid gap-3 sm:flex sm:flex-wrap sm:items-center">
             {[
               { key: 'prepare', label: '1. Prepare', description: 'Add the job and your background.' },
               { key: 'build', label: '2. Build Your Application', description: 'Create, open, and refine each section.' },
@@ -855,14 +855,14 @@ function JobMatcherContent() {
 
               <InputForm isInitialLoading={isInitialFormLoad} />
 
-              <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-muted-foreground">
                   Required to continue: Job Description and Work Repository.
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm">
+                      <Button variant="destructive" size="sm" className="w-full sm:w-auto">
                         <Trash2 className="mr-2" />
                         Clear Everything
                       </Button>
@@ -889,7 +889,7 @@ function JobMatcherContent() {
                     </AlertDialogContent>
                   </AlertDialog>
 
-                  <Button size="lg" onClick={handleContinueToBuild}>
+                  <Button size="lg" onClick={handleContinueToBuild} className="w-full sm:w-auto">
                     Continue <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
@@ -897,7 +897,7 @@ function JobMatcherContent() {
             </div>
           ) : (
             <div className="flex flex-col gap-6 animate-in fade-in duration-500">
-              <div className="flex flex-col gap-4 rounded-3xl border bg-card p-5 shadow-sm lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex flex-col gap-4 rounded-3xl border bg-card p-4 shadow-sm sm:p-5 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
                     <span>Stage 2</span>
@@ -910,8 +910,8 @@ function JobMatcherContent() {
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setView('prepare')}>
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                  <Button variant="ghost" size="sm" onClick={() => setView('prepare')} className="w-full sm:w-auto">
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to Prepare
                   </Button>
@@ -922,6 +922,7 @@ function JobMatcherContent() {
                     onClick={handleSaveJob}
                     disabled={isSaving || !hasAnyResults}
                     aria-label="Save Application"
+                    className="w-full sm:w-auto"
                   >
                     {isSaving ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -930,7 +931,7 @@ function JobMatcherContent() {
                     )}
                     Save Application
                   </Button>
-                  <Button asChild variant="outline" size="sm">
+                  <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
                     <Link href={trackerHref}>
                       <List className="mr-2 h-4 w-4" /> View Tracker
                     </Link>
@@ -939,7 +940,7 @@ function JobMatcherContent() {
               </div>
 
               <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/5 via-background to-accent/10">
-                <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
                   <div className="max-w-2xl space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
@@ -952,14 +953,14 @@ function JobMatcherContent() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       {coachPrompts.map((prompt) => (
                         <Button
                           key={prompt}
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="rounded-full bg-background/80"
+                          className="w-full justify-start rounded-full bg-background/80 text-left sm:w-auto"
                           onClick={() => openCoach(prompt)}
                         >
                           {prompt}
@@ -968,7 +969,7 @@ function JobMatcherContent() {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
-                    <Button size="lg" className="min-w-[180px]" onClick={() => openCoach()}>
+                    <Button size="lg" className="w-full min-w-[180px] sm:w-auto" onClick={() => openCoach()}>
                       <Bot className="mr-2 h-4 w-4" />
                       Open AI Coach
                     </Button>
@@ -1013,8 +1014,8 @@ function JobMatcherContent() {
 
                 <div ref={outputRef} className="space-y-4">
                   {!allResults[selectedView] && !generationError && !(isGenerating && activeView === selectedView) ? (
-                    <Card className="min-h-[420px] border-dashed bg-card/60">
-                      <div className="flex h-full min-h-[420px] flex-col items-center justify-center px-8 py-12 text-center">
+                    <Card className="min-h-[320px] border-dashed bg-card/60 sm:min-h-[420px]">
+                      <div className="flex h-full min-h-[320px] flex-col items-center justify-center px-6 py-10 text-center sm:min-h-[420px] sm:px-8 sm:py-12">
                         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                           <selectedSection.icon className="h-7 w-7" />
                         </div>
@@ -1027,7 +1028,7 @@ function JobMatcherContent() {
                             Start here if you want a quick read on your fit before tailoring your resume or cover letter.
                           </p>
                         ) : null}
-                        <Button className="mt-6" onClick={() => handleGeneration(selectedView)}>
+                        <Button className="mt-6 w-full sm:w-auto" onClick={() => handleGeneration(selectedView)}>
                           <Sparkles className="mr-2 h-4 w-4" />
                           Create {selectedSection.label}
                         </Button>

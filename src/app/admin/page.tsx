@@ -271,7 +271,7 @@ function AdminPageContent() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-8 w-8 cursor-grab active:cursor-grabbing opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
               aria-label={`Drag ${job.jobTitle}`}
               {...dragAttributes}
               {...dragListeners}
@@ -280,7 +280,7 @@ function AdminPageContent() {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -402,7 +402,7 @@ function AdminPageContent() {
               />
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center rounded-lg border border-muted-foreground/20 bg-background/50 p-1">
+              <div className="grid w-full grid-cols-2 rounded-lg border border-muted-foreground/20 bg-background/50 p-1 sm:flex sm:w-auto sm:items-center">
                 <Button 
                   variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} 
                   size="sm" 
@@ -509,10 +509,10 @@ function AdminPageContent() {
                                 </td>
                                 <td className="p-4 text-right">
                                   <div className="flex justify-end gap-2">
-                                    <Button asChild variant="ghost" size="sm" className="h-8 px-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button asChild variant="ghost" size="sm" className="h-8 px-3 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                                       <Link href={buildFlowHref(job.id)}>Open Build Flow</Link>
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteJob(job.id)}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100" onClick={() => deleteJob(job.id)}>
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </div>

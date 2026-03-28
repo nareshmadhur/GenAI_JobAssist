@@ -121,7 +121,7 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   };
 
   const repositoryTriggers = (
-    <div className='flex items-center justify-end gap-2'>
+    <div className='flex flex-wrap items-center justify-start gap-2 sm:justify-end'>
         <Button 
             type="button" 
             variant="ghost" 
@@ -204,7 +204,7 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   };
 
   const urlExtractorTrigger = (
-    <div className='flex items-center justify-end gap-2'>
+    <div className='flex flex-wrap items-center justify-start gap-2 sm:justify-end'>
         <Button 
             type="button" 
             variant="ghost" 
@@ -238,7 +238,7 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
             <div>
               <CardTitle>Your Information</CardTitle>
               <CardDescription className="prose-sm mt-1.5">
-                Provide your info, then choose what to generate from the actions below.
+                Add the target role and your background here, then continue to build your application.
               </CardDescription>
             </div>
           </div>

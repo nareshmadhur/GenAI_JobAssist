@@ -512,40 +512,71 @@ function DeepAnalysisView({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+          <div className="grid gap-4 xl:grid-cols-[290px_minmax(0,1fr)]">
             <div className="rounded-2xl border bg-muted/40 p-4">
-              <h4 className="mb-4 text-center text-sm font-semibold text-muted-foreground">
-                Match Rate
-              </h4>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-1">
-                <div className="flex flex-col items-center gap-2">
-                  <CircularProgress value={mandatoryMatchRate} />
-                  <p className="font-semibold">Mandatory</p>
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-foreground">Coverage at a glance</h4>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  These scores show how much of the role is already visible in your Work Repository.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div className="rounded-2xl border bg-background p-4 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <CircularProgress
+                      value={mandatoryMatchRate}
+                      size={84}
+                      strokeWidth={9}
+                      trackClassName="text-primary/15"
+                      indicatorClassName="text-primary"
+                      valueClassName="text-lg"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Must-have coverage</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Core requirements that look clearly supported right now.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-col items-center gap-2">
-                  <CircularProgress value={preferredMatchRate} />
-                  <p className="font-semibold">Preferred</p>
+                <div className="rounded-2xl border bg-background p-4 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <CircularProgress
+                      value={preferredMatchRate}
+                      size={84}
+                      strokeWidth={9}
+                      trackClassName="text-emerald-500/15"
+                      indicatorClassName="text-emerald-500"
+                      valueClassName="text-lg"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Nice-to-have coverage</p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Additional signals that can strengthen how competitive you appear.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4">
               <div className="rounded-2xl border bg-background p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   What This Means
                 </p>
-                <p className="mt-2 text-sm text-foreground">{fitRead}</p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground">{fitRead}</p>
               </div>
               <div className="rounded-2xl border bg-background p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Biggest Risk
                 </p>
-                <p className="mt-2 text-sm text-foreground">{biggestRisk}</p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground">{biggestRisk}</p>
               </div>
               <div className="rounded-2xl border bg-background p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Best Next Move
                 </p>
-                <p className="mt-2 text-sm text-foreground">{recommendedNextMove}</p>
+                <p className="mt-2 text-sm leading-relaxed text-foreground">{recommendedNextMove}</p>
               </div>
             </div>
           </div>
@@ -833,7 +864,14 @@ export function OutputView({
         );
       case 'cv':
         if (!allResults.cv) return null;
-        return <CvView cvData={allResults.cv} onCvUpdate={handleCvUpdate} />;
+        return (
+          <CvView
+            cvData={allResults.cv}
+            deepAnalysis={allResults.deepAnalysis}
+            jobDescription={formMethods?.getValues('jobDescription') || ''}
+            onCvUpdate={handleCvUpdate}
+          />
+        );
       case 'deepAnalysis':
         if (!allResults.deepAnalysis) return null;
         return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} onCoachRequest={onCoachRequest} />;

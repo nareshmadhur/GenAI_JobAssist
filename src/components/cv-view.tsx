@@ -14,7 +14,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import React, { useState } from 'react';
-import type { CvOutput } from '@/lib/schemas';
+import type { CvOutput, DeepAnalysisOutput } from '@/lib/schemas';
 
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -40,6 +40,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { EditableCvField } from './editable-cv-field';
 import { openCvPrintExport } from '@/lib/cv-export';
+import { getRoleAlignmentHighlights } from '@/lib/role-alignment';
 
 
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
@@ -73,12 +74,20 @@ const hasMissingInfo = (cvData: CvOutput): boolean => {
 };
 
 
-const ExportButton = ({ cvData }: { cvData: CvOutput }) => {
+const ExportButton = ({
+  cvData,
+  jobDescription,
+  deepAnalysis,
+}: {
+  cvData: CvOutput;
+  jobDescription?: string;
+  deepAnalysis?: DeepAnalysisOutput;
+}) => {
   const showsWarning = hasMissingInfo(cvData);
 
   const handleExport = () => {
     try {
-      openCvPrintExport(cvData);
+      openCvPrintExport({ cvData, jobDescription, deepAnalysis });
     } catch (error) {
       console.error('Failed to serialize CV data for printing:', error);
       alert('An error occurred while preparing the CV for export.');
@@ -170,11 +179,24 @@ interface CvViewProps {
   cvData: CvOutput;
   onCvUpdate: (newCvData: CvOutput) => void;
   isPrintView?: boolean;
+  deepAnalysis?: DeepAnalysisOutput;
+  jobDescription?: string;
 }
 
-export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps) {
+export function CvView({
+  cvData,
+  onCvUpdate,
+  isPrintView = false,
+  deepAnalysis,
+  jobDescription = '',
+}: CvViewProps) {
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
+  const roleAlignmentHighlights = getRoleAlignmentHighlights({
+    cvData,
+    deepAnalysis,
+    jobDescription,
+  });
 
   if (!cvData) {
     return (
@@ -239,12 +261,16 @@ export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps)
       )}
       <Card className="font-sans bg-white text-black shadow-lg">
         {!isPrintView && (
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-foreground">Mockup CV</CardTitle>
-            <ExportButton cvData={cvData} />
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-foreground">Tailored Resume</CardTitle>
+            <ExportButton
+              cvData={cvData}
+              jobDescription={jobDescription}
+              deepAnalysis={deepAnalysis}
+            />
           </CardHeader>
         )}
-        <CardContent className="p-6 text-sm">
+        <CardContent className="p-4 text-sm sm:p-6">
           {/* Header Section */}
           <div className="mb-6 text-center" data-missing={isMissing(cvData.fullName)}>
             <h1 className="text-3xl font-bold text-slate-900">
@@ -290,7 +316,7 @@ export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps)
           <Separator className="my-6 bg-slate-200" />
 
           {/* Summary Section */}
-          <div data-missing={isMissing(cvData.summary)}>
+          <div className="space-y-4" data-missing={isMissing(cvData.summary)}>
             <h2 className="mb-2 flex items-center gap-2 text-xl font-semibold text-slate-800">
               <User className="h-5 w-5" /> Professional Summary
             </h2>
@@ -304,6 +330,24 @@ export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps)
                   multiline
                 />
             </div>
+            {roleAlignmentHighlights.length > 0 ? (
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                  <Briefcase className="h-4 w-4" />
+                  Role Alignment Highlights
+                </div>
+                <div className="space-y-3">
+                  {roleAlignmentHighlights.map((highlight, index) => (
+                    <div key={`${highlight.title}-${index}`} className="rounded-xl bg-white/80 px-3 py-2">
+                      <p className="text-sm leading-relaxed text-slate-700">
+                        <span className="font-semibold text-slate-900">{highlight.title}.</span>{' '}
+                        {highlight.detail}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <Separator className="my-6 bg-slate-200" />
@@ -316,7 +360,7 @@ export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps)
             <div className="space-y-6">
               {cvData.workExperience.map((job, index) => (
                 <div key={index} data-missing={isMissing(job.jobTitle) || isMissing(job.company) || isMissing(job.duration)}>
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
                     <h3 className="text-lg font-semibold text-slate-800">
                         <EditableCvField
                           value={job.jobTitle}
@@ -336,7 +380,7 @@ export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps)
                       />
                     </div>
                   </div>
-                  <h4 className="text-md font-medium text-slate-700">
+                  <h4 className="mt-1 text-md font-medium text-slate-700">
                       <EditableCvField
                           value={job.company}
                           onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.company`, newValue)}
@@ -371,7 +415,7 @@ export function CvView({ cvData, onCvUpdate, isPrintView = false }: CvViewProps)
             </h2>
             <div className="space-y-2">
               {cvData.education.map((edu, index) => (
-                <div key={index} className="flex items-baseline justify-between" data-missing={isMissing(edu.degree) || isMissing(edu.institution) || isMissing(edu.year)}>
+                <div key={index} className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between" data-missing={isMissing(edu.degree) || isMissing(edu.institution) || isMissing(edu.year)}>
                   <div>
                     <h3 className="text-lg font-semibold text-slate-800">
                         <EditableCvField

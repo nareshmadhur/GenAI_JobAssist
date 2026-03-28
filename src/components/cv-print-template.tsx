@@ -1,14 +1,27 @@
 'use client';
 
-import type { CvOutput } from '@/lib/schemas';
+import type { CvOutput, DeepAnalysisOutput } from '@/lib/schemas';
+import { getRoleAlignmentHighlights } from '@/lib/role-alignment';
 
 interface CvPrintTemplateProps {
   cvData: CvOutput;
+  jobDescription?: string;
+  deepAnalysis?: DeepAnalysisOutput | null;
 }
 
-export function CvPrintTemplate({ cvData }: CvPrintTemplateProps) {
+export function CvPrintTemplate({
+  cvData,
+  jobDescription,
+  deepAnalysis,
+}: CvPrintTemplateProps) {
+  const roleAlignmentHighlights = getRoleAlignmentHighlights({
+    cvData,
+    deepAnalysis,
+    jobDescription,
+  });
+
   return (
-    <article className="print-container mx-auto max-w-[840px] bg-white px-10 py-12 text-[13px] leading-relaxed text-slate-950 shadow-2xl shadow-primary/10 print:max-w-none print:px-0 print:py-0 print:shadow-none">
+    <article className="print-container mx-auto max-w-[840px] bg-white px-5 py-8 text-[13px] leading-relaxed text-slate-950 shadow-2xl shadow-primary/10 sm:px-10 sm:py-12 print:max-w-none print:px-0 print:py-0 print:shadow-none">
       <header className="border-b border-slate-200 pb-6 text-center">
         <h1 className="text-3xl font-bold tracking-tight text-slate-950">{cvData.fullName}</h1>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[12px] text-slate-600">
@@ -23,6 +36,21 @@ export function CvPrintTemplate({ cvData }: CvPrintTemplateProps) {
           Professional Summary
         </h2>
         <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">{cvData.summary}</p>
+        {roleAlignmentHighlights.length > 0 ? (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              Role Alignment Highlights
+            </p>
+            <div className="mt-3 space-y-2">
+              {roleAlignmentHighlights.map((highlight, index) => (
+                <p key={`${highlight.title}-${index}`} className="text-sm text-slate-700">
+                  <span className="font-semibold text-slate-900">{highlight.title}.</span>{' '}
+                  {highlight.detail}
+                </p>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="resume-print-section mt-7 [break-inside:avoid]">
@@ -32,7 +60,7 @@ export function CvPrintTemplate({ cvData }: CvPrintTemplateProps) {
         <div className="mt-4 space-y-5">
           {cvData.workExperience.map((job, index) => (
             <div key={`${job.company}-${job.jobTitle}-${index}`} className="resume-print-entry [break-inside:avoid]">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="text-base font-semibold text-slate-900">{job.jobTitle}</h3>
                   <p className="text-sm font-medium text-slate-700">{job.company}</p>
@@ -57,7 +85,7 @@ export function CvPrintTemplate({ cvData }: CvPrintTemplateProps) {
         </h2>
         <div className="mt-4 space-y-3">
           {cvData.education.map((education, index) => (
-            <div key={`${education.institution}-${education.degree}-${index}`} className="resume-print-entry flex items-start justify-between gap-4 [break-inside:avoid]">
+            <div key={`${education.institution}-${education.degree}-${index}`} className="resume-print-entry flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between [break-inside:avoid]">
               <div>
                 <h3 className="text-base font-semibold text-slate-900">{education.degree}</h3>
                 <p className="text-sm text-slate-700">{education.institution}</p>

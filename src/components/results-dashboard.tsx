@@ -72,7 +72,10 @@ export function ResultsDashboard({ results, jobTitle, companyName, onBack, backL
     if (!results.cv) return;
 
     try {
-      openCvPrintExport(results.cv);
+      openCvPrintExport({
+        cvData: results.cv,
+        deepAnalysis: results.deepAnalysis,
+      });
     } catch {
       toast({
         variant: 'destructive',

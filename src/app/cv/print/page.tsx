@@ -3,13 +3,12 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import type { CvOutput } from '@/lib/schemas';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { FileText, ArrowLeft } from 'lucide-react';
-import { readCvPrintExport } from '@/lib/cv-export';
+import { readCvPrintExport, type CvPrintExportPayload } from '@/lib/cv-export';
 import { CvPrintTemplate } from '@/components/cv-print-template';
 
 /**
@@ -17,7 +16,7 @@ import { CvPrintTemplate } from '@/components/cv-print-template';
  */
 function PrintView() {
   const searchParams = useSearchParams();
-  const [cvData, setCvData] = useState<CvOutput | null>(null);
+  const [exportPayload, setExportPayload] = useState<CvPrintExportPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,7 +28,7 @@ function PrintView() {
           setError('Could not load this resume export. Please try exporting again from the application.');
           return;
         }
-        setCvData(exportData);
+        setExportPayload(exportData);
       } catch (e) {
         console.error('Failed to parse CV data', e);
         setError('Could not load CV data. Please try exporting again.');
@@ -38,20 +37,20 @@ function PrintView() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (cvData) {
+    if (exportPayload) {
       // Give the browser a moment to render the content before printing
       const timer = setTimeout(() => {
         window.print();
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [cvData]);
+  }, [exportPayload]);
 
   if (error) {
     return <div className="p-10 text-center text-rose-500 font-medium">{error}</div>;
   }
 
-  if (!cvData) {
+  if (!exportPayload) {
     return (
        <div className="flex min-h-screen flex-col items-center justify-center p-8 bg-muted/20">
          <div className="max-w-md text-center">
@@ -77,7 +76,11 @@ function PrintView() {
 
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4 print:p-0 print:bg-white overflow-y-auto">
-      <CvPrintTemplate cvData={cvData} />
+      <CvPrintTemplate
+        cvData={exportPayload.cvData}
+        deepAnalysis={exportPayload.deepAnalysis}
+        jobDescription={exportPayload.jobDescription}
+      />
     </div>
   );
 }
