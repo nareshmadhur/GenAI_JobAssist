@@ -8,6 +8,7 @@ import {
   Copy,
   Edit,
   FileText,
+  GraduationCap,
   Lightbulb,
   MessageSquareMore,
   Save,
@@ -15,15 +16,18 @@ import {
   Wand2,
   XCircle,
 } from 'lucide-react';
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState, useTransition } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { compiler } from 'markdown-to-jsx';
 import ReactDOMServer from 'react-dom/server';
 import { useFormContext } from 'react-hook-form';
 
-import { reviseAction, fillQaGapAction, generateLearningPathAction } from '@/app/actions';
+import { reviseAction, fillQaGapAction, generateInterviewPrepAction } from '@/app/actions';
 import type { AllGenerationResults } from '@/app/actions';
 import type { GenerationType, ActiveView } from '@/app/job-matcher/page';
+import type { InterviewPrepOutput } from '@/lib/schemas';
+import { InterviewPrepView } from '@/components/interview-prep-view';
+import { LoadingProgress } from './loading-progress';
 import {
   Card,
   CardContent,
@@ -32,17 +36,21 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@/components/ui/tabs';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+
 import { useToast } from '@/hooks/use-toast';
 import type { CvOutput, QAndAOutput, ReviseResponseData, JobApplicationData } from '@/lib/schemas';
-import type { DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
+import type { DeepAnalysisOutput } from '@/lib/schemas';
 import { Button } from './ui/button';
 import { CvView } from './cv-view';
 import { RevisionForm } from './revision-form';
@@ -54,6 +62,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { CircularProgress } from './circular-progress';
 import { ErrorDisplay } from './error-display';
+import { Skeleton } from './ui/skeleton';
 
 interface OutputViewProps {
   activeView: ActiveView;
@@ -63,6 +72,10 @@ interface OutputViewProps {
   isGenerating: boolean;
   generationError: string | null;
   onRetry: () => void;
+  showSectionSwitcher?: boolean;
+  headerDescription?: string;
+  headerActions?: React.ReactNode;
+  onCoachRequest?: (message: string) => void;
 }
 
 const VIEW_CONFIG: Record<
@@ -70,12 +83,12 @@ const VIEW_CONFIG: Record<
   { title: string; icon: React.ReactNode }
 > = {
   coverLetter: { title: 'Cover Letter', icon: <FileText className="h-5 w-5" /> },
-  cv: { title: 'Curriculum Vitae (CV)', icon: <Briefcase className="h-5 w-5" /> },
+  cv: { title: 'Resume', icon: <Briefcase className="h-5 w-5" /> },
   deepAnalysis: {
-    title: 'Deep Analysis',
+    title: 'Fit Summary',
     icon: <Lightbulb className="h-5 w-5" />,
   },
-  qAndA: { title: 'Q & A', icon: <MessageSquareMore className="h-5 w-5" /> },
+  qAndA: { title: 'Answers', icon: <MessageSquareMore className="h-5 w-5" /> },
 };
 
 /**
@@ -203,60 +216,6 @@ function MissingAnswerResolver({
   );
 }
 
-function LearningPathGenerator({
-  jobDescription,
-  missingRequirement,
-}: {
-  jobDescription: string;
-  missingRequirement: string;
-}) {
-  const [learningPath, setLearningPath] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const { toast } = useToast();
-
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    const result = await generateLearningPathAction({
-      jobDescription,
-      missingRequirement,
-    });
-    setIsGenerating(false);
-
-    if (result && 'error' in result && result.error) {
-      toast({ title: 'Generation Failed', description: result.error, variant: 'destructive' });
-    } else if (result && 'learningPath' in result) {
-      setLearningPath(result.learningPath);
-      toast({ title: 'Learning Path Generated!' });
-    }
-  };
-
-  if (learningPath) {
-    return (
-      <div className="mt-2 rounded-md bg-indigo-50 p-3 border border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/30 text-left">
-        <p className="text-xs font-semibold text-indigo-800 dark:text-indigo-400 mb-2 flex items-center gap-1">
-          <Sparkles className="h-3 w-3" /> Recommended Learning Path
-        </p>
-        <div className="prose prose-sm max-w-none text-xs dark:prose-invert">
-          <ReactMarkdown>{learningPath}</ReactMarkdown>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <Button 
-      variant="outline" 
-      size="sm" 
-      className="mt-2 h-7 w-full text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 border-indigo-200" 
-      onClick={handleGenerate} 
-      disabled={isGenerating}
-    >
-      {isGenerating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Wand2 className="h-3 w-3 mr-1" />}
-      Generate Learning Path
-    </Button>
-  );
-}
-
 /**
  * Renders the generated cover letter with editing and revision capabilities.
  *
@@ -335,10 +294,16 @@ function GeneratedResponseView({
  */
 function QAndAView({
   qAndA,
+  interviewPrep,
+  isPrepping,
+  onRegenPrep,
   onRevision,
   onQaGapFill,
 }: {
   qAndA: QAndAOutput;
+  interviewPrep?: InterviewPrepOutput;
+  isPrepping?: boolean;
+  onRegenPrep?: () => void;
   onRevision: (data: ReviseResponseData) => Promise<void>;
   onQaGapFill: (index: number, answer: string) => void;
 }) {
@@ -359,76 +324,111 @@ function QAndAView({
     .map((p) => `Q: ${p.question}\nA: ${p.answer}`)
     .join('\n\n');
   const missingAnswersCount = qAndA.qaPairs.filter(
-    (p) => p.answer === '[Answer not found in bio]'
+    (p) => p.answer === '[Answer not found in repository]'
   ).length;
-  const NOT_FOUND_STRING = '[Answer not found in bio]';
+  const NOT_FOUND_STRING = '[Answer not found in repository]';
 
   return (
     <div>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex flex-col">
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquareMore className="h-6 w-6 text-foreground" />
-              Q&A
-            </CardTitle>
-            <CardDescription className="prose-sm dark:prose-invert">
-              Answers to questions found in the job description.
-            </CardDescription>
-          </div>
-          <CopyButton textToCopy={allAnswers} />
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {missingAnswersCount > 0 && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Missing Information</AlertTitle>
-              <AlertDescription className="prose-sm dark:prose-invert">
-                {missingAnswersCount} question
-                {missingAnswersCount > 1 ? 's' : ''} could not be answered
-                based on your bio. These are highlighted below.
-              </AlertDescription>
-            </Alert>
-          )}
-          <div className="space-y-4">
-            {qAndA.qaPairs.map((pair, index) => (
-              <div
-                key={index}
-                className="relative rounded-md border bg-muted/50 p-4"
-              >
-                <p className="prose-sm dark:prose-invert pr-10 font-semibold text-primary dark:text-primary-foreground mb-2">
-                  {pair.question}
-                </p>
-                <div className="prose prose-sm max-w-none dark:prose-invert">
-                  {pair.answer === NOT_FOUND_STRING ? (
-                    <div>
-                        <span className="text-red-600 dark:text-red-400">{pair.answer}</span>
-                        <MissingAnswerResolver 
-                            question={pair.question} 
-                            jobDescription={jobDescription} 
-                            onResolve={(newAnswer) => onQaGapFill(index, newAnswer)} 
-                        />
-                    </div>
-                  ) : (
-                    <ReactMarkdown>{pair.answer}</ReactMarkdown>
-                  )}
-                </div>
-                {pair.answer !== NOT_FOUND_STRING && (
-                  <CopyButton
-                    textToCopy={pair.answer}
-                    className="absolute right-2 top-2"
-                  />
-                )}
+      <Tabs defaultValue="qa">
+        <TabsList className="w-full mb-4 bg-muted/30">
+          <TabsTrigger value="qa" className="flex-1 gap-2">
+            <MessageSquareMore className="h-4 w-4" /> Q&amp;A Simulator
+          </TabsTrigger>
+          <TabsTrigger value="coaching" className="flex-1 gap-2">
+            <GraduationCap className="h-4 w-4" /> Coaching Guide
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="qa">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div className="flex flex-col">
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquareMore className="h-6 w-6 text-foreground" />
+                  Q&amp;A
+                </CardTitle>
+                <CardDescription className="prose-sm dark:prose-invert">
+                  Answers to questions found in the job description.
+                </CardDescription>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-      <RevisionForm
-        currentResponse={JSON.stringify(qAndA, null, 2)}
-        generationType="qAndA"
-        onRevision={onRevision}
-      />
+              <CopyButton textToCopy={allAnswers} />
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {missingAnswersCount > 0 && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Missing Information</AlertTitle>
+                  <AlertDescription className="prose-sm dark:prose-invert">
+                    {missingAnswersCount} question
+                    {missingAnswersCount > 1 ? 's' : ''} could not be answered
+                    based on your Work Repository. These are highlighted below.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="space-y-4">
+                {qAndA.qaPairs.map((pair, index) => (
+                  <div
+                    key={index}
+                    className="relative rounded-md border bg-muted/50 p-4"
+                  >
+                    <p className="prose-sm dark:prose-invert pr-10 font-semibold text-primary dark:text-primary-foreground mb-2">
+                      {pair.question}
+                    </p>
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      {pair.answer === NOT_FOUND_STRING ? (
+                        <div>
+                            <span className="text-red-600 dark:text-red-400">{pair.answer}</span>
+                            <MissingAnswerResolver 
+                                question={pair.question} 
+                                jobDescription={jobDescription} 
+                                onResolve={(newAnswer) => onQaGapFill(index, newAnswer)} 
+                            />
+                        </div>
+                      ) : (
+                        <ReactMarkdown>{pair.answer}</ReactMarkdown>
+                      )}
+                    </div>
+                    {pair.answer !== NOT_FOUND_STRING && (
+                      <CopyButton
+                        textToCopy={pair.answer}
+                        className="absolute right-2 top-2"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <RevisionForm
+            currentResponse={JSON.stringify(qAndA, null, 2)}
+            generationType="qAndA"
+            onRevision={onRevision}
+          />
+        </TabsContent>
+
+        <TabsContent value="coaching">
+          {isPrepping ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <LoadingProgress className="p-0" interval={2000} />
+            </div>
+          ) : interviewPrep ? (
+            <InterviewPrepView data={interviewPrep} />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 gap-4 rounded-xl border-2 border-dashed border-muted-foreground/20">
+              <GraduationCap className="h-10 w-10 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground text-center max-w-xs">
+                Your personalised interview coaching guide will appear here once generated.
+              </p>
+              {onRegenPrep && (
+                <Button size="sm" variant="outline" onClick={onRegenPrep}>
+                  <Sparkles className="mr-2 h-4 w-4" /> Generate Coaching Guide
+                </Button>
+              )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -441,12 +441,12 @@ function QAndAView({
  */
 function DeepAnalysisView({
   deepAnalysis,
+  onCoachRequest,
 }: {
   deepAnalysis: DeepAnalysisOutput;
+  onCoachRequest?: (message: string) => void;
 }) {
   const formMethods = useFormContext<JobApplicationData>();
-  const jobDescription = formMethods?.getValues('jobDescription') || '';
-
   const sortedRequirements = [...deepAnalysis.requirements].sort((a, b) =>
     a.isMandatory === b.isMandatory ? 0 : a.isMandatory ? -1 : 1
   );
@@ -465,6 +465,24 @@ function DeepAnalysisView({
     preferredReqs.length > 0
       ? Math.round((preferredMet / preferredReqs.length) * 100)
       : 100;
+  const mandatoryGaps = mandatoryReqs.filter((r) => !r.isMet);
+  const fitRead = mandatoryGaps.length > 0
+    ? 'You have a possible fit, but some must-have signals are still weak or missing.'
+    : preferredReqs.some((r) => !r.isMet)
+      ? 'You meet the core requirements and can improve how strongly you show the optional ones.'
+      : 'You look like a strong fit on paper. The next step is making that fit obvious in your application materials.';
+  const biggestRisk = mandatoryGaps[0]?.requirement || 'No major must-have risk is showing in this analysis.';
+  const recommendedNextMove = mandatoryGaps.length > 0
+    ? 'Strengthen the Work Repository around the biggest missing must-have before polishing more documents.'
+    : preferredReqs.some((r) => !r.isMet)
+      ? 'Use your resume and cover letter to make the strongest preferred signals easier to spot.'
+      : 'Move on to tailoring the resume and cover letter so the fit is visible in the first few seconds.';
+  const requirementsByCategory = sortedRequirements.reduce<Record<string, typeof sortedRequirements>>((groups, requirement) => {
+    const key = requirement.category || 'Other';
+    groups[key] = groups[key] ? [...groups[key], requirement] : [requirement];
+    return groups;
+  }, {});
+  const categoryEntries = Object.entries(requirementsByCategory);
 
   const renderImprovementAreas = (details?: string[]) => {
     if (!details || details.length === 0) {
@@ -487,29 +505,56 @@ function DeepAnalysisView({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Briefcase className="h-6 w-6 text-foreground" />
-            Job Summary
+            Fit Snapshot
           </CardTitle>
           <CardDescription className="prose-sm dark:prose-invert">
-            An expert summary of the role's core requirements.
+            A quick read on how promising this application looks and what to do next.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="prose prose-sm max-w-none dark:prose-invert">
-            <ReactMarkdown>{deepAnalysis.jobSummary}</ReactMarkdown>
+          <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="rounded-2xl border bg-muted/40 p-4">
+              <h4 className="mb-4 text-center text-sm font-semibold text-muted-foreground">
+                Match Rate
+              </h4>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-1">
+                <div className="flex flex-col items-center gap-2">
+                  <CircularProgress value={mandatoryMatchRate} />
+                  <p className="font-semibold">Mandatory</p>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <CircularProgress value={preferredMatchRate} />
+                  <p className="font-semibold">Preferred</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border bg-background p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  What This Means
+                </p>
+                <p className="mt-2 text-sm text-foreground">{fitRead}</p>
+              </div>
+              <div className="rounded-2xl border bg-background p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Biggest Risk
+                </p>
+                <p className="mt-2 text-sm text-foreground">{biggestRisk}</p>
+              </div>
+              <div className="rounded-2xl border bg-background p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Best Next Move
+                </p>
+                <p className="mt-2 text-sm text-foreground">{recommendedNextMove}</p>
+              </div>
+            </div>
           </div>
-          <div className="mt-6 rounded-lg border bg-muted/50 p-4">
-            <h4 className="mb-4 text-center text-sm font-semibold text-muted-foreground">
-              Match Rate
-            </h4>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div className="flex flex-col items-center gap-2">
-                <CircularProgress value={mandatoryMatchRate} />
-                <p className="font-semibold">Mandatory</p>
-              </div>
-              <div className="flex flex-col items-center gap-2">
-                <CircularProgress value={preferredMatchRate} />
-                <p className="font-semibold">Preferred</p>
-              </div>
+          <div className="mt-6 rounded-2xl border bg-muted/20 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Role Summary
+            </p>
+            <div className="prose prose-sm mt-3 max-w-none dark:prose-invert">
+              <ReactMarkdown>{deepAnalysis.jobSummary}</ReactMarkdown>
             </div>
           </div>
         </CardContent>
@@ -522,52 +567,119 @@ function DeepAnalysisView({
             <span>Requirement Analysis</span>
           </CardTitle>
           <CardDescription className="prose-sm dark:prose-invert">
-            How your bio aligns with the job's key requirements.
+            How your Work Repository aligns with the job&apos;s key requirements.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="py-2 px-4">Status</TableHead>
-                <TableHead className="py-2 px-4">Category</TableHead>
-                <TableHead className="py-2 px-4">Requirement</TableHead>
-                <TableHead className="py-2 px-4 text-center">Met</TableHead>
-                <TableHead className="py-2 px-4 w-[40%]">Justification</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedRequirements.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell className="py-2 px-4">
-                    <Badge
-                      variant={item.isMandatory ? 'default' : 'secondary'}
-                    >
-                      {item.isMandatory ? 'Mandatory' : 'Preferred'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="py-2 px-4">{item.category}</TableCell>
-                  <TableCell className="py-2 px-4">{item.requirement}</TableCell>
-                  <TableCell className="py-2 px-4 text-center">
-                    {item.isMet ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400 inline-block" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-destructive inline-block" />
-                    )}
-                  </TableCell>
-                  <TableCell className="py-2 px-4 text-sm align-top">
-                    {item.justification}
-                    {!item.isMet && item.isMandatory && (
-                       <LearningPathGenerator 
-                           jobDescription={jobDescription} 
-                           missingRequirement={item.requirement} 
-                       />
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <Accordion
+            type="multiple"
+            defaultValue={[]}
+            className="w-full"
+          >
+            {categoryEntries.map(([category, items]) => {
+              const metCount = items.filter((item) => item.isMet).length;
+              const mandatoryGapCount = items.filter((item) => item.isMandatory && !item.isMet).length;
+
+              return (
+                <AccordionItem key={category} value={category} className="border-b-0">
+                  <div className="rounded-2xl border bg-muted/30 px-4">
+                    <AccordionTrigger className="py-4 hover:no-underline">
+                      <div className="flex w-full flex-col gap-3 text-left sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-base font-semibold text-foreground">{category}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {metCount} of {items.length} requirements currently covered
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary">{metCount}/{items.length} met</Badge>
+                          {mandatoryGapCount > 0 ? (
+                            <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                              {mandatoryGapCount} mandatory gap{mandatoryGapCount > 1 ? 's' : ''}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                              No mandatory gaps
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4">
+                      <div className="space-y-3">
+                        {items.map((item, index) => {
+                          const coachPrompt = [
+                            'Gap coaching request',
+                            `Category: ${item.category}`,
+                            `Requirement: ${item.requirement}`,
+                            `Why it matters: ${item.justification}`,
+                            'Coach me briefly on whether this is a real experience gap or mostly a framing gap, how to improve my Work Repository, and the best next application move.',
+                          ].join('\n');
+
+                          return (
+                            <div
+                              key={`${category}-${index}`}
+                              className="rounded-2xl border bg-background p-4 shadow-sm"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge variant={item.isMandatory ? 'default' : 'secondary'}>
+                                    {item.isMandatory ? 'Mandatory' : 'Preferred'}
+                                  </Badge>
+                                  <Badge
+                                    variant="outline"
+                                    className={item.isMet
+                                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                                      : 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300'}
+                                  >
+                                    {item.isMet ? 'Covered' : 'Needs work'}
+                                  </Badge>
+                                </div>
+                                {item.isMet ? (
+                                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                ) : (
+                                  <XCircle className="h-5 w-5 text-destructive" />
+                                )}
+                              </div>
+                              <div className="mt-3 space-y-3">
+                                <div>
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Requirement
+                                  </p>
+                                  <p className="mt-1 whitespace-pre-wrap break-words text-sm font-medium text-foreground">
+                                    {item.requirement}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Justification
+                                  </p>
+                                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted-foreground">
+                                    {item.justification}
+                                  </p>
+                                </div>
+                                {!item.isMet && item.isMandatory && onCoachRequest ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    className="w-full justify-center rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md shadow-primary/20 hover:opacity-95 sm:w-auto"
+                                    onClick={() => onCoachRequest(coachPrompt)}
+                                  >
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                    Get AI Coach Help On This Gap
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </AccordionContent>
+                  </div>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
         </CardContent>
       </Card>
 
@@ -626,8 +738,14 @@ export function OutputView({
   isGenerating,
   generationError,
   onRetry,
+  showSectionSwitcher = true,
+  headerDescription,
+  headerActions,
+  onCoachRequest,
 }: OutputViewProps): JSX.Element {
   const { toast } = useToast();
+  const formMethods = useFormContext<JobApplicationData>();
+  const [isPrepping, setIsPrepping] = useState(false);
 
   /**
    * Handles the logic for revising content.
@@ -676,13 +794,31 @@ export function OutputView({
     });
   };
 
+  const handleRegenPrep = async () => {
+    const jd = formMethods?.getValues('jobDescription') || '';
+    const wr = formMethods?.getValues('workRepository') || '';
+    if (!jd || !wr) return;
+    setIsPrepping(true);
+    const result = await generateInterviewPrepAction({ jobDescription: jd, workRepository: wr });
+    setIsPrepping(false);
+    if ('error' in result) {
+      toast({ variant: 'destructive', title: 'Interview Prep Failed', description: result.error });
+    } else {
+      setAllResults((prev) => ({ ...prev, interviewPrep: result }));
+    }
+  };
+
   const renderActiveView = () => {
     if (generationError) {
         return <ErrorDisplay errorMessage={generationError} onRetry={onRetry} />;
     }
     
     if (isGenerating && !allResults[activeView as GenerationType]) {
-      return <SectionSkeleton />;
+      return (
+        <div className="flex h-full min-h-[400px] flex-col items-center justify-center">
+            <LoadingProgress />
+        </div>
+      );
     }
     
     switch (activeView) {
@@ -700,12 +836,15 @@ export function OutputView({
         return <CvView cvData={allResults.cv} onCvUpdate={handleCvUpdate} />;
       case 'deepAnalysis':
         if (!allResults.deepAnalysis) return null;
-        return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} />;
+        return <DeepAnalysisView deepAnalysis={allResults.deepAnalysis} onCoachRequest={onCoachRequest} />;
       case 'qAndA':
         if (!allResults.qAndA) return null;
         return (
           <QAndAView
             qAndA={allResults.qAndA as QAndAOutput}
+            interviewPrep={allResults.interviewPrep}
+            isPrepping={isPrepping}
+            onRegenPrep={handleRegenPrep}
             onRevision={handleRevision}
             onQaGapFill={handleQaGapFill}
           />
@@ -726,32 +865,44 @@ export function OutputView({
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          {activeView !== 'none' ? (
-            <CardTitle className="flex items-center gap-2">
-              {VIEW_CONFIG[activeView as GenerationType].icon}{' '}
-              {VIEW_CONFIG[activeView as GenerationType].title}
-            </CardTitle>
-          ) : (
-            <CardTitle>Output</CardTitle>
-          )}
-          <div className="flex items-center gap-1">
-            {(Object.keys(allResults) as GenerationType[]).map(
-              (key) =>
-                allResults[key] && (
-                  <Button
-                    key={key}
-                    variant={activeView === key ? 'default' : 'ghost'}
-                    size="icon"
-                    onClick={() => setActiveView(key)}
-                    aria-label={`View ${VIEW_CONFIG[key].title}`}
-                    disabled={isGenerating && !allResults[key]}
-                  >
-                    {VIEW_CONFIG[key].icon}
-                  </Button>
-                )
+      <CardHeader className="gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            {activeView !== 'none' ? (
+              <CardTitle className="flex items-center gap-2">
+                {VIEW_CONFIG[activeView as GenerationType].icon}{' '}
+                {VIEW_CONFIG[activeView as GenerationType].title}
+              </CardTitle>
+            ) : (
+              <CardTitle>Output</CardTitle>
             )}
+            {headerDescription ? (
+              <CardDescription className="mt-2 text-sm">
+                {headerDescription}
+              </CardDescription>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {headerActions}
+            {showSectionSwitcher ? (
+              <div className="flex items-center gap-1">
+                {(Object.keys(allResults) as (keyof AllGenerationResults)[])
+                  .filter((key): key is GenerationType => key !== 'interviewPrep' && !!allResults[key] && !!VIEW_CONFIG[key as GenerationType])
+                  .map((key) => (
+                    <Button
+                      key={key}
+                      variant={activeView === key ? 'default' : 'ghost'}
+                      size="icon"
+                      onClick={() => setActiveView(key)}
+                      aria-label={`View ${VIEW_CONFIG[key].title}`}
+                      disabled={isGenerating && !allResults[key]}
+                    >
+                      {VIEW_CONFIG[key].icon}
+                    </Button>
+                  ))
+                }
+              </div>
+            ) : null}
           </div>
         </div>
       </CardHeader>

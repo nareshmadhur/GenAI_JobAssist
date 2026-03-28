@@ -27,9 +27,9 @@ const prompt = ai.definePrompt({
   name: 'reviseResponsePrompt',
   input: { schema: ReviseResponseSchema },
   // The output schema will be dynamically determined inside the flow.
-  prompt: `You are a professional editor. A previous response was generated for a user based on their bio and a job description. The user has provided feedback for revision.
+  prompt: `You are a professional editor. A previous response was generated for a user based on their work repository and a job description. The user has provided feedback for revision.
 
-Your task is to revise the "Original Response" based on the "User's Revision Comments". You MUST maintain the original context from the Job Description and User Bio.
+Your task is to revise the "Original Response" based on the "User's Revision Comments". You MUST maintain the original context from the Job Description and User Work Repository.
 
 The type of content to revise is: '{{generationType}}'.
 
@@ -40,8 +40,8 @@ The type of content to revise is: '{{generationType}}'.
 Job Description (for context):
 {{{jobDescription}}}
 
-User Bio (for context):
-{{{bio}}}
+User Work Repository (for context):
+{{{workRepository}}}
 
 Original Response (to be revised):
 {{{originalResponse}}}

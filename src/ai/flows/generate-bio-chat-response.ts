@@ -46,7 +46,7 @@ const prompt = ai.definePrompt({
 {{/each}}
 ---
 
-Now, based on the last user message, generate the updated bio, your next response, and some suggested replies.`,
+Now, based on the last user message, generate the updated work repository, your next response, and some suggested replies.`,
 });
 
 const generateBioChatResponseFlow = ai.defineFlow(
@@ -61,7 +61,7 @@ const generateBioChatResponseFlow = ai.defineFlow(
       if (!output) {
         return {
           response: 'Sorry, I had trouble processing that. Could you try rephrasing?',
-          updatedBio: input.currentWorkRepository,
+          updatedWorkRepository: input.currentWorkRepository,
           error: 'No output from model.',
         };
       }
@@ -71,7 +71,7 @@ const generateBioChatResponseFlow = ai.defineFlow(
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
       return {
         response: `I'm sorry, I encountered an issue. The AI model might be temporarily unavailable. Please try again in a moment.`,
-        updatedBio: input.currentWorkRepository,
+        updatedWorkRepository: input.currentWorkRepository,
         error: `Error: ${errorMessage}`,
       };
     }

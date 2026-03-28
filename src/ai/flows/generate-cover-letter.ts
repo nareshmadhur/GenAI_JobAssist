@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Generates a professional cover letter based on a job description and user's bio.
+ * @fileOverview Generates a professional cover letter based on a job description and user's work repository.
  *
  * - generateCoverLetter - A function that handles the cover letter generation.
  * - CoverLetterInput - The input type for the generateCoverLetter function.

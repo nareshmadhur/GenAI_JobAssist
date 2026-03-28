@@ -24,10 +24,10 @@ import { ExpandableTextarea } from '@/components/expandable-textarea';
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Wand2, Sparkles, Link as LinkIcon, Loader2, ClipboardPaste, ClipboardCheck, Trash2 } from 'lucide-react';
-import { BioCreatorModal } from './bio-creator-modal';
+import { RepositoryAssistantModal } from './repository-assistant-modal';
 import { exampleJobDescription, exampleWorkRepository } from '@/lib/example-data';
 import { Skeleton } from './ui/skeleton';
-import { extractUrlTextAction, prettifyWorkRepositoryAction } from '@/app/actions';
+import { extractJobDetailsAction, extractUrlTextAction, prettifyWorkRepositoryAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 
 interface InputFormProps {
@@ -43,7 +43,7 @@ interface InputFormProps {
 export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   const formMethods = useFormContext<Omit<JobApplicationData, 'generationType'>>();
   const { watch } = formMethods;
-  const [isBioCreatorOpen, setIsBioCreatorOpen] = useState(false);
+  const [isRepositoryAssistantOpen, setIsRepositoryAssistantOpen] = useState(false);
   const [isExtractingUrl, setIsExtractingUrl] = useState(false);
   const { toast } = useToast();
   
@@ -148,7 +148,7 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
             type="button" 
             variant="outline" 
             size="sm" 
-            onClick={() => setIsBioCreatorOpen(true)}
+            onClick={() => setIsRepositoryAssistantOpen(true)}
             className="-mt-2"
         >
             <Wand2 className="mr-2 h-4 w-4" />
@@ -182,6 +182,24 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
         title: 'Extracted Successfully',
         description: 'The job description has been populated from the URL.',
       });
+      // Trigger background question detection after URL extraction
+      handleDetectQuestions(result.text);
+    }
+  };
+
+  const handleDetectQuestions = async (text: string) => {
+    if (!text || text.length < 100) return;
+    
+    const result = await extractJobDetailsAction({ jobDescription: text });
+    if (!('error' in result) && result.extractedQuestions && result.extractedQuestions.length > 0) {
+      const currentQuestions = formMethods.getValues('questions') || '';
+      if (!currentQuestions.trim()) {
+        formMethods.setValue('questions', result.extractedQuestions.join('\n\n'));
+        toast({
+          title: 'Questions Detected',
+          description: `Found ${result.extractedQuestions.length} application questions in the description.`,
+        });
+      }
     }
   };
 
@@ -268,7 +286,13 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
                   name="jobDescription"
                   render={({ field }) => (
                     <ExpandableTextarea
-                      field={field}
+                      field={{
+                        ...field,
+                        onBlur: () => {
+                          field.onBlur();
+                          handleDetectQuestions(field.value);
+                        }
+                      }}
                       label="Job Description"
                       placeholder="Paste the full job description text or a URL here. If pasting a URL, click 'Extract from URL' below."
                       footer={urlExtractorTrigger}
@@ -334,9 +358,9 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
           )}
         </CardContent>
       </Card>
-      <BioCreatorModal
-        isOpen={isBioCreatorOpen}
-        onOpenChange={setIsBioCreatorOpen}
+      <RepositoryAssistantModal
+        isOpen={isRepositoryAssistantOpen}
+        onOpenChange={setIsRepositoryAssistantOpen}
         initialWorkRepository={formMethods.getValues('workRepository')}
         onWorkRepositoryUpdate={handleRepositoryUpdate}
       />

@@ -17,6 +17,10 @@ import {
   Sparkles,
   MoreVertical,
   List,
+  Lock,
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle2,
 } from 'lucide-react';
 import Link from 'next/link';
 import React, { useEffect, useRef, useState, useTransition, useCallback, Suspense } from 'react';
@@ -26,11 +30,13 @@ import {
   AllGenerationResults,
   extractJobDetailsAction,
   generateAction,
+  generateInterviewPrepAction,
 } from '@/app/actions';
 import { FeedbackDialog } from '@/components/feedback-dialog';
 import { InputForm } from '@/components/input-form';
 import { AiJobAssistLogo } from '@/components/ai-job-assist-logo';
 import { OutputView } from '@/components/output-view';
+import { LoadingProgress } from '@/components/loading-progress';
 import { SavedJobsCarousel } from '@/components/saved-jobs-carousel';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import {
@@ -67,6 +73,8 @@ export type GenerationType =
   | 'deepAnalysis'
   | 'qAndA';
 export type ActiveView = GenerationType | 'none';
+type JobMeta = { jobTitle: string; companyName: string };
+type WorkspaceView = 'prepare' | 'build';
 
 
 const LOCAL_STORAGE_KEY_FORM = 'ai_job_assist_form_data';
@@ -76,19 +84,26 @@ const FREE_QUERY_LIMIT = 5;
 function JobMatcherContent() {
   const [isGenerating, startGenerating] = useTransition();
   const [isSaving, startSaving] = useTransition();
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>('none');
+  const [view, setView] = useState<WorkspaceView>('prepare');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [allResults, setAllResults] = useState<AllGenerationResults>({});
   const [queryCount, setQueryCount] = useState(0);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isInitialFormLoad, setIsInitialFormLoad] = useState(true);
+  const [jobMeta, setJobMeta] = useState<JobMeta | null>(null);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
 
   
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
+  const previousViewRef = useRef<WorkspaceView>('prepare');
+  const suppressNextOutputScrollRef = useRef(false);
   const router = useRouter();
   const { user, authLoading, logout } = useAuth();
   const {
+    handleCoPilotSubmit,
     setIsCoPilotSidebarOpen,
     setToolContext,
     savedJobs,
@@ -97,10 +112,52 @@ function JobMatcherContent() {
   const searchParams = useSearchParams();
   const jobId = searchParams.get('jobId');
 
+  const scrollPageToTop = useCallback(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
+
   const formMethods = useForm<Omit<JobApplicationData, 'generationType'>>({
     resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
     defaultValues: { jobDescription: '', workRepository: '', questions: '' },
   });
+
+  const getFallbackJobMeta = useCallback((jobDescription: string): JobMeta => {
+    const firstLine = jobDescription
+      .split('\n')
+      .map((line) => line.trim())
+      .find(Boolean);
+
+    return {
+      jobTitle: firstLine?.slice(0, 60) || 'New Application',
+      companyName: 'Target Company',
+    };
+  }, []);
+
+  const getFirstAvailableView = useCallback((results: AllGenerationResults): ActiveView => {
+    const orderedViews: GenerationType[] = ['deepAnalysis', 'cv', 'coverLetter', 'qAndA'];
+    return orderedViews.find((key) => Boolean(results[key])) || 'none';
+  }, []);
+
+  const refreshJobMeta = useCallback(async (jobDescription: string) => {
+    const fallback = getFallbackJobMeta(jobDescription);
+    setJobMeta(fallback);
+
+    try {
+      const detailsResponse = await extractJobDetailsAction({ jobDescription });
+      if ('error' in detailsResponse) {
+        return fallback;
+      }
+
+      const resolvedMeta = {
+        jobTitle: detailsResponse.jobTitle || fallback.jobTitle,
+        companyName: detailsResponse.companyName || fallback.companyName,
+      };
+      setJobMeta(resolvedMeta);
+      return resolvedMeta;
+    } catch {
+      return fallback;
+    }
+  }, [getFallbackJobMeta]);
 
   // Load query count from localStorage on mount
   useEffect(() => {
@@ -112,7 +169,37 @@ function JobMatcherContent() {
     }
   }, [user]);
 
-  const handleGeneration = useCallback((generationType: GenerationType) => {
+  const handleContinueToBuild = useCallback(async () => {
+    const isValid = await formMethods.trigger(['jobDescription', 'workRepository']);
+    if (!isValid) {
+      toast({
+        variant: 'destructive',
+        title: 'Please fill out both Job Description and Work Repository fields.',
+      });
+      return;
+    }
+
+    void refreshJobMeta(formMethods.getValues('jobDescription'));
+    suppressNextOutputScrollRef.current = true;
+    setActiveView((current) => (current === 'none' ? 'deepAnalysis' : current));
+    setView('build');
+    scrollPageToTop();
+  }, [formMethods, refreshJobMeta, scrollPageToTop, toast]);
+
+  const openExistingResult = useCallback((generationType: GenerationType) => {
+    setActiveView(generationType);
+    setGenerationError(null);
+    setView('build');
+  }, []);
+
+  const handleGeneration = useCallback((generationType: GenerationType, options?: { force?: boolean }) => {
+    const shouldForceRegenerate = options?.force ?? false;
+
+    if (!shouldForceRegenerate && allResults[generationType]) {
+      openExistingResult(generationType);
+      return;
+    }
+
     // Check query limit for guest users
     if (!user && queryCount >= FREE_QUERY_LIMIT) {
       setShowLoginPrompt(true);
@@ -140,12 +227,15 @@ function JobMatcherContent() {
 
       setActiveView(generationType);
       setGenerationError(null);
+      setView('build');
 
-      setAllResults((prev) => {
-        const newResults = { ...prev };
-        delete newResults[generationType];
-        return newResults;
-      });
+      if (shouldForceRegenerate) {
+        setAllResults((prev) => {
+          const newResults = { ...prev };
+          delete newResults[generationType];
+          return newResults;
+        });
+      }
 
       startGenerating(async () => {
         const response = await generateAction(data);
@@ -158,6 +248,16 @@ function JobMatcherContent() {
             ...prev,
             [generationType]: response,
           }));
+          void refreshJobMeta(jobDescription);
+
+          // If Q&A is generated, also trigger Interview Prep in the background if not already present
+          if (generationType === 'qAndA' && !allResults.interviewPrep) {
+            generateInterviewPrepAction(data).then(ip => {
+              if (!('error' in ip)) {
+                setAllResults(prev => ({ ...prev, interviewPrep: ip }));
+              }
+            });
+          }
 
           // Increment query count for guest users
           if (!user) {
@@ -177,7 +277,95 @@ function JobMatcherContent() {
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formMethods, toast, user, queryCount]);
+  }, [allResults, formMethods, openExistingResult, queryCount, refreshJobMeta, toast, user]);
+
+  const handleGenerateAll = useCallback(async () => {
+    const primaryViews: GenerationType[] = ['coverLetter', 'cv', 'deepAnalysis', 'qAndA'];
+    const missingViews = primaryViews.filter((key) => !allResults[key]);
+    const firstAvailableView = getFirstAvailableView(allResults);
+
+    if (missingViews.length === 0 && firstAvailableView !== 'none') {
+      setActiveView('deepAnalysis');
+      setView('build');
+      toast({
+        title: 'Everything is already ready',
+        description: 'Opening your saved application instead of regenerating it.',
+      });
+      return;
+    }
+
+    if (!user && queryCount >= FREE_QUERY_LIMIT) {
+      setShowLoginPrompt(true);
+      return;
+    }
+
+    const isValid = await formMethods.trigger(['jobDescription', 'workRepository']);
+    if (!isValid) {
+      toast({ variant: 'destructive', title: 'Please fill out both fields before generating.' });
+      return;
+    }
+    setIsGeneratingAll(true);
+    setGenerationError(null);
+    setActiveView('deepAnalysis');
+    setView('build');
+
+    const { jobDescription, workRepository, questions } = formMethods.getValues();
+    const base = { jobDescription, workRepository };
+    const hasQuestions = Boolean(questions?.trim());
+
+    try {
+      void refreshJobMeta(jobDescription);
+
+      const [cl, cv, qa, da, ip] = await Promise.all([
+        allResults.coverLetter
+          ? Promise.resolve(allResults.coverLetter)
+          : generateAction({ ...base, generationType: 'coverLetter' }),
+        allResults.cv
+          ? Promise.resolve(allResults.cv)
+          : generateAction({ ...base, generationType: 'cv' }),
+        allResults.qAndA
+          ? Promise.resolve(allResults.qAndA)
+          : hasQuestions
+            ? generateAction({ ...base, generationType: 'qAndA', questions: questions || '' })
+            : Promise.resolve({ error: 'Skipped because no questions were provided.' }),
+        allResults.deepAnalysis
+          ? Promise.resolve(allResults.deepAnalysis)
+          : generateAction({ ...base, generationType: 'deepAnalysis' }),
+        allResults.interviewPrep
+          ? Promise.resolve(allResults.interviewPrep)
+          : hasQuestions
+            ? generateInterviewPrepAction(base)
+            : Promise.resolve({ error: 'Skipped because no questions were provided.' }),
+      ]);
+
+      setAllResults((prev) => ({
+        ...prev,
+        coverLetter: prev.coverLetter || ('error' in cl ? undefined : cl as any),
+        cv: prev.cv || ('error' in cv ? undefined : cv as any),
+        qAndA: prev.qAndA || ('error' in qa ? undefined : qa as any),
+        deepAnalysis: prev.deepAnalysis || ('error' in da ? undefined : da as any),
+        interviewPrep: prev.interviewPrep || ('error' in ip ? undefined : ip as any),
+      }));
+
+      if (!hasQuestions) {
+        toast({
+          title: 'Interview materials skipped',
+          description: 'Add or detect application questions to include interview simulation and coaching in the full suite.',
+        });
+      }
+
+      if (!user) {
+        const newCount = queryCount + 1;
+        setQueryCount(newCount);
+        localStorage.setItem(LOCAL_STORAGE_KEY_QUERY_COUNT, newCount.toString());
+      }
+    } catch (e: any) {
+      setGenerationError(e.message || 'Generation failed.');
+    } finally {
+      setIsGeneratingAll(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allResults, formMethods, getFirstAvailableView, queryCount, refreshJobMeta, toast, user]);
 
   // This effect provides the tool functions to the global context.
   useEffect(() => {
@@ -241,7 +429,18 @@ function JobMatcherContent() {
   }, [formMethods, formMethods.watch, allResults]);
 
   useEffect(() => {
+    if (previousViewRef.current !== view && view === 'build') {
+      scrollPageToTop();
+    }
+    previousViewRef.current = view;
+  }, [scrollPageToTop, view]);
+
+  useEffect(() => {
     if (activeView !== 'none' && outputRef.current) {
+      if (suppressNextOutputScrollRef.current) {
+        suppressNextOutputScrollRef.current = false;
+        return;
+      }
       outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [activeView]);
@@ -262,6 +461,10 @@ function JobMatcherContent() {
     setAllResults({});
     setActiveView('none');
     setGenerationError(null);
+    setJobMeta(null);
+    setCurrentJobId(null);
+    setView('prepare');
+    router.replace('/job-matcher', { scroll: false });
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY_FORM);
     } catch (e) {
@@ -312,14 +515,22 @@ function JobMatcherContent() {
         };
 
         setSavedJobs(prev => [newSavedJob, ...prev]);
+        setCurrentJobId(newSavedJob.id);
+        setJobMeta({
+          jobTitle: newSavedJob.jobTitle,
+          companyName: newSavedJob.companyName,
+        });
+        router.replace(`/job-matcher?jobId=${newSavedJob.id}`, { scroll: false });
 
         toast({
-            title: 'Application Saved to Tracker!',
+            title: user ? 'Application Saved to Tracker!' : 'Application Saved Locally!',
             description: (
               <div className="mt-1 flex flex-col gap-3">
-                <p className="text-sm">"{newSavedJob.jobTitle}" has been added to your application pipeline.</p>
+                <p className="text-sm">
+                  &quot;{newSavedJob.jobTitle}&quot; has been saved{user ? ' to your application pipeline' : ' in this browser and will sync after login'}.
+                </p>
                 <Button asChild variant="secondary" size="sm" className="w-fit h-8 px-3 text-xs">
-                  <Link href="/admin">Go to Application Tracker</Link>
+                  <Link href={`/admin?from=build&jobId=${newSavedJob.id}`}>Go to Application Tracker</Link>
                 </Button>
               </div>
             ),
@@ -329,11 +540,25 @@ function JobMatcherContent() {
   };
 
   const handleLoadJob = (job: SavedJob) => {
-    formMethods.reset(job.formData);
+    // Map legacy 'bio' to 'workRepository' if needed
+    const formData = {
+      ...job.formData,
+      workRepository: job.formData.workRepository || (job.formData as any).bio || '',
+    };
+    formMethods.reset(formData);
     setAllResults(job.allResults);
-    setActiveView(
-      (Object.keys(job.allResults)[0] as ActiveView) || 'none'
-    );
+    setCurrentJobId(job.id);
+    setJobMeta({
+      jobTitle: job.jobTitle,
+      companyName: job.companyName,
+    });
+    const firstView = (Object.keys(job.allResults) as (keyof AllGenerationResults)[])
+      .find(key => key !== 'interviewPrep') as ActiveView;
+    setActiveView(job.allResults.deepAnalysis ? 'deepAnalysis' : (firstView || 'deepAnalysis'));
+    suppressNextOutputScrollRef.current = true;
+    setView('build');
+    scrollPageToTop();
+    router.replace(`/job-matcher?jobId=${job.id}`, { scroll: false });
     try {
       localStorage.setItem(
         LOCAL_STORAGE_KEY_FORM,
@@ -364,41 +589,113 @@ function JobMatcherContent() {
     }
   };
 
+  const selectedView: GenerationType = activeView === 'none' ? 'deepAnalysis' : activeView;
+  const hasAnyResults = Object.keys(allResults).length > 0;
+  const trackerHref = view === 'build'
+    ? currentJobId
+      ? `/admin?from=build&jobId=${currentJobId}`
+      : '/admin?from=build'
+    : '/admin';
+  const buildSections: Array<{
+    generationType: GenerationType;
+    icon: React.ElementType;
+    label: string;
+    description: string;
+    locked?: boolean;
+    lockedMessage?: string;
+  }> = [
+    {
+      generationType: 'deepAnalysis',
+      icon: Lightbulb,
+      label: 'Fit Summary',
+      description: 'See how your background lines up with the role before you tailor anything else.',
+    },
+    {
+      generationType: 'cv',
+      icon: Briefcase,
+      label: 'Resume',
+      description: 'Create a role-specific resume built from your Work Repository.',
+    },
+    {
+      generationType: 'coverLetter',
+      icon: FileText,
+      label: 'Cover Letter',
+      description: 'Draft a tailored cover letter that connects your experience to the job.',
+    },
+    {
+      generationType: 'qAndA',
+      icon: MessageSquareMore,
+      label: 'Answers',
+      description: 'Prepare for application questions and interview follow-ups.',
+      locked: !formMethods.watch('questions')?.trim(),
+      lockedMessage: 'Add questions in Prepare to unlock',
+    },
+  ];
+  const selectedSection = buildSections.find((section) => section.generationType === selectedView) || buildSections[0];
+  const readySections = buildSections.filter((section) => !!allResults[section.generationType]).map((section) => section.label);
+  const coachPrompts = [
+    'What should I do first for this role?',
+    'Improve my work repository for this job',
+    readySections.length > 0
+      ? `I already have ${readySections.join(', ')}. What should I work on next?`
+      : 'Create the best next document for me',
+  ];
+
+  const openCoach = (message?: string | { message: string; displayMessage?: string }) => {
+    setIsCoPilotSidebarOpen(true);
+    if (message) {
+      handleCoPilotSubmit(message);
+    }
+  };
+
   const ActionButton = ({
       generationType,
       icon: Icon,
-      label
+      label,
+      description,
+      locked = false,
+      lockedMessage
   }: {
       generationType: GenerationType,
       icon: React.ElementType,
-      label: string
+      label: string,
+      description: string,
+      locked?: boolean,
+      lockedMessage?: string
   }) => {
       const hasResult = !!allResults[generationType];
+      const isGeneratingThis = isGenerating && activeView === generationType;
+      const isSelected = selectedView === generationType;
       return (
       <Card
-          onClick={() => handleGeneration(generationType)}
-          data-active={activeView === generationType}
+          onClick={() => !locked && handleGeneration(generationType)}
+          data-active={isSelected}
+          data-locked={locked}
           className={cn(
-            'relative overflow-hidden group cursor-pointer transition-all duration-300 hover:shadow-md bg-card/60 backdrop-blur-sm border-muted-foreground/10',
-            'data-[active=true]:bg-primary/5 data-[active=true]:border-primary/50 data-[active=true]:shadow-primary/5'
+            'relative overflow-hidden transition-all duration-300 bg-card/80 border-muted-foreground/10',
+            locked ? 'opacity-60 cursor-not-allowed bg-muted/30 grayscale' : 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md',
+            'data-[active=true]:bg-primary/5 data-[active=true]:border-primary/50 data-[active=true]:shadow-primary/10'
           )}
       >
-        <div className="flex items-center gap-4 p-4 lg:p-5">
+        <div className="flex items-start gap-4 p-4 lg:p-5">
           <div className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
-            activeView === generationType ? "bg-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary",
-            hasResult && activeView !== generationType && "bg-success/10 text-success"
+            'flex h-11 w-11 items-center justify-center rounded-2xl transition-colors',
+            locked ? "bg-muted text-muted-foreground" :
+            isSelected ? "bg-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground",
+            hasResult && !isSelected && !locked && 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
           )}>
-            <Icon className="h-5 w-5" />
+            {locked ? <Lock className="h-4 w-4" /> : <Icon className="h-5 w-5" />}
           </div>
-          <div className="flex flex-col flex-1 text-left">
+          <div className="flex flex-col flex-1 text-left gap-1">
             <span className={cn(
-                "font-semibold text-sm transition-colors",
-                activeView === generationType ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"
+                'font-semibold text-sm transition-colors',
+                locked ? 'text-muted-foreground' : 'text-foreground'
             )}>{label}</span>
-            {hasResult && <span className="text-[10px] uppercase tracking-wider text-success font-bold mt-1">Ready</span>}
+            <span className="text-sm text-muted-foreground">{description}</span>
+            {hasResult && !locked ? <span className="pt-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Open saved result</span> : null}
+            {locked && lockedMessage ? <span className="pt-1 text-[11px] font-semibold text-rose-500 line-clamp-2">{lockedMessage}</span> : null}
           </div>
-          {isGenerating && activeView === generationType && (
+          {isGeneratingThis && (
               <Loader2 className="h-5 w-5 animate-spin text-primary ml-2" />
           )}
         </div>
@@ -418,7 +715,7 @@ function JobMatcherContent() {
                 AI Job Assist
               </h1>
               <div className="text-xs text-primary-foreground/80">
-                Application Studio
+                Prepare and build tailored applications
               </div>
             </div>
           </div>
@@ -431,7 +728,7 @@ function JobMatcherContent() {
                 </div>
               )}
               <Button asChild variant="outline" className="hidden lg:flex">
-                <Link href="/admin">
+                <Link href={trackerHref}>
                   <List className="mr-2 h-4 w-4" /> Application Tracker
                 </Link>
               </Button>
@@ -451,7 +748,7 @@ function JobMatcherContent() {
                     <DropdownMenuItem disabled>{user.email}</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/admin">
+                      <Link href={trackerHref}>
                         <List className="mr-2 h-4 w-4" /> Application Tracker
                       </Link>
                     </DropdownMenuItem>
@@ -520,103 +817,256 @@ function JobMatcherContent() {
 
       <main className="mx-auto w-full max-w-7xl flex-1 p-4 pb-8 sm:p-6 md:p-8">
         <FormProvider {...formMethods}>
-          <div className="flex flex-col gap-8">
-            <InputForm isInitialLoading={isInitialFormLoad} />
-            <div className="flex items-center justify-end gap-4">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
-                    <Trash2 className="mr-2" />
-                    Clear Everything
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-6 w-6 text-destructive" />
-                      Are you sure?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will permanently clear the job description, bio, and
-                      all generated content. This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleClear}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Clear Everything
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSaveJob}
-                disabled={isSaving || !user}
-                aria-label="Save Job"
-                className="shadow-sm shadow-primary/10"
-              >
-                {isSaving ? (
-                  <Loader2 className="mr-2 animate-spin" />
-                ) : (
-                  <Save className="mr-2" />
-                )}
-                Save Job
-              </Button>
-              {savedJobs.length > 0 && (
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="text-primary hover:bg-primary/5"
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            {[
+              { key: 'prepare', label: '1. Prepare', description: 'Add the job and your background.' },
+              { key: 'build', label: '2. Build Your Application', description: 'Create, open, and refine each section.' },
+            ].map((step) => {
+              const isActive = view === step.key;
+              const isComplete = step.key === 'prepare' && view === 'build';
+
+              return (
+                <div
+                  key={step.key}
+                  className={cn(
+                    'rounded-2xl border px-4 py-3 transition-colors',
+                    isActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/10 bg-card/60',
+                    isComplete && 'border-emerald-500/20 bg-emerald-500/5'
+                  )}
                 >
-                  <Link href="/admin">
-                    <List className="mr-2 h-4 w-4" /> Go to Tracker
-                  </Link>
-                </Button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-4">
-              <div className="lg:col-span-4 flex flex-col gap-4">
-                <div className="mb-2">
-                  <h3 className="font-headline text-xl font-bold text-foreground">Application Studio</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Select an artifact below to generate it using your supplied details.</p>
-                </div>
-                <ActionButton generationType="cv" icon={Briefcase} label="ATS-Optimized Resume" />
-                <ActionButton generationType="coverLetter" icon={FileText} label="Tailored Cover Letter" />
-                <ActionButton generationType="qAndA" icon={MessageSquareMore} label="Interview Simulator" />
-                <ActionButton generationType="deepAnalysis" icon={Lightbulb} label="Strategic Role Analysis" />
-              </div>
-
-              <div ref={outputRef} className="lg:col-span-8">
-                {activeView !== 'none' ? (
-                  <OutputView
-                    activeView={activeView}
-                    setActiveView={setActiveView}
-                    allResults={allResults}
-                    setAllResults={setAllResults}
-                    isGenerating={isGenerating}
-                    generationError={generationError}
-                    onRetry={() => handleGeneration(activeView as GenerationType)}
-                  />
-                ) : (
-                  <div className="flex h-full min-h-[400px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-muted-foreground/20 bg-card/30 p-8 text-center transition-colors hover:border-primary/30 hover:bg-card/50">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/5 text-primary/40 mb-6">
-                      <Bot className="h-10 w-10" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-foreground tracking-tight">Ready to Build</h3>
-                    <p className="text-base text-muted-foreground max-w-sm mt-3">Provide your target job description and work repository, then select an artifact from the studio menu to begin generation.</p>
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    {isComplete ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : null}
+                    <span>{step.label}</span>
                   </div>
-                )}
+                  <p className="mt-1 text-xs text-muted-foreground">{step.description}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {view === 'prepare' ? (
+            <div className="flex flex-col gap-8 animate-in fade-in duration-500">
+              <div className="max-w-3xl">
+                <h2 className="text-3xl font-bold tracking-tight text-foreground">Prepare Your Inputs</h2>
+                <p className="mt-2 text-muted-foreground">
+                  Start by adding the target job description and your reusable Work Repository. Once those are ready, continue into Build Your Application.
+                </p>
+              </div>
+
+              <InputForm isInitialLoading={isInitialFormLoad} />
+
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="text-sm text-muted-foreground">
+                  Required to continue: Job Description and Work Repository.
+                </div>
+                <div className="flex items-center gap-3">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm">
+                        <Trash2 className="mr-2" />
+                        Clear Everything
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <AlertTriangle className="h-6 w-6 text-destructive" />
+                          Are you sure?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently clear the job description, Work Repository, and all generated content. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleClear}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Clear Everything
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  <Button size="lg" onClick={handleContinueToBuild}>
+                    Continue <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+              <div className="flex flex-col gap-4 rounded-3xl border bg-card p-5 shadow-sm lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                    <span>Stage 2</span>
+                    {jobMeta ? <span className="rounded-full bg-muted px-2 py-1 normal-case tracking-normal text-foreground">{jobMeta.jobTitle} at {jobMeta.companyName}</span> : null}
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold tracking-tight text-foreground">Build Your Application</h2>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Using the role and background you prepared.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setView('prepare')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Prepare
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveJob}
+                    disabled={isSaving || !hasAnyResults}
+                    aria-label="Save Application"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Save Application
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={trackerHref}>
+                      <List className="mr-2 h-4 w-4" /> View Tracker
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
+              <Card className="overflow-hidden border-primary/15 bg-gradient-to-br from-primary/5 via-background to-accent/10">
+                <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="max-w-2xl space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
+                        <Bot className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground">AI Coach</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Need help deciding what to do next? Ask for guidance, ask for improvements, or let the coach build the next best section with you.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {coachPrompts.map((prompt) => (
+                        <Button
+                          key={prompt}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full bg-background/80"
+                          onClick={() => openCoach(prompt)}
+                        >
+                          {prompt}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <Button size="lg" className="min-w-[180px]" onClick={() => openCoach()}>
+                      <Bot className="mr-2 h-4 w-4" />
+                      Open AI Coach
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
+                <div className="space-y-4">
+                  <Button
+                    onClick={handleGenerateAll}
+                    disabled={isGeneratingAll || isGenerating}
+                    className="h-14 w-full justify-center rounded-2xl bg-gradient-to-r from-primary to-accent px-8 font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90"
+                  >
+                    {isGeneratingAll ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Creating everything...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-5 w-5" />
+                        Create Everything for Me
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="space-y-3">
+                    {buildSections.map((section) => (
+                      <ActionButton
+                        key={section.generationType}
+                        generationType={section.generationType}
+                        icon={section.icon}
+                        label={section.label}
+                        description={section.description}
+                        locked={section.locked}
+                        lockedMessage={section.lockedMessage}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div ref={outputRef} className="space-y-4">
+                  {!allResults[selectedView] && !generationError && !(isGenerating && activeView === selectedView) ? (
+                    <Card className="min-h-[420px] border-dashed bg-card/60">
+                      <div className="flex h-full min-h-[420px] flex-col items-center justify-center px-8 py-12 text-center">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                          <selectedSection.icon className="h-7 w-7" />
+                        </div>
+                        <h3 className="mt-5 text-2xl font-semibold text-foreground">{selectedSection.label}</h3>
+                        <p className="mt-3 max-w-xl text-sm text-muted-foreground">
+                          {selectedSection.description}
+                        </p>
+                        {selectedView === 'deepAnalysis' ? (
+                          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+                            Start here if you want a quick read on your fit before tailoring your resume or cover letter.
+                          </p>
+                        ) : null}
+                        <Button className="mt-6" onClick={() => handleGeneration(selectedView)}>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Create {selectedSection.label}
+                        </Button>
+                      </div>
+                    </Card>
+                  ) : (
+                    <OutputView
+                      activeView={selectedView}
+                      setActiveView={setActiveView}
+                      allResults={allResults}
+                      setAllResults={setAllResults}
+                      isGenerating={isGenerating || isGeneratingAll}
+                      generationError={generationError}
+                      onRetry={() => handleGeneration(selectedView, { force: true })}
+                      showSectionSwitcher={false}
+                      headerDescription={selectedSection.description}
+                      onCoachRequest={(message) => {
+                        const requirementLine = message
+                          .split('\n')
+                          .find((line) => line.startsWith('Requirement: '));
+                        const requirementLabel = requirementLine?.replace('Requirement: ', '') || 'this gap';
+
+                        openCoach({
+                          message,
+                          displayMessage: `Help me close this gap: ${requirementLabel}`,
+                        });
+                      }}
+                      headerActions={allResults[selectedView] ? (
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleGeneration(selectedView, { force: true })}>
+                          <Sparkles className="mr-2 h-4 w-4" />
+                          Regenerate
+                        </Button>
+                      ) : null}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </FormProvider>
       </main>
 
@@ -627,7 +1077,7 @@ function JobMatcherContent() {
           <AlertDialogHeader>
             <AlertDialogTitle>Free Queries Limit Reached</AlertDialogTitle>
             <AlertDialogDescription>
-              You've used all your free queries for this session. Please log in or sign up to continue generating unlimited content and save your work.
+              You&apos;ve used all your free queries for this session. Please log in or sign up to continue generating unlimited content and save your work.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

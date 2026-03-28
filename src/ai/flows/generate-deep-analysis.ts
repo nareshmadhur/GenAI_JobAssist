@@ -10,56 +10,13 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { DeepAnalysisOutputSchema, type DeepAnalysisOutput } from '@/lib/schemas';
 
 const DeepAnalysisInputSchema = z.object({
   jobDescription: z.string().describe('The job description to analyze.'),
   workRepository: z.string().describe("The user's detailed work repository."),
 });
 export type DeepAnalysisInput = z.infer<typeof DeepAnalysisInputSchema>;
-
-const RequirementSchema = z.object({
-  requirement: z
-    .string()
-    .describe('A concise summary of the specific requirement extracted from the job description.'),
-  category: z
-    .string()
-    .describe(
-      "The category of the requirement (e.g., 'Experience', 'Education', 'Skills', 'Certification')."
-    ),
-  isMandatory: z
-    .boolean()
-    .describe(
-      'A boolean indicating if the requirement is mandatory (must-have) or preferred (nice-to-have).'
-    ),
-  isMet: z
-    .boolean()
-    .describe("A boolean indicating if the requirement is met by the user's bio."),
-  justification: z
-    .string()
-    .describe(
-      "A brief justification for why the requirement is marked as met or not met, citing evidence from the user's bio or lack thereof."
-    ),
-});
-
-const DeepAnalysisOutputSchema = z.object({
-  jobSummary: z
-    .string()
-    .describe(
-      "A professional summary of the job description, abstracting jargon and focusing on key takeaways, with important elements bolded. If relevant, it may also include comments on the job description's structure, language, and tone."
-    ),
-  requirements: z
-    .array(RequirementSchema)
-    .describe(
-      'A consolidated list of all requirements (both mandatory and preferred) from the job description.'
-    ),
-  improvementAreas: z
-    .array(z.string())
-    .describe(
-      "A list of specific bullet points providing areas where the user's bio could be improved for this role. Each bullet point MUST start with a bolded category (e.g., '**Quantify Achievements:** ...')."
-    ),
-});
-
-export type DeepAnalysisOutput = z.infer<typeof DeepAnalysisOutputSchema>;
 
 export async function generateDeepAnalysis(
   input: DeepAnalysisInput
@@ -71,20 +28,28 @@ const prompt = ai.definePrompt({
   name: 'generateDeepAnalysisPrompt',
   input: {schema: DeepAnalysisInputSchema},
   output: {schema: DeepAnalysisOutputSchema},
-  prompt: `You are an expert career coach. Your task is to perform a deep analysis comparing a user's bio against a job description.
+  prompt: `You are an expert career coach and talent acquisition specialist. Your task is to perform a high-fidelity deep analysis comparing a user's work repository against a job description.
 
-**Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned.** All analysis must be grounded in the provided texts.
+**Crucially, you must only use information explicitly present in the User's Work Repository. Do not invent, exaggerate, or infer details that are not mentioned.** All analysis must be grounded in the provided texts.
 
-1.  **Job Summary**: Act as a professional in the field and write a concise summary of the role. Abstract away jargon and focus on core responsibilities. **Bold** key phrases. Note anything about the language or tone that might imply company culture.
+Your output should cover the following sections:
 
-2.  **Consolidated Requirements**: Analyze the job description to identify all requirements. For each one, create an object with the following fields:
-    *   \`requirement\`: The specific requirement, summarized concisely.
-    *   \`category\`: Classify it (e.g., 'Experience', 'Education', 'Skills', 'Certification').
-    *   \`isMandatory\`: **CRITICAL:** Set to \`true\` ONLY if the text uses explicit keywords like "required", "must have", "essential", or "minimum". Set to \`false\` if it uses words like "preferred", "nice to have", "a plus", or if no specific level of importance is stated. Do not assume.
-    *   \`isMet\`: Check if the requirement is clearly met in the user's bio and set to \`true\` or \`false\`.
-    *   \`justification\`: Briefly explain *why* it's met or not met, referencing the user's bio.
+1.  **Match Score**: Assign an overall match score from 0 to 100 based on how well the user's experience matches the mandatory and preferred requirements.
 
-3.  **Improvement Areas**: Generate a list of actionable advice on how to **better present** the information that is already in the bio. This is about enhancing existing content. Every bullet point MUST begin with a concise, bolded category and then a colon. Example: **Quantify Achievements:** Consider adding metrics...
+2.  **Job Summary**: Act as a professional in the field and write a concise summary of the role. Abstract away jargon and focus on core responsibilities. **Bold** key phrases. Note anything about the language or tone that might imply company culture.
+
+3.  **Consolidated Requirements**: Analyze the job description to identify all requirements. For each one, evaluate it against the work repository.
+    *   \`isMandatory\`: Set to \`true\` ONLY if the text uses explicit keywords like "required", "must have", "essential", or "minimum".
+    *   \`isMet\`: Check if the requirement is clearly met in the user's repository.
+
+4.  **Improvement Areas**: Generate a list of actionable advice on how to **better present** the information that is already in the repository. Every bullet point MUST begin with a concise, bolded category and then a colon.
+
+5.  **Coaching Guide**: Provide a strategic "How to Win" guide. This should include:
+    *   **Strategic Angle**: How should the user position themselves?
+    *   **Gap Management**: How to explain requirements not fully met.
+    *   **High-Value Talking Points**: Specific achievements the user should emphasize in an interview.
+    *   **Cultural Fit**: How to map their values to the tone of the JD.
+    Format this section using Markdown for clarity (headers, bullets, bolding).
 
 Job Description:
 {{{jobDescription}}}
@@ -92,7 +57,7 @@ Job Description:
 User Work Repository:
 {{{workRepository}}}
 
-Generate the deep analysis now in the structured format requested.`,
+Generate the high-fidelity deep analysis now.`,
 });
 
 const generateDeepAnalysisFlow = ai.defineFlow(

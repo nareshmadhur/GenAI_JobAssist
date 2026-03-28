@@ -49,9 +49,9 @@ const checklistItems = [
 ];
 
 /**
- * A component to display the completeness of a user's bio.
+ * A component to display the completeness of a user's work repository.
  */
-export function BioProgressTracker({
+export function RepositoryProgressTracker({
   analysis,
   isLoading,
 }: BioProgressTrackerProps) {
@@ -65,7 +65,7 @@ export function BioProgressTracker({
   return (
     <div className="space-y-3 rounded-lg border bg-background p-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-foreground">Bio Completeness</h4>
+        <h4 className="text-sm font-semibold text-foreground">Repository Completeness</h4>
         {isLoading ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (

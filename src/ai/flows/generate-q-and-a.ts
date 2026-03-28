@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview Scans a job description for explicit questions and generates answers based on a user's bio.
+ * @fileOverview Scans a job description for explicit questions and generates answers based on a user's work repository.
  *
  * - generateQAndA - A function that handles the Q&A generation process.
  * - QAndAInput - The input type for the generateQAndA function.
@@ -30,12 +30,12 @@ const prompt = ai.definePrompt({
   input: {schema: QAndAInputSchema},
   output: {schema: QAndAOutputSchema},
   prompt: `You are an expert at answering job application questions based on a user's professional background.
-Your task is to answer the list of "Questions to Answer" using the provided "User Bio" for information and the "Job Description" for context.
+Your task is to answer the list of "Questions to Answer" using the provided "User Work Repository" for information and the "Job Description" for context.
 
-**Crucially, you must only use information explicitly present in the User Bio. Do not invent, exaggerate, or infer details that are not mentioned. All answers must be truthful to the provided bio.**
+**Crucially, you must only use information explicitly present in the User Work Repository. Do not invent, exaggerate, or infer details that are not mentioned. All answers must be truthful to the provided repository.**
 
 For each question, provide a clear and concise answer.
-**If you cannot find the answer to a specific question in the user's bio, you MUST return the exact string '[Answer not found in bio]' for that answer.**
+**If you cannot find the answer to a specific question in the user's work repository, you MUST return the exact string '[Answer not found in repository]' for that answer.**
 
 Job Description:
 {{{jobDescription}}}

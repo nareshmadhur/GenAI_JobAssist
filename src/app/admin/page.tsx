@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { 
+  ArrowLeft,
   Briefcase, 
   ChevronRight, 
   Clock, 
@@ -10,6 +11,7 @@ import {
   FileCheck, 
   FileText, 
   Filter, 
+  GripVertical,
   LayoutGrid, 
   List, 
   MoreHorizontal, 
@@ -19,6 +21,11 @@ import {
   ArrowRight,
   Bot
 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { DndContext, PointerSensor, closestCenter, useDroppable, useSensor, useSensors, type DragEndEvent, type DraggableAttributes } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { useAppContext, useAuth } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,26 +45,63 @@ import { formatDistanceToNow } from 'date-fns';
 import { AiJobAssistLogo } from '@/components/ai-job-assist-logo';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 
-const STATUS_COLUMNS: { label: string; value: JobStatus; color: string }[] = [
+type TrackerStatus = 'draft' | 'applied' | 'in_process' | 'accepted' | 'rejected';
+type TrackerColumnKey = 'draft' | 'applied' | 'in_process' | 'final';
+
+const STATUS_OPTIONS: { label: string; value: TrackerStatus; color: string }[] = [
   { label: 'Drafts', value: 'draft', color: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
   { label: 'Applied', value: 'applied', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
-  { label: 'Interviewing', value: 'interviewing', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-  { label: 'Offers', value: 'offer', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
-  { label: 'Closed', value: 'rejected', color: 'bg-rose-500/10 text-rose-500 border-rose-500/20' },
+  { label: 'In Process', value: 'in_process', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+  { label: 'Accepted', value: 'accepted', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+  { label: 'Rejected', value: 'rejected', color: 'bg-rose-500/10 text-rose-500 border-rose-500/20' },
 ];
+
+const KANBAN_COLUMNS: { label: string; value: TrackerColumnKey; color: string }[] = [
+  { label: 'Drafts', value: 'draft', color: 'bg-slate-500/10 text-slate-500 border-slate-500/20' },
+  { label: 'Applied', value: 'applied', color: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
+  { label: 'In Process', value: 'in_process', color: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
+  { label: 'Accepted / Rejected', value: 'final', color: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' },
+];
+
+const normalizeJobStatus = (status?: JobStatus): TrackerStatus => {
+  switch (status) {
+    case 'interviewing':
+      return 'in_process';
+    case 'offer':
+      return 'accepted';
+    case 'accepted':
+    case 'rejected':
+    case 'applied':
+    case 'in_process':
+      return status;
+    case 'draft':
+    default:
+      return 'draft';
+  }
+};
+
+const getStatusMeta = (status?: JobStatus) => {
+  const normalized = normalizeJobStatus(status);
+  return STATUS_OPTIONS.find((option) => option.value === normalized) || STATUS_OPTIONS[0];
+};
 
 export default function AdminPage() {
   const { savedJobs, setSavedJobs } = useAppContext();
   const { user } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const source = searchParams.get('from');
+  const sourceJobId = searchParams.get('jobId');
 
   const filteredJobs = savedJobs.filter(job => 
     job.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     job.jobTitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const updateJobStatus = (jobId: string, newStatus: JobStatus) => {
+  const updateJobStatus = (jobId: string, newStatus: TrackerStatus) => {
     setSavedJobs(prev => prev.map(job => 
       job.id === jobId ? { ...job, status: newStatus } : job
     ));
@@ -67,8 +111,152 @@ export default function AdminPage() {
     setSavedJobs(prev => prev.filter(job => job.id !== jobId));
   };
 
-  const JobCard = ({ job }: { job: SavedJob }) => (
-    <Card key={job.id} className="group relative overflow-hidden transition-all hover:shadow-md border-muted-foreground/10 bg-card/50 backdrop-blur-sm">
+  const handleBack = () => {
+    if (source === 'build' && sourceJobId) {
+      router.push(`/job-matcher?jobId=${sourceJobId}`);
+      return;
+    }
+
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push('/job-matcher');
+  };
+
+  const buildFlowHref = (jobId: string) => `/job-matcher?jobId=${jobId}`;
+
+  const resolveStatusFromDropTarget = (targetId: string): TrackerStatus | null => {
+    const directColumnMatch = STATUS_OPTIONS.find((column) => column.value === targetId);
+    if (directColumnMatch) {
+      return directColumnMatch.value;
+    }
+
+    const targetJob = savedJobs.find((job) => job.id === targetId);
+    return normalizeJobStatus(targetJob?.status);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeJobId = String(active.id);
+    const draggedJob = savedJobs.find((job) => job.id === activeJobId);
+    if (!draggedJob) return;
+
+    const nextStatus = resolveStatusFromDropTarget(String(over.id));
+    if (!nextStatus || normalizeJobStatus(draggedJob.status) === nextStatus) {
+      return;
+    }
+
+    updateJobStatus(activeJobId, nextStatus);
+  };
+
+  const KanbanColumn = ({
+    column,
+    jobs,
+  }: {
+    column: typeof KANBAN_COLUMNS[number];
+    jobs: SavedJob[];
+  }) => {
+    const { isOver, setNodeRef } = useDroppable({
+      id: column.value,
+    });
+
+    return (
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex items-center justify-between px-2">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <span className={cn("h-1.5 w-1.5 rounded-full", column.color.split(' ')[1])} />
+            {column.label}
+          </h3>
+          <Badge variant="outline" className="text-[10px] h-5 bg-background border-muted-foreground/10 text-muted-foreground">
+            {jobs.length}
+          </Badge>
+        </div>
+        <div
+          ref={setNodeRef}
+          className={cn(
+            'flex min-h-[500px] flex-col gap-4 rounded-2xl bg-muted/40 p-3 border border-muted-foreground/5 shadow-inner transition-colors',
+            isOver && 'border-primary/40 bg-primary/5'
+          )}
+        >
+          <SortableContext items={jobs.map((job) => job.id)} strategy={verticalListSortingStrategy}>
+            {jobs.length > 0 ? (
+              jobs.map((job) => <SortableJobCard key={job.id} job={job} />)
+            ) : (
+              <div className="flex flex-1 flex-col items-center justify-center py-10 opacity-40">
+                <div className="rounded-full border border-dashed border-muted-foreground/30 p-2 mb-2">
+                  <FileCheck className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-[10px] font-medium text-muted-foreground italic">No Applications</p>
+              </div>
+            )}
+          </SortableContext>
+        </div>
+      </div>
+    );
+  };
+
+  const FinalStatusLane = ({
+    status,
+    jobs,
+  }: {
+    status: TrackerStatus;
+    jobs: SavedJob[];
+  }) => {
+    const meta = getStatusMeta(status);
+    const { isOver, setNodeRef } = useDroppable({
+      id: status,
+    });
+
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            {meta.label}
+          </h4>
+          <Badge variant="outline" className="h-5 text-[10px]">
+            {jobs.length}
+          </Badge>
+        </div>
+        <div
+          ref={setNodeRef}
+          className={cn(
+            'flex min-h-[220px] flex-col gap-4 rounded-2xl border bg-background/70 p-3 transition-colors',
+            isOver && 'border-primary/40 bg-primary/5'
+          )}
+        >
+          <SortableContext items={jobs.map((job) => job.id)} strategy={verticalListSortingStrategy}>
+            {jobs.length > 0 ? (
+              jobs.map((job) => <SortableJobCard key={job.id} job={job} />)
+            ) : (
+              <div className="flex flex-1 items-center justify-center py-8 text-[10px] italic text-muted-foreground opacity-50">
+                No Applications
+              </div>
+            )}
+          </SortableContext>
+        </div>
+      </div>
+    );
+  };
+
+  const JobCard = ({
+    job,
+    dragAttributes,
+    dragListeners,
+    isDragging = false,
+  }: {
+    job: SavedJob;
+    dragAttributes?: DraggableAttributes;
+    dragListeners?: SyntheticListenerMap;
+    isDragging?: boolean;
+  }) => (
+    <Card className={cn(
+      'group relative overflow-hidden transition-all hover:shadow-md border-muted-foreground/10 bg-card/50 backdrop-blur-sm',
+      isDragging && 'shadow-xl ring-2 ring-primary/20'
+    )}>
       <CardHeader className="p-4 pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="space-y-1">
@@ -79,37 +267,49 @@ export default function AdminPage() {
               <Briefcase className="h-3 w-3" /> {job.companyName}
             </CardDescription>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href={`/job-matcher?jobId=${job.id}`} className="flex items-center">
-                  <ExternalLink className="mr-2 h-4 w-4" /> Open in Studio
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground py-1">Move to</DropdownMenuLabel>
-              {STATUS_COLUMNS.map(col => (
-                <DropdownMenuItem 
-                  key={col.value} 
-                  onClick={() => updateJobStatus(job.id, col.value)}
-                  disabled={job.status === col.value || (!job.status && col.value === 'draft')}
-                >
-                  {col.label}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label={`Drag ${job.jobTitle}`}
+              {...dragAttributes}
+              {...dragListeners}
+            >
+              <GripVertical className="h-4 w-4" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href={buildFlowHref(job.id)} className="flex items-center">
+                    <ExternalLink className="mr-2 h-4 w-4" /> Open in Build Flow
+                  </Link>
                 </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => deleteJob(job.id)} className="text-destructive">
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground py-1">Move to</DropdownMenuLabel>
+                {STATUS_OPTIONS.map(col => (
+                  <DropdownMenuItem 
+                    key={col.value} 
+                    onClick={() => updateJobStatus(job.id, col.value)}
+                    disabled={normalizeJobStatus(job.status) === col.value}
+                  >
+                    {col.label}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => deleteJob(job.id)} className="text-destructive">
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </CardHeader>
       <CardFooter className="p-4 pt-2 flex items-center justify-between">
@@ -124,6 +324,29 @@ export default function AdminPage() {
     </Card>
   );
 
+  const SortableJobCard = ({ job }: { job: SavedJob }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: job.id,
+    });
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={{
+          transform: CSS.Transform.toString(transform),
+          transition,
+        }}
+      >
+        <JobCard
+          job={job}
+          dragAttributes={attributes}
+          dragListeners={listeners}
+          isDragging={isDragging}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-muted/20">
       <header className="sticky top-0 z-10 w-full border-b border-b-accent/20 bg-background/80 backdrop-blur-md">
@@ -137,7 +360,7 @@ export default function AdminPage() {
           </Link>
           <nav className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
-              <Link href="/job-matcher">Application Studio</Link>
+              <Link href="/job-matcher">Build Your Application</Link>
             </Button>
             <ThemeToggleButton />
           </nav>
@@ -149,6 +372,10 @@ export default function AdminPage() {
           {/* Dashboard Header */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
+              <Button variant="ghost" size="sm" className="-ml-2 mb-3 w-fit" onClick={handleBack}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
               <h1 className="font-headline text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
                 Application Tracker
               </h1>
@@ -203,48 +430,46 @@ export default function AdminPage() {
                 </div>
                 <h3 className="text-2xl font-bold tracking-tight text-foreground">Your Pipeline is Empty</h3>
                 <p className="mt-4 text-muted-foreground max-w-md mx-auto leading-relaxed">
-                  Start by creating an application in the Studio. We'll track your resumes, cover letters, and status right here.
+                  Start by building an application. We&apos;ll track your resume, cover letter, answers, and status right here.
                 </p>
                 <Button asChild size="lg" className="mt-8 shadow-xl shadow-primary/25">
-                  <Link href="/job-matcher">Go to Application Studio <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                  <Link href="/job-matcher">Build Your Application <ArrowRight className="ml-2 h-4 w-4" /></Link>
                 </Button>
              </div>
           ) : (
             <div className="w-full">
               {viewMode === 'kanban' ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-start overflow-x-auto pb-4">
-                  {STATUS_COLUMNS.map(column => {
-                    const jobsInColumn = filteredJobs.filter(job => 
-                      (job.status || 'draft') === column.value
-                    );
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <div className="grid grid-cols-1 gap-6 pb-4 md:grid-cols-2 xl:grid-cols-4">
+                    {KANBAN_COLUMNS.map((column) => {
+                      if (column.value === 'final') {
+                        const acceptedJobs = filteredJobs.filter((job) => normalizeJobStatus(job.status) === 'accepted');
+                        const rejectedJobs = filteredJobs.filter((job) => normalizeJobStatus(job.status) === 'rejected');
 
-                    return (
-                      <div key={column.value} className="flex flex-col gap-4 min-w-[240px]">
-                        <div className="flex items-center justify-between px-2">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                            <span className={cn("h-1.5 w-1.5 rounded-full", column.color.split(' ')[1])} />
-                            {column.label}
-                          </h3>
-                          <Badge variant="outline" className="text-[10px] h-5 bg-background border-muted-foreground/10 text-muted-foreground">
-                            {jobsInColumn.length}
-                          </Badge>
-                        </div>
-                        <div className="flex flex-col gap-4 min-h-[500px] rounded-2xl bg-muted/40 p-3 border border-muted-foreground/5 shadow-inner">
-                          {jobsInColumn.length > 0 ? (
-                            jobsInColumn.map(job => <JobCard key={job.id} job={job} />)
-                          ) : (
-                            <div className="flex flex-1 flex-col items-center justify-center py-10 opacity-40">
-                              <div className="rounded-full border border-dashed border-muted-foreground/30 p-2 mb-2">
-                                <FileCheck className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                              <p className="text-[10px] font-medium text-muted-foreground italic">No Applications</p>
+                        return (
+                          <div key={column.value} className="flex flex-col gap-4">
+                            <div className="flex items-center justify-between px-2">
+                              <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                <span className={cn("h-1.5 w-1.5 rounded-full", column.color.split(' ')[1])} />
+                                {column.label}
+                              </h3>
+                              <Badge variant="outline" className="text-[10px] h-5 bg-background border-muted-foreground/10 text-muted-foreground">
+                                {acceptedJobs.length + rejectedJobs.length}
+                              </Badge>
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                            <div className="grid gap-4">
+                              <FinalStatusLane status="accepted" jobs={acceptedJobs} />
+                              <FinalStatusLane status="rejected" jobs={rejectedJobs} />
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const jobsInColumn = filteredJobs.filter((job) => normalizeJobStatus(job.status) === column.value);
+                      return <KanbanColumn key={column.value} column={column} jobs={jobsInColumn} />;
+                    })}
+                  </div>
+                </DndContext>
               ) : (
                 <Card className="border-muted-foreground/10 bg-card/50 backdrop-blur-sm overflow-hidden">
                    <div className="overflow-x-auto">
@@ -269,8 +494,8 @@ export default function AdminPage() {
                                   </div>
                                 </td>
                                 <td className="p-4">
-                                  <Badge className={cn("text-[10px] py-0 h-6", STATUS_COLUMNS.find(c => c.value === (job.status || 'draft'))?.color)}>
-                                    {(STATUS_COLUMNS.find(c => c.value === (job.status || 'draft'))?.label)}
+                                  <Badge className={cn("text-[10px] py-0 h-6", getStatusMeta(job.status).color)}>
+                                    {getStatusMeta(job.status).label}
                                   </Badge>
                                 </td>
                                 <td className="p-4">
@@ -285,7 +510,7 @@ export default function AdminPage() {
                                 <td className="p-4 text-right">
                                   <div className="flex justify-end gap-2">
                                     <Button asChild variant="ghost" size="sm" className="h-8 px-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Link href={`/job-matcher?jobId=${job.id}`}>Open Studio</Link>
+                                      <Link href={buildFlowHref(job.id)}>Open Build Flow</Link>
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteJob(job.id)}>
                                       <Trash2 className="h-4 w-4" />
@@ -313,4 +538,3 @@ export default function AdminPage() {
     </div>
   );
 }
-

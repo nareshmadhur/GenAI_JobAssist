@@ -53,14 +53,14 @@ export function PrivacyDialog({ trigger }: PrivacyDialogProps) {
                 <strong>Input Data:</strong> All data you provide, such as job
                 descriptions and personal bios, is processed to provide the
                 service. This data is used for the AI generation process and is
-                stored temporarily in your browser's local storage to preserve
+                stored temporarily in your browser&apos;s local storage to preserve
                 your session. If you are logged in, this data is stored securely
                 in your personal Firebase account.
               </li>
               <li>
                 <strong>Local Storage:</strong> To provide a seamless user
                 experience, we store your form data and saved applications
-                directly in your browser's local storage. This data remains on
+                directly in your browser&apos;s local storage. This data remains on
                 your device and is not transmitted to our servers unless you are
                 logged in.
               </li>
@@ -82,7 +82,7 @@ export function PrivacyDialog({ trigger }: PrivacyDialogProps) {
               <li>Generate tailored job application materials.</li>
               <li>Persist your session data for your convenience.</li>
               <li>Monitor and analyze usage and trends to improve your experience.</li>
-              <li>Improve the application's functionality and user experience.</li>
+              <li>Improve the application&apos;s functionality and user experience.</li>
             </ul>
 
             <h2>Data Sharing and Disclosure</h2>
@@ -90,20 +90,20 @@ export function PrivacyDialog({ trigger }: PrivacyDialogProps) {
               We do not sell, trade, or otherwise transfer your personally
               identifiable information to outside parties. The only external
               services we share your input data with are for the sole purpose of
-              providing the application's core functionality:
+              providing the application&apos;s core functionality:
             </p>
             <ul>
               <li>
-                <strong>Google's Gemini API:</strong> To provide our services,
+                <strong>Google&apos;s Gemini API:</strong> To provide our services,
                 we send your input data (job descriptions, bios, etc.) to
-                Google's Gemini API for content generation. According to
-                Google's policies, data sent to their paid enterprise APIs is not
+                Google&apos;s Gemini API for content generation. According to
+                Google&apos;s policies, data sent to their paid enterprise APIs is not
                 used for training their models and is secured in transit and at
                 rest.
               </li>
               <li>
                 <strong>Firebase:</strong> If you create an account, your data
-                is stored in Google's Firebase services.
+                is stored in Google&apos;s Firebase services.
               </li>
             </ul>
             <p>

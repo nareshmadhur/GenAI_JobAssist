@@ -31,7 +31,7 @@ export const QuestionAnswerPairSchema = z.object({
   answer: z
     .string()
     .describe(
-      "A concise and professional answer based on the user's bio. If the answer cannot be found in the bio, return the exact string '[Answer not found in bio]'."
+      "A concise and professional answer based on the user's work repository. If the answer cannot be found in the repository, return the exact string '[Answer not found in repository]'."
     ),
 });
 
@@ -41,6 +41,77 @@ export const QAndAOutputSchema = z.object({
     .describe('A list of question and answer pairs.'),
 });
 export type QAndAOutput = z.infer<typeof QAndAOutputSchema>;
+
+// Schema for the Interview Prep Guide flow
+export const InterviewPrepGapSchema = z.object({
+  skill: z.string().describe('The skill or area that is missing or weak.'),
+  tip: z.string().describe('A coaching tip on how to bridge this gap verbally in the interview.'),
+});
+
+export const InterviewPrepQuestionSchema = z.object({
+  question: z.string().describe('A likely interview question for this role.'),
+  coachingAngle: z.string().describe('How to frame your answer — the angle, not a scripted answer.'),
+  storyPrompt: z.string().describe('Which experience from the work repository to draw from.'),
+});
+
+export const InterviewPrepOutputSchema = z.object({
+  overallReadinessScore: z.number().min(0).max(100).describe('An overall readiness score from 0-100 based on the match between the work repository and job requirements.'),
+  readinessSummary: z.string().describe('A 1-2 sentence coaching summary of the candidacy.'),
+  strengths: z.array(z.string()).describe('3-5 genuine strengths to confidently lead with in the interview.'),
+  gaps: z.array(InterviewPrepGapSchema).describe('2-4 gaps or weaker areas, each with a verbal bridging tip.'),
+  likelyQuestions: z.array(InterviewPrepQuestionSchema).describe('5-8 likely interview questions with coaching angles and story prompts.'),
+  recommendations: z.array(z.string()).describe('List of specific, actionable steps to improve the application.'),
+  coachingGuide: z.string().describe('A comprehensive coaching guide including SWOT analysis, gap-filling strategies, and interview talking points based on the match analysis.'),
+  negotiationTips: z.array(z.string()).describe('2-3 salary or role negotiation leverage points.'),
+});
+export type InterviewPrepOutput = z.infer<typeof InterviewPrepOutputSchema>;
+// Match Requirement Schema
+export const RequirementSchema = z.object({
+  requirement: z
+    .string()
+    .describe('A concise summary of the specific requirement extracted from the job description.'),
+  category: z
+    .string()
+    .describe(
+      "The category of the requirement (e.g., 'Experience', 'Education', 'Skills', 'Certification')."
+    ),
+  isMandatory: z
+    .boolean()
+    .describe(
+      'A boolean indicating if the requirement is mandatory (must-have) or preferred (nice-to-have).'
+    ),
+  isMet: z
+    .boolean()
+    .describe("A boolean indicating if the requirement is met by the user's repository."),
+  justification: z
+    .string()
+    .describe(
+      "A brief justification for why the requirement is marked as met or not met, citing evidence from the user's repository or lack thereof."
+    ),
+});
+
+// Deep Analysis Schema
+export const DeepAnalysisOutputSchema = z.object({
+  matchScore: z.number().min(0).max(100).describe('An overall match score from 0-100 between the repository and the job description.'),
+  jobSummary: z
+    .string()
+    .describe(
+      "A professional summary of the job description, abstracting jargon and focusing on key takeaways, with important elements bolded. If relevant, it may also include comments on the job description's structure, language, and tone."
+    ),
+  requirements: z
+    .array(RequirementSchema)
+    .describe(
+      'A consolidated list of all requirements (both mandatory and preferred) from the job description.'
+    ),
+  improvementAreas: z
+    .array(z.string())
+    .describe(
+      "A list of specific bullet points providing areas where the user's repository could be improved for this role. Each bullet point MUST start with a bolded category (e.g., '**Quantify Achievements:** ...')."
+    ),
+  coachingGuide: z.string().describe('A comprehensive coaching guide including strategic advice, gap-filling tips, and interview talking points based on the match analysis.'),
+});
+export type DeepAnalysisOutput = z.infer<typeof DeepAnalysisOutputSchema>;
+
 
 // Schema for the revision flow
 export const ReviseResponseSchema = z.object({
@@ -77,10 +148,10 @@ const EducationSchema = z.object({
 });
 
 export const CvOutputSchema = z.object({
-  fullName: z.string().describe("The user's full name. If not found, return '[Name not found in bio]'."),
-  email: z.string().describe("The user's email address. If not found, return '[Information not found in bio]'."),
-  phone: z.string().describe("The user's phone number. If not found, return '[Information not found in bio]'."),
-  location: z.string().describe("The user's location (e.g., 'City, State'). If not found, return '[Information not found in bio]'."),
+  fullName: z.string().describe("The user's full name. If not found, return '[Name not found in repository]'."),
+  email: z.string().describe("The user's email address. If not found, return '[Information not found in repository]'."),
+  phone: z.string().describe("The user's phone number. If not found, return '[Information not found in repository]'."),
+  location: z.string().describe("The user's location (e.g., 'City, State'). If not found, return '[Information not found in repository]'."),
   summary: z.string().describe("A 2-4 sentence professional summary, tailored to the job description."),
   workExperience: z.array(WorkExperienceSchema).describe("A list of the user's professional roles."),
   education: z.array(EducationSchema).describe("A list of the user's educational qualifications."),
@@ -97,11 +168,12 @@ export type JobDetailsInput = z.infer<typeof JobDetailsInputSchema>;
 export const JobDetailsOutputSchema = z.object({
     companyName: z.string().describe("The name of the company hiring for the role. If not found, return 'Unknown Company'."),
     jobTitle: z.string().describe("The title of the job position (e.g., 'Senior Software Engineer'). If not found, return 'Unknown Role'."),
+    extractedQuestions: z.array(z.string()).optional().describe("A list of specific application questions or personal statement prompts found in the job description (e.g., 'Why do you want to work here?', 'Describe a time you failed')."),
 });
 export type JobDetailsOutput = z.infer<typeof JobDetailsOutputSchema>;
 
 
-export type JobStatus = 'draft' | 'applied' | 'interviewing' | 'offer' | 'rejected';
+export type JobStatus = 'draft' | 'applied' | 'in_process' | 'accepted' | 'rejected' | 'interviewing' | 'offer';
 
 // Schema for a saved job in localStorage
 export interface SavedJob {
@@ -175,7 +247,7 @@ export const BioChatInputSchema = z.object({
 
 export const BioChatOutputSchema = z.object({
     response: z.string().describe("The chatbot's next message to the user."),
-    updatedBio: z.string().describe("The full, updated bio text after incorporating the user's last message."),
+    updatedWorkRepository: z.string().describe("The full, updated work repository text after incorporating the user's last message."),
     suggestedReplies: z.array(z.string()).optional().describe("A few short, relevant suggested replies for the user."),
     error: z.string().optional().describe("An error message if the model failed to process the request."),
 });

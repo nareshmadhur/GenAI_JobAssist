@@ -47,7 +47,9 @@ export function SavedRepositoriesSheet({ savedRepositories, onLoadRepository, on
         const LOCAL_STORAGE_KEY_BIO_FORM = 'ai_job_assist_form_data';
         const existingDataRaw = localStorage.getItem(LOCAL_STORAGE_KEY_BIO_FORM);
         const existingData = existingDataRaw ? JSON.parse(existingDataRaw) : {};
-        const dataToSave = { ...existingData, workRepository: repo.workRepository };
+        // Map legacy 'bio' to 'workRepository' from the repository object if needed
+        const repoContent = repo.workRepository || (repo as any).bio || '';
+        const dataToSave = { ...existingData, workRepository: repoContent };
         localStorage.setItem(LOCAL_STORAGE_KEY_BIO_FORM, JSON.stringify(dataToSave));
         toast({ title: 'Repository Loaded!', description: 'Redirecting you to the Job Matcher...' });
         router.push('/job-matcher');
@@ -101,7 +103,7 @@ export function SavedRepositoriesSheet({ savedRepositories, onLoadRepository, on
                         <AlertDialogHeader>
                           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete "{repo.name}".
+                            This will permanently delete &quot;{repo.name}&quot;.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

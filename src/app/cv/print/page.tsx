@@ -3,20 +3,14 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CvView } from '@/components/cv-view';
 import type { CvOutput } from '@/lib/schemas';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { FileText, ArrowLeft } from 'lucide-react';
-
-/**
- * A Unicode-safe version of atob.
- */
-function atou(b64: string): string {
-  return decodeURIComponent(escape(atob(b64)));
-}
+import { readCvPrintExport } from '@/lib/cv-export';
+import { CvPrintTemplate } from '@/components/cv-print-template';
 
 /**
  * The actual view that uses search params and needs to be suspended.
@@ -27,11 +21,15 @@ function PrintView() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const data = searchParams.get('data');
-    if (data) {
+    const exportId = searchParams.get('exportId');
+    if (exportId) {
       try {
-        const decodedData = JSON.parse(atou(data));
-        setCvData(decodedData);
+        const exportData = readCvPrintExport(exportId);
+        if (!exportData) {
+          setError('Could not load this resume export. Please try exporting again from the application.');
+          return;
+        }
+        setCvData(exportData);
       } catch (e) {
         console.error('Failed to parse CV data', e);
         setError('Could not load CV data. Please try exporting again.');
@@ -62,11 +60,11 @@ function PrintView() {
             </div>
             <h1 className="text-4xl font-extrabold tracking-tight mb-4 text-foreground">Resume Studio</h1>
             <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
-              Generate your first ATS-optimized resume in the Studio to see it beautifully formatted and ready for export here.
+              Build your first tailored resume to see it beautifully formatted and ready for export here.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
                <Button asChild size="lg" className="h-12 px-8 shadow-xl shadow-primary/25">
-                <Link href="/job-matcher">Go to Application Studio</Link>
+                <Link href="/job-matcher">Build Your Application</Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="h-12 px-8">
                 <Link href="/"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Home</Link>
@@ -77,14 +75,9 @@ function PrintView() {
     );
   }
 
-  // A dummy onCvUpdate function as it's not needed on the print page.
-  const handleCvUpdate = () => {};
-
   return (
     <div className="min-h-screen bg-muted/30 py-8 px-4 print:p-0 print:bg-white overflow-y-auto">
-      <div className="mx-auto max-w-[850px] shadow-2xl shadow-primary/10 print:shadow-none">
-        <CvView cvData={cvData} onCvUpdate={handleCvUpdate} isPrintView />
-      </div>
+      <CvPrintTemplate cvData={cvData} />
     </div>
   );
 }

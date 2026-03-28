@@ -1,326 +1,266 @@
-# AI Job Assist 🤖
+# AI Job Assist
 
-An intelligent, end-to-end job application assistant powered by **Google Gemini** and **Firebase Genkit**. AI Job Assist helps you craft tailored CVs, cover letters, strategic role analyses, and interview preparation materials — all from a single, unified workspace.
+AI Job Assist is a production-oriented job application workspace built with Next.js, Firebase, and Genkit. It helps applicants turn a reusable Work Repository plus a target job description into a tailored application package: fit analysis, resume, cover letter, interview answers, and tracked applications.
 
----
+## What The Product Does
 
-## Table of Contents
+The product follows a 2-stage journey:
 
-1. [Overview](#overview)
-2. [Features](#features)
-3. [Architecture](#architecture)
-4. [AI Flows](#ai-flows)
-5. [Data Model](#data-model)
-6. [Pages & Routes](#pages--routes)
-7. [Key Components](#key-components)
-8. [Setup & Running Locally](#setup--running-locally)
-9. [Environment Variables](#environment-variables)
-10. [Development Roadmap](#development-roadmap)
+1. `Prepare`
+2. `Build Your Application`
 
----
+In `Prepare`, the user adds:
+- a target job description
+- a reusable Work Repository
+- optional application questions
 
-## Overview
+In `Build Your Application`, the user can:
+- open or generate a `Fit Summary`
+- build a `Resume`
+- write a `Cover Letter`
+- prepare `Answers`
+- use the inline `AI Coach` to decide what to do next or close specific gaps
 
-AI Job Assist is designed around a core philosophy: **give the AI high-quality, well-structured input to get premium output**. The application acts as a personal career co-pilot, enabling you to:
+The app also includes an `Application Tracker` with Kanban and list views, guest local saving, account-backed sync via Firebase, and a print-friendly resume export flow.
 
-- Maintain a comprehensive **Work Repository** (your complete professional history, structured for AI extraction)
-- Paste or extract any job description
-- Generate fully tailored application materials in seconds
-- Track your entire job pipeline in a Kanban-style **Application Tracker**
-- Get real-time coaching from an **AI Co-pilot** sidebar
+## Current Product Capabilities
 
-The app is built with **Next.js 14 (App Router)**, **Firebase (Auth + Firestore)**, and **Google Genkit** for orchestrating Gemini model calls.
+### Build Flow
+- Retrieval-first behavior: if a result already exists, opening it does not regenerate it
+- `Create Everything for Me` only fills missing sections
+- Regeneration is explicit and happens inside the selected result view
+- Build page includes an inline AI Coach entry plus the global coach trigger
 
----
+### Fit Summary
+- Applicant-facing fit snapshot
+- grouped requirement analysis by category
+- collapsible accordions, folded by default
+- direct AI Coach handoff for important gaps
 
-## Features
+### AI Coach
+- contextual coaching based on the active job description and Work Repository
+- can advise, update fields, and trigger generation flows
+- unread reply badge on the floating trigger
+- shortened visible prompts for gap coaching, with structured hidden context behind the scenes
 
-### 🗃️ Work Repository
-- Paste raw experience notes and let AI prettify them into a structured, data-dense format
-- The format prioritizes machine readability (`## Experience / ### Role | Company | Date`) over visual aesthetics, ensuring all downstream generation tools extract maximum detail
-- Built-in AI Assistant modal for interactive refinement and guided building
-- Expandable in-place preview with scrollable Markdown rendering
+### Application Tracker
+- Kanban view with four visible stages:
+  - `Drafts`
+  - `Applied`
+  - `In Process`
+  - `Accepted / Rejected`
+- drag-and-drop movement in Kanban
+- list view fallback
+- deep-linking back into the build flow via `jobId`
 
-### 📋 Job Description Input
-- Paste raw text directly
-- **Extract from URL**: enter a job posting URL and the app fetches and parses the text automatically
-- Clipboard paste button for single-click population
+### Resume Export
+- browser-print based export
+- dedicated print template
+- session-backed export payloads instead of large query-string payloads
 
-### 🤖 Application Studio (4 Generation Modes)
-Each is a Genkit flow that receives your Job Description + Work Repository as context:
+## Tech Stack
 
-| Mode | Description |
+- `Next.js 14` with App Router
+- `React 18`
+- `TypeScript`
+- `Tailwind CSS`
+- `Firebase Auth`
+- `Firestore`
+- `Genkit`
+- `Google Gemini`
+- `Radix UI`
+- `dnd-kit`
+- `Jest` + `Testing Library`
+
+## Key Routes
+
+| Route | Purpose |
 |---|---|
-| **ATS-Optimized Resume** | Generates a full CV in a structured format, editable field-by-field |
-| **Tailored Cover Letter** | A persuasive, role-specific cover letter |
-| **Interview Simulator** | Generates likely interview Q&As based on JD + your experience |
-| **Strategic Role Analysis** | Deep-dives on fit, gaps, growth potential, and negotiation points |
+| `/` | Landing page |
+| `/job-matcher` | Main prepare/build workflow |
+| `/admin` | Application Tracker |
+| `/cv/print` | Print-optimized resume export route |
+| `/login` | Authentication |
 
-### 📊 Application Tracker
-- **Kanban board** (Drafts → Applied → Interviewing → Offer → Closed)
-- **List view** with search and sort
-- Each saved application stores the JD, Work Repository, and all generated artifacts
-- "Open in Studio" loads everything back instantly for editing or regeneration
+Deep links:
+- `/job-matcher?jobId=<id>` loads a saved application into the build flow
+- `/admin?from=build&jobId=<id>` preserves return context back to the active application
 
-### 🧠 AI Co-pilot Sidebar
-- Persistent chat interface available across all pages
-- Context-aware: knows your current Job Description and Work Repository
-- Can execute tool calls: update form fields, trigger generation types, provide coaching
-- Two-step reasoning: enriches prompts before calling Gemini for higher quality responses
+## Architecture Overview
 
-### 📄 CV Editor & Print
-- Full in-app CV editor after generation
-- Field-by-field AI revision assistant
-- Clean print/PDF export view at `/cv/print`
-
----
-
-## Architecture
-
-```
+```text
 src/
-├── app/                     # Next.js App Router pages
-│   ├── page.tsx             # Landing / Home page
-│   ├── job-matcher/         # Application Studio (main workspace)
-│   ├── admin/               # Application Tracker (Kanban + List)
-│   ├── cv/print/            # Print-optimized CV view
-│   ├── login/               # Auth page
-│   ├── layout.tsx           # Root layout with providers
-│   ├── globals.css          # Global styles + Markdown prose system
-│   └── actions.ts           # Next.js Server Actions (AI call gateway)
-│
+├── app/
+│   ├── page.tsx
+│   ├── job-matcher/page.tsx
+│   ├── admin/page.tsx
+│   ├── cv/print/page.tsx
+│   ├── login/page.tsx
+│   ├── actions.ts
+│   ├── layout.tsx
+│   └── globals.css
 ├── ai/
-│   ├── genkit.ts            # Genkit + Gemini plugin initialization
-│   └── flows/               # 18 Genkit AI flows (see below)
-│
+│   ├── genkit.ts
+│   ├── dev.ts
+│   ├── flows/
+│   └── tools/
 ├── components/
-│   ├── input-form.tsx       # Main data entry form
-│   ├── expandable-textarea.tsx  # Reusable Markdown preview + edit modal
-│   ├── output-view.tsx      # Renders all generation results
-│   ├── bio-creator-modal.tsx    # AI-assisted Work Repository builder
-│   ├── co-pilot-sidebar.tsx     # AI chat sidebar
-│   ├── saved-jobs-carousel.tsx  # Saved application cards
-│   └── cv-view.tsx          # Editable CV display
-│
 ├── context/
-│   └── app-context.tsx      # Global state: auth, Co-pilot, saved jobs/repos
-│
+│   └── app-context.tsx
 └── lib/
-    ├── schemas.ts           # Zod schemas + TypeScript types
-    ├── firestore-service.ts # Firestore CRUD operations
-    ├── firebase.ts          # Firebase client initialization
-    └── extract-url.ts       # URL fetching + HTML → text extraction
+    ├── schemas.ts
+    ├── firestore-service.ts
+    ├── firebase.ts
+    └── cv-export.ts
 ```
 
----
+Important runtime responsibilities:
+- `src/app/job-matcher/page.tsx`: main product journey and generation orchestration
+- `src/components/output-view.tsx`: result rendering, fit analysis, revision UI
+- `src/context/app-context.tsx`: auth, saved jobs, coach state, unread coach count
+- `src/app/admin/page.tsx`: tracker, drag/drop, contextual back navigation
 
 ## AI Flows
 
-All flows live in `src/ai/flows/` and are called from `src/app/actions.ts` (Server Actions).
+Core flows live in `src/ai/flows/` and are invoked through `src/app/actions.ts`.
 
-| Flow File | Purpose | Input | Output |
-|---|---|---|---|
-| `generate-cv.ts` | Creates full ATS-optimized CV | JD + Work Repository | Structured CV object |
-| `generate-cover-letter.ts` | Tailored persuasive letter | JD + Work Repository | Cover letter text |
-| `generate-q-and-a.ts` | Interview Q&A pairs | JD + Work Repository + questions | Q&A list |
-| `generate-deep-analysis.ts` | Strategic role/fit analysis | JD + Work Repository | Analysis sections |
-| `prettify-work-repository.ts` | Structures raw experience text | Raw notes | Hierarchical Markdown |
-| `analyze-job-description.ts` | Extracts key role details | JD text | Skills, level, type |
-| `analyze-bio-completeness.ts` | Completeness score for Work Repo | Work Repository | Score + suggestions |
-| `revise-cv-field.ts` | AI field-level CV revision | Field + context | Revised field text |
-| `revise-response.ts` | Revises any generation output | Previous output + instruction | Revised output |
-| `fill-qa-gap.ts` | Generates missing Q&A answers | Q + context | Answer text |
-| `generate-bio-chat-response.ts` | Guides Work Repository building | Chat history + context | Chat reply |
-| `generate-co-pilot-response.ts` | Main Co-pilot reasoning engine | Enriched prompt | Response + tool calls |
-| `enrich-copilot-prompt.ts` | Enriches raw user message | History + form context | Enriched prompt |
-| `extract-job-details.ts` | Pulls job title + company | JD text | `{jobTitle, companyName}` |
-| `filter-bio-information.ts` | Selects relevant experience | Work Repository + JD | Filtered experience |
-| `generate-learning-path.ts` | Suggests upskilling resources | Gap analysis | Learning plan |
-| `list-models.ts` | Lists available Gemini models | — | Model list |
-| `test-model-availability.ts` | Tests model connectivity | — | Status |
+Primary flows:
+- `generate-deep-analysis.ts`
+- `generate-cv.ts`
+- `generate-cover-letter.ts`
+- `generate-q-and-a.ts`
+- `generate-interview-prep.ts`
+- `revise-response.ts`
+- `fill-qa-gap.ts`
+- `generate-co-pilot-response.ts`
+- `enrich-copilot-prompt.ts`
+- `extract-job-details.ts`
+- `prettify-work-repository.ts`
 
-### Flow Architecture Pattern
-
-Every flow follows the same Genkit pattern:
-
-```typescript
-// 1. Define input/output schemas with Zod
-const InputSchema = z.object({ ... });
-const OutputSchema = z.object({ ... });
-
-// 2. Define the flow
-export const myFlow = ai.defineFlow(
-  { name: 'myFlow', inputSchema: InputSchema, outputSchema: OutputSchema },
-  async (input) => {
-    const { output } = await ai.generate({
-      prompt: `...`,
-      output: { schema: OutputSchema },
-    });
-    return output!;
-  }
-);
-```
-
----
+Client-side tool bridge:
+- `updateFormFields`
+- `generateJobMaterial`
 
 ## Data Model
 
-Defined in `src/lib/schemas.ts`:
-
 ### `JobApplicationData`
-The form state for the Application Studio:
-```typescript
+
+```ts
 {
-  jobDescription: string;    // Full JD text or extracted from URL
-  workRepository: string;    // Structured professional history (Markdown)
-  questions: string;         // Specific interview questions for Q&A mode
-  generationType: 'cv' | 'coverLetter' | 'qAndA' | 'deepAnalysis';
+  jobDescription: string
+  workRepository: string
+  questions?: string
+  generationType: 'cv' | 'coverLetter' | 'qAndA' | 'deepAnalysis'
 }
 ```
 
 ### `SavedJob`
-Stored in Firestore / localStorage under `savedJobs`:
-```typescript
+
+```ts
 {
-  id: string;           // UUID
-  jobTitle: string;     // AI-extracted from JD
-  companyName: string;  // AI-extracted from JD
-  formData: { jobDescription, workRepository, questions };
-  allResults: AllGenerationResults;   // All generated artifacts
-  savedAt: string;      // ISO timestamp
-  status: 'draft' | 'applied' | 'interviewing' | 'offer' | 'rejected';
+  id: string
+  companyName: string
+  jobTitle: string
+  status?: 'draft' | 'applied' | 'in_process' | 'accepted' | 'rejected' | 'interviewing' | 'offer'
+  formData: {
+    jobDescription: string
+    workRepository: string
+    questions?: string
+  }
+  allResults: AllGenerationResults
+  savedAt: string
 }
 ```
 
-### `SavedRepository`
-Work Repository entries, stored separately for reuse across applications:
-```typescript
-{
-  id: string;
-  name: string;
-  content: string;  // Structured Markdown
-  savedAt: string;
-}
-```
+Notes:
+- legacy tracker statuses like `interviewing` and `offer` are normalized in the current UI
+- guest users save locally first; signed-in users sync through Firestore
 
----
-
-## Pages & Routes
-
-| Route | Component | Description |
-|---|---|---|
-| `/` | `page.tsx` | Landing page with feature cards |
-| `/job-matcher` | `job-matcher/page.tsx` | Main Application Studio workspace |
-| `/admin` | `admin/page.tsx` | Application Tracker (Kanban + List) |
-| `/cv/print` | `cv/print/page.tsx` | Print-optimized CV for PDF export |
-| `/login` | `login/page.tsx` | Firebase Auth (email/password) |
-
-### URL Parameter Support
-- `/job-matcher?jobId=<uuid>` — Automatically loads a saved application from the Tracker into the Studio for editing or regeneration
-
----
-
-## Key Components
-
-### `ExpandableTextarea`
-The core input widget used for both Job Description and Work Repository. Features:
-- **Collapsed view**: 320px scrollable Markdown preview using `ReactMarkdown`
-- **Modal editor**: Large (max 90vh, 4xl wide) dialog with:
-  - **Edit Text** tab: Full-height raw textarea
-  - **Preview Formatting** tab *(Work Repository only)*: Rendered Markdown preview
-- Configurable action button (AI Prettify / Extract from URL)
-- `showTabs` prop to toggle tabbed interface (JD has tabs disabled)
-
-### `InputForm`
-Assembles the main data entry form:
-- Job Description: `ExpandableTextarea` + URL extraction + clipboard paste
-- Work Repository: `ExpandableTextarea` + AI Prettify + AI Assistant + clipboard paste
-- Specific Questions: standard textarea with clipboard paste
-
-### `AppContext` (Global State)
-Manages the entire application state tree:
-- **Auth**: Firebase user state, login/signup/logout
-- **Saved Jobs**: synced to Firestore (logged in) or localStorage (guest)
-- **Saved Repositories**: user's Work Repository library
-- **Co-pilot**: chat history, message submission, tool execution
-- **Tool Context**: bridge between Co-pilot and the active form page
-
-### `CoPilotSidebar`
-A two-step AI reasoning chain:
-1. `enrichCopilotPrompt` → adds JD/Work Repo context to the raw user message
-2. `generateCoPilotResponse` → generates the final response, optionally calling tools
-3. Tools available: `updateFormFields`, `generateJobMaterial`
-
----
-
-## Setup & Running Locally
+## Local Development
 
 ### Prerequisites
-- Node.js 18+
-- A Firebase project (Auth + Firestore enabled)
-- A Google AI API key (for Gemini)
 
-### Installation
+- Node.js `18+`
+- Firebase project with Auth and Firestore enabled
+- Google AI Studio API key for Gemini
+
+### Install
 
 ```bash
-git clone <repo-url>
-cd GenAI_JobAssist
 npm install
 ```
 
-### Configure Environment
+### Create `.env.local`
 
-Copy `.env.local.example` to `.env.local` and fill in:
+Create a `.env.local` file in the project root with:
 
 ```bash
-cp .env.local.example .env.local
+GOOGLE_GENAI_API_KEY=your_google_genai_api_key
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_firebase_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
 ```
 
-### Run Development Server
+There is currently no committed `.env.local.example`, so create the file manually.
+
+### Run The App
 
 ```bash
 npm run dev
 ```
 
-The app will be available at `http://localhost:9002`.
+App URL:
+- [http://localhost:9002](http://localhost:9002)
 
----
+Optional Genkit dev server:
 
-## Environment Variables
+```bash
+npm run genkit:dev
+```
 
-| Variable | Description |
-|---|---|
-| `GOOGLE_GENAI_API_KEY` | Gemini API key from [Google AI Studio](https://aistudio.google.com/) |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase project API key |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase auth domain |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase app ID |
+## Quality Checks
 
----
+Run these before shipping:
 
-## Development Roadmap
+```bash
+npm run typecheck
+npm run lint
+npm test -- --runInBand
+```
 
-### ✅ Sprint 1 — Seamless Input & Prettification *(Complete)*
-- Work Repository paradigm (renamed from Bio)
-- Clipboard paste buttons across all input fields
-- AI-powered Prettify & Structure for Work Repository
-- URL extraction with smarter UX
-- Premium editing modals with Markdown preview
-- Dark mode safe Markdown rendering
-- Application Tracker "Open in Studio" deep-link fix
+## Production Readiness Notes
 
-### 🔜 Sprint 2 — Strategic Interviewer & Orchestration
-- Interview Prep Guide (gap analysis + actionable study tips)
-- Integrated tips in the Interview Simulator flow
-- "Generate All" button in the Application Studio
+This repo is now aligned around the current product shape, but productionizing should still include:
+- real environment management and secret handling
+- Firebase security rules review
+- analytics and error monitoring
+- deployment configuration
+- rate limiting / abuse protection for AI endpoints
+- stronger test coverage around the build flow, tracker movement, and export path
 
-### 📅 Sprint 3 — Cost-Efficiency & Traceability
-- Model-switching strategy (Gemini Flash for low-cost tasks, Pro for deep analysis)
-- LangGraph integration for complex, multi-step generation cycles
-- Basic observability setup (logging + tracing for AI calls)
+## Current Naming Conventions
 
----
+Use these terms consistently:
+- `Work Repository`
+- `Prepare`
+- `Build Your Application`
+- `Fit Summary`
+- `Resume`
+- `Cover Letter`
+- `Answers`
+- `AI Coach`
+- `Application Tracker`
 
-*Built with ❤️ using Next.js · Firebase · Google Gemini · Genkit*
+Avoid older naming in new code or docs:
+- `Application Studio`
+- `Results Workspace`
+- `Overview`
+- `Documents & Answers`
+- `bio`
+
+## Additional Docs
+
+- [User Journey](docs/user-journey.md)

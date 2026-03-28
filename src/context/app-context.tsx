@@ -7,6 +7,7 @@ import React, {
   useEffect,
   ReactNode,
   useTransition,
+  useRef,
 } from 'react';
 import type { CoPilotMessage, SavedRepository, SavedJob } from '@/lib/schemas';
 import { generateCoPilotResponse } from '@/ai/flows/generate-co-pilot-response';
@@ -36,6 +37,13 @@ export type ToolContext = {
   generateJobMaterial?: (generationType: string) => void;
 };
 
+type CoPilotSubmitInput =
+  | string
+  | {
+      message: string;
+      displayMessage?: string;
+    };
+
 
 interface AuthContextType {
   user: User | null;
@@ -55,7 +63,9 @@ interface AppContextType {
   isLoading: boolean;
   setIsLoading: (isLoading: boolean) => void;
   isGenerating: boolean;
-  handleCoPilotSubmit: (message: string) => void;
+  unreadCoachCount: number;
+  markCoachRead: () => void;
+  handleCoPilotSubmit: (message: CoPilotSubmitInput) => void;
   setToolContext: (context: ToolContext | null) => void;
   // New state for saved data
   savedJobs: SavedJob[];
@@ -96,6 +106,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, startGenerating] = useTransition();
   const [toolContext, setToolContext] = useState<ToolContext | null>(null);
+  const [unreadCoachCount, setUnreadCoachCount] = useState(0);
+  const hasInitializedChatRef = useRef(false);
+  const previousChatLengthRef = useRef(0);
   
   // New state for saved data, to be synced with Firestore or localStorage
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
@@ -218,7 +231,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             {
               author: 'assistant',
               content:
-                "Hello! I'm your Co-pilot. I can help you with your application. Try asking me to 'improve your work repository' or 'generate a cover letter'.",
+                "Hello! I'm your AI Coach. I can help you with your application. Try asking me to 'improve your work repository' or 'generate a cover letter'.",
             },
           ]);
         }
@@ -228,7 +241,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           {
             author: 'assistant',
             content:
-              "Hello! I'm your Co-pilot. I can help you with your application. Try asking me to 'improve your work repository' or 'generate a cover letter'.",
+              "Hello! I'm your AI Coach. I can help you with your application. Try asking me to 'improve your work repository' or 'generate a cover letter'.",
           },
         ]);
       }
@@ -249,30 +262,62 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [chatHistory, isLoading]);
 
-  const handleCoPilotSubmit = (message: string) => {
-    const newUserMessage: CoPilotMessage = { author: 'user', content: message };
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (!hasInitializedChatRef.current) {
+      hasInitializedChatRef.current = true;
+      previousChatLengthRef.current = chatHistory.length;
+      return;
+    }
+
+    const newMessages = chatHistory.slice(previousChatLengthRef.current);
+    previousChatLengthRef.current = chatHistory.length;
+
+    if (isCoPilotSidebarOpen) {
+      return;
+    }
+
+    const unreadAdditions = newMessages.filter((message) => message.author === 'assistant').length;
+    if (unreadAdditions > 0) {
+      setUnreadCoachCount((current) => current + unreadAdditions);
+    }
+  }, [chatHistory, isCoPilotSidebarOpen, isLoading]);
+
+  useEffect(() => {
+    if (isCoPilotSidebarOpen) {
+      setUnreadCoachCount(0);
+    }
+  }, [isCoPilotSidebarOpen]);
+
+  const markCoachRead = () => {
+    setUnreadCoachCount(0);
+  };
+
+  const handleCoPilotSubmit = (input: CoPilotSubmitInput) => {
+    const actualMessage = typeof input === 'string' ? input : input.message;
+    const visibleMessage = typeof input === 'string' ? input : (input.displayMessage || input.message);
+    const newUserMessage: CoPilotMessage = { author: 'user', content: visibleMessage };
     const currentChatHistory = [...chatHistory, newUserMessage];
     setChatHistory(currentChatHistory);
 
     startGenerating(async () => {
       // This function will be called recursively if a tool is used.
-      const runGeneration = async (history: CoPilotMessage[], enrichedPrompt?: string) => {
-        if (!toolContext?.getFormFields) {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Form context is not available. Cannot submit.',
-          });
-          return;
-        }
-        const { workRepository, jobDescription } = toolContext.getFormFields();
+      const runGeneration = async (history: CoPilotMessage[], enrichedPrompt?: string, rawUserMessage?: string) => {
+        const formFields = toolContext?.getFormFields?.();
+        const workRepository = formFields?.workRepository || '';
+        const jobDescription = formFields?.jobDescription || '';
 
         let finalEnrichedPrompt = enrichedPrompt;
         
         // Step 1: Enrich the prompt (if not already done in a recursive call)
         if (!finalEnrichedPrompt) {
             const enrichmentResponse = await enrichCopilotPrompt({
-                chatHistory: history,
+                chatHistory: rawUserMessage
+                  ? [...history.slice(0, -1), { author: 'user', content: rawUserMessage }]
+                  : history,
                 jobDescription,
                 workRepository,
             });
@@ -305,9 +350,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Check if the AI requested a tool.
         if (response.toolRequest) {
           const toolRequest = response.toolRequest as ToolRequestPart;
+          const requestedTool = toolRequest.toolRequest;
           let toolOutput: any = null;
-          
-          const { name, input } = toolRequest;
+          const name = requestedTool.name;
+          const input = (requestedTool.input || {}) as Record<string, any>;
 
           // Add any text the model generated before the tool request as a new message.
           if (response.response) {
@@ -315,7 +361,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
           
           // Execute the requested tool on the client-side.
-          if (name === 'updateFormFields' && toolContext.updateFormFields) {
+          if (!toolContext) {
+            const blockedMessage =
+              "I can help with advice here, but to edit fields or generate materials please open Build Your Application.";
+            setChatHistory(prev => [...prev, { author: 'assistant', content: blockedMessage }]);
+            toolOutput = { error: 'Build Your Application context is not available on this page.' };
+          } else if (name === 'updateFormFields' && toolContext.updateFormFields) {
             toolContext.updateFormFields(input);
             toolOutput = `Successfully updated fields: ${Object.keys(input).join(', ')}`;
           } else if (name === 'generateJobMaterial' && toolContext.generateJobMaterial) {
@@ -330,11 +381,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             {
               author: 'tool',
               content: JSON.stringify(toolOutput),
-              toolRequestId: toolRequest.id,
+              toolRequestId: requestedTool.ref,
             },
           ];
           
-          await runGeneration(historyWithToolResponse, finalEnrichedPrompt);
+          await runGeneration(historyWithToolResponse, finalEnrichedPrompt, rawUserMessage);
 
         } else if (response.response) {
             // Add the final response as a new message.
@@ -344,7 +395,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       };
 
-      await runGeneration(currentChatHistory);
+      await runGeneration(currentChatHistory, undefined, actualMessage);
     });
   };
 
@@ -356,6 +407,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isLoading,
     setIsLoading,
     isGenerating,
+    unreadCoachCount,
+    markCoachRead,
     handleCoPilotSubmit,
     setToolContext,
     savedJobs,

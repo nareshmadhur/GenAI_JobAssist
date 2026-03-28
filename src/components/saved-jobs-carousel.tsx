@@ -25,7 +25,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import type { GenerationType } from '@/app/page';
+
+type GenerationType = 'coverLetter' | 'cv' | 'deepAnalysis' | 'qAndA';
 
 
 interface SavedJobsCarouselProps {
@@ -35,10 +36,10 @@ interface SavedJobsCarouselProps {
 }
 
 const iconMap: Record<GenerationType, React.ReactNode> = {
-    coverLetter: <FileText className="h-4 w-4" title="Cover Letter" />,
-    cv: <Briefcase className="h-4 w-4" title="CV" />,
-    deepAnalysis: <Lightbulb className="h-4 w-4" title="Deep Analysis" />,
-    qAndA: <MessageSquareMore className="h-4 w-4" title="Q & A" />,
+    coverLetter: <FileText className="h-4 w-4" aria-label="Cover Letter" />,
+    cv: <Briefcase className="h-4 w-4" aria-label="Resume" />,
+    deepAnalysis: <Lightbulb className="h-4 w-4" aria-label="Fit Summary" />,
+    qAndA: <MessageSquareMore className="h-4 w-4" aria-label="Answers" />,
 };
 
 

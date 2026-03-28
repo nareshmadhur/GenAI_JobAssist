@@ -25,7 +25,7 @@ export async function fillQaGap(
 const prompt = ai.definePrompt({
   name: 'fillQaGapPrompt',
   input: { schema: FillQaGapSchema },
-  prompt: `You are an expert career advisor and interview coach. A question was found in a job description that couldn't be answered by the user's original bio. The user has now provided brief context to help answer it.
+  prompt: `You are an expert career advisor and interview coach. A question was found in a job description that couldn't be answered by the user's original work repository. The user has now provided brief context to help answer it.
 
 Job Description (for tone and requirement context):
 {{{jobDescription}}}

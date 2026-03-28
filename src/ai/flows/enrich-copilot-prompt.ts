@@ -16,7 +16,7 @@ const EnrichPromptInputSchema = z.object({
 });
 
 const EnrichPromptOutputSchema = z.object({
-  thinkingMessage: z.string().describe("A user-facing message explaining the AI's plan. Should start with 'Thinking...' or 'Okay...'. For example: 'Okay, planning to rewrite the summary section of the bio to be more results-oriented.'"),
+  thinkingMessage: z.string().describe("A user-facing message explaining the AI's plan. Should start with 'Thinking...' or 'Okay...'. For example: 'Okay, planning to rewrite the summary section of the work repository to be more results-oriented.'"),
   enrichedPrompt: z.string().describe('A detailed, enriched prompt for the next AI model to use, containing all necessary context.'),
   error: z.string().optional().describe('An error message if the model failed to process the request.'),
 });
@@ -38,7 +38,10 @@ const prompt = ai.definePrompt({
 2.  A detailed, "enriched" prompt that will be passed to a second AI (the "executor") to generate the final response.
 
 **CRITICAL INSTRUCTIONS:**
-- The "enrichedPrompt" MUST contain all relevant information: the user's specific request, the relevant parts of the chat history, the work repository, and the job description. It needs to be a self-contained instruction for the next AI.
+- The "enrichedPrompt" MUST contain all relevant information the next AI needs, but it should be compressed and selective.
+- Do NOT paste the full job description or full work repository back into the enriched prompt unless the latest request genuinely depends on exact wording.
+- Extract only the parts most relevant to the user's latest message.
+- If the user is asking to close a specific gap, focus the enriched prompt on that gap, the evidence available, and the best next move.
 
 **User's Current Data:**
 ---

@@ -63,7 +63,7 @@ export default function WelcomePage() {
           </Link>
           <nav className="flex items-center gap-2">
             <Button asChild variant="ghost" className="hidden sm:flex">
-              <Link href="/job-matcher">Application Studio</Link>
+              <Link href="/job-matcher">Build Your Application</Link>
             </Button>
             <Button asChild variant="ghost" className="hidden lg:flex">
               <Link href="/admin">
@@ -168,12 +168,12 @@ export default function WelcomePage() {
                 {
                   icon: ScanText,
                   title: "1. Extract & Build",
-                  description: "Paste your dusty resume or LinkedIn bio. Let our AI instantly structure your professional history into a powerful Master Profile."
+                  description: "Paste your resume, notes, or LinkedIn copy. Let the app structure it into a reusable Work Repository for every application."
                 },
                 {
                   icon: UserRoundCheck,
                   title: "2. Analyze the Role",
-                  description: "Drop in any Job Description. Our engine instantly extracts core requirements and scores your match percentage before you apply."
+                  description: "Drop in any Job Description. The app pulls out the core requirements and helps you spot your strongest fit and likely gaps."
                 },
                 {
                   icon: Rocket,

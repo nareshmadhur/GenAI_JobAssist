@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { EditableCvField } from './editable-cv-field';
+import { openCvPrintExport } from '@/lib/cv-export';
 
 
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
@@ -77,11 +78,7 @@ const ExportButton = ({ cvData }: { cvData: CvOutput }) => {
 
   const handleExport = () => {
     try {
-      const jsonString = JSON.stringify(cvData);
-      // Use the utoa function to handle Unicode characters correctly
-      const base64String = btoa(unescape(encodeURIComponent(jsonString)));
-      const url = `/cv/print?data=${encodeURIComponent(base64String)}`;
-      window.open(url, '_blank');
+      openCvPrintExport(cvData);
     } catch (error) {
       console.error('Failed to serialize CV data for printing:', error);
       alert('An error occurred while preparing the CV for export.');
@@ -105,7 +102,7 @@ const ExportButton = ({ cvData }: { cvData: CvOutput }) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Incomplete CV</AlertDialogTitle>
             <AlertDialogDescription>
-              Your CV has missing sections. Are you sure you want to export it? It's recommended to fill out all details first.
+              Your CV has missing sections. Are you sure you want to export it? It&apos;s recommended to fill out all details first.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

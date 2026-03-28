@@ -3,6 +3,16 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AdminPage from '@/app/admin/page';
 
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    back: jest.fn(),
+  }),
+  useSearchParams: () => ({
+    get: jest.fn(() => null),
+  }),
+}));
+
 // Mock context and auth
 jest.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -39,8 +49,10 @@ jest.mock('lucide-react', () => ({
   Search: () => <span>Search</span>,
   Trash2: () => <span>Trash2</span>,
   ArrowRight: () => <span>ArrowRight</span>,
+  ArrowLeft: () => <span>ArrowLeft</span>,
   Bot: () => <span>Bot</span>,
   ChevronRight: () => <span>ChevronRight</span>,
+  GripVertical: () => <span>GripVertical</span>,
 }));
 
 // Mock components

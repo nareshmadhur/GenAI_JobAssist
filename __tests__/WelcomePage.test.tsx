@@ -18,6 +18,7 @@ jest.mock('lucide-react', () => ({
   ScanText: () => <span>ScanText</span>,
   UserRoundCheck: () => <span>UserRoundCheck</span>,
   Rocket: () => <span>Rocket</span>,
+  List: () => <span>List</span>,
   User: () => <span>User</span>,
   Loader2: () => <span>Loader2</span>,
   LogOut: () => <span>LogOut</span>,

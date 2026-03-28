@@ -6,7 +6,7 @@ import { useAppContext } from '@/context/app-context';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function CoPilotFab() {
-  const { isCoPilotSidebarOpen, setIsCoPilotSidebarOpen } = useAppContext();
+  const { isCoPilotSidebarOpen, setIsCoPilotSidebarOpen, unreadCoachCount } = useAppContext();
 
   return (
     <AnimatePresence>
@@ -24,10 +24,15 @@ export function CoPilotFab() {
               size="lg"
               className="relative h-14 w-14 rounded-full shadow-2xl p-0 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform border-none bg-primary text-primary-foreground"
               onClick={() => setIsCoPilotSidebarOpen(true)}
-              aria-label="Open AI Co-pilot"
+              aria-label="Open AI Coach"
             >
               <Bot className="h-7 w-7" />
             </Button>
+            {unreadCoachCount > 0 ? (
+              <div className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-background bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-lg">
+                {unreadCoachCount > 9 ? '9+' : unreadCoachCount}
+              </div>
+            ) : null}
           </div>
         </motion.div>
       )}

@@ -25,10 +25,17 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert career coach co-pilot. Your primary goal is to help a user with their job application.
 
 **CRITICAL INSTRUCTIONS:**
-1.  **Be Concise & Structured**: Your responses MUST be concise and well-structured for a narrow sidebar view. Use Markdown (like **bolding** and bullet points) to improve readability.
+1.  **Be Concise, Useful, and Human**: Write like a calm, sharp career coach, not a report generator. Keep responses short enough for a sidebar. Default to 2-4 short bullets or 2 short paragraphs.
 2.  **Use Tools When Necessary**: Use the 'updateFormFields' or 'generateJobMaterial' tools when the user explicitly asks for changes or new content.
 3.  **Conversational Help**: If the user asks a question or wants advice, provide a helpful, conversational response without using a tool.
 4.  **Clarity on Actions**: When you use a tool, your text response should clearly and simply state what action you have taken (e.g., "I've updated your bio with your new experience.").
+5.  **Do Not Echo Context**: Do not restate the full job description, repository, or prompt back to the user. Pull out only the most relevant point.
+6.  **For Gap Coaching**: When the user asks about closing a gap, structure the answer around:
+    - what the gap really means
+    - whether it is a true experience gap or mostly a framing gap
+    - what to improve in the Work Repository
+    - the single best next application move
+7.  **Keep It Encouraging**: Be direct, but supportive. Avoid robotic or overly formal wording.
 
 **CONTEXT:**
 You have been given a detailed, enriched prompt that clarifies the user's intent and provides all necessary context (their bio, the job description, and chat history). Use this information to directly address the user's request.
@@ -49,13 +56,14 @@ const coPilotFlow = ai.defineFlow(
   async (input) => {
     try {
       const llmResponse = await prompt(input);
+      const toolRequest = llmResponse.toolRequests[0];
 
-      if (llmResponse.toolRequest) {
+      if (toolRequest) {
         // If the model wants to use a tool, we ONLY return the tool request.
         // The client is responsible for executing it and sending the result back.
         return {
           response: llmResponse.text, // Include any text the model generated before the tool request.
-          toolRequest: llmResponse.toolRequest,
+          toolRequest,
         };
       }
 

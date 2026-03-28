@@ -2,7 +2,7 @@
 
 import { generateBioChatResponse } from '@/ai/flows/generate-bio-chat-response';
 import { analyzeBioCompletenessAction } from '@/app/actions';
-import { BioProgressTracker } from '@/components/bio-progress-tracker';
+import { RepositoryProgressTracker } from '@/components/repository-progress-tracker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,7 +40,7 @@ interface BioCreatorModalProps {
     onWorkRepositoryUpdate: (newText: string) => void;
 }
 
-export function BioCreatorModal({ isOpen, onOpenChange, initialWorkRepository, onWorkRepositoryUpdate }: BioCreatorModalProps) {
+export function RepositoryAssistantModal({ isOpen, onOpenChange, initialWorkRepository, onWorkRepositoryUpdate }: BioCreatorModalProps) {
   const [chatHistory, setChatHistory] = useState<BioChatMessage[]>([]);
   const [workRepository, setWorkRepository] = useState('');
   const [userInput, setUserInput] = useState('');
@@ -151,7 +151,7 @@ export function BioCreatorModal({ isOpen, onOpenChange, initialWorkRepository, o
       });
 
       setChatHistory(prev => [...prev, { author: 'assistant', content: response.response, suggestedReplies: response.suggestedReplies }]);
-      setWorkRepository(response.updatedBio);
+      setWorkRepository(response.updatedWorkRepository);
     });
   };
 
@@ -310,7 +310,7 @@ export function BioCreatorModal({ isOpen, onOpenChange, initialWorkRepository, o
                 </div>
             </div>
             <div className="p-4 flex-1 flex flex-col gap-4 overflow-hidden">
-               <BioProgressTracker analysis={completeness} isLoading={isAnalyzing} />
+               <RepositoryProgressTracker analysis={completeness} isLoading={isAnalyzing} />
                <Textarea
                 value={workRepository}
                 onChange={(e) => setWorkRepository(e.target.value)}

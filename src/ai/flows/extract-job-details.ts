@@ -21,12 +21,15 @@ const prompt = ai.definePrompt({
   name: 'extractJobDetailsPrompt',
   input: {schema: JobDetailsInputSchema},
   output: {schema: JobDetailsOutputSchema},
-  prompt: `Analyze the following job description and extract the company name and the specific job title.
+  prompt: `Analyze the following job description and extract:
+1. The company name
+2. The specific job title
+3. Any specific application questions, "Why us?" prompts, or personal statement requirements explicitly mentioned in the text.
 
 Job Description:
 {{{jobDescription}}}
 
-Extract the company name and job title now.`,
+Extract the company name, job title, and any questions now.`,
 });
 
 const extractJobDetailsFlow = ai.defineFlow(

@@ -4,7 +4,7 @@
 import type { CoverLetterOutput } from '@/ai/flows/generate-cover-letter';
 import { generateCoverLetter } from '@/ai/flows/generate-cover-letter';
 import { generateCv } from '@/ai/flows/generate-cv';
-import type { DeepAnalysisOutput } from '@/ai/flows/generate-deep-analysis';
+import type { DeepAnalysisOutput } from '@/lib/schemas';
 import { generateDeepAnalysis } from '@/ai/flows/generate-deep-analysis';
 import { generateQAndA } from '@/ai/flows/generate-q-and-a';
 import { reviseResponse } from '@/ai/flows/revise-response';
@@ -16,11 +16,13 @@ import { reviseCvField, type ReviseCvFieldInput, type ReviseCvFieldOutput } from
 import { fillQaGap, type FillQaGapInput, type FillQaGapOutput } from '@/ai/flows/fill-qa-gap';
 import { generateLearningPath, type GenerateLearningPathInput, type GenerateLearningPathOutput } from '@/ai/flows/generate-learning-path';
 import { prettifyWorkRepository } from '@/ai/flows/prettify-work-repository';
+import { generateInterviewPrep } from '@/ai/flows/generate-interview-prep';
 
 import type {
   BioCompletenessOutput,
   CvOutput,
   QAndAOutput,
+  InterviewPrepOutput,
   ReviseResponseData,
   ReviseResponseOutput,
 } from '@/lib/schemas';
@@ -50,6 +52,7 @@ export type AllGenerationResults = {
   cv?: CvOutput;
   deepAnalysis?: DeepAnalysisOutput;
   qAndA?: QAndAOutput;
+  interviewPrep?: InterviewPrepOutput;
 };
 
 const SingleGenerationSchema = JobApplicationSchema.pick({
@@ -160,9 +163,9 @@ export async function extractJobDetailsAction(rawData: unknown): Promise<JobDeta
 }
 
 /**
- * Server Action to analyze the completeness of a user's bio.
+ * Server Action to analyze the completeness of a user's work repository.
  *
- * @param rawData - The raw input containing the bio text.
+ * @param rawData - The raw input containing the repository text.
  * @returns A promise that resolves to a `BioCompletenessOutput` or an error object.
  */
 export async function analyzeBioCompletenessAction(
@@ -170,14 +173,14 @@ export async function analyzeBioCompletenessAction(
 ): Promise<BioCompletenessOutput | ActionError> {
   const validationResult = BioCompletenessInputSchema.safeParse(rawData);
   if (!validationResult.success) {
-    return { error: 'Invalid bio provided for analysis.' };
+    return { error: 'Invalid repository provided for analysis.' };
   }
   try {
     const response = await analyzeBioCompleteness(validationResult.data);
     return response;
   } catch (error: any) {
     console.error('Error in analyzeBioCompletenessAction:', error);
-    return { error: error.message || 'Could not analyze bio completeness.' };
+    return { error: error.message || 'Could not analyze repository completeness.' };
   }
 }
 
@@ -264,9 +267,6 @@ export async function fillQaGapAction(rawData: unknown): Promise<FillQaGapOutput
 
 /**
  * Server Action to generate a learning path for a missing job requirement.
- *
- * @param rawData - The input data containing job description and the missing requirement.
- * @returns A promise that resolves to the generated learning path or an error.
  */
 export async function generateLearningPathAction(rawData: unknown): Promise<GenerateLearningPathOutput | ActionError> {
   try {
@@ -279,5 +279,22 @@ export async function generateLearningPathAction(rawData: unknown): Promise<Gene
   } catch (error: any) {
     console.error('Error in generateLearningPathAction:', error);
     return { error: error.message || 'Could not generate learning path.' };
+  }
+}
+
+/**
+ * Server Action to generate an interview preparation coaching guide.
+ */
+export async function generateInterviewPrepAction(rawData: unknown): Promise<InterviewPrepOutput | ActionError> {
+  try {
+    const input = rawData as { jobDescription: string; workRepository: string };
+    if (!input.jobDescription || !input.workRepository) {
+      return { error: 'Job description and work repository are required.' };
+    }
+    const response = await generateInterviewPrep(input);
+    return response;
+  } catch (error: any) {
+    console.error('Error in generateInterviewPrepAction:', error);
+    return { error: error.message || 'Could not generate interview prep guide.' };
   }
 }

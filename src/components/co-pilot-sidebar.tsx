@@ -30,7 +30,9 @@ function SidebarContentWrapper() {
     setChatHistory,
     handleCoPilotSubmit,
     isGenerating,
-    setIsCoPilotSidebarOpen
+    isCoPilotSidebarOpen,
+    setIsCoPilotSidebarOpen,
+    markCoachRead,
   } = useAppContext();
   const [userInput, setUserInput] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -49,6 +51,12 @@ function SidebarContentWrapper() {
       }
     }
   }, [chatHistory]);
+
+  useEffect(() => {
+    if (isCoPilotSidebarOpen) {
+      markCoachRead();
+    }
+  }, [isCoPilotSidebarOpen, markCoachRead]);
 
   const handleSendMessage = () => {
     if (!userInput.trim()) return;
@@ -95,9 +103,9 @@ function SidebarContentWrapper() {
                       </div>
                     )}
                     <div
-                      className={`prose prose-sm dark:prose-invert max-w-[90%] rounded-lg p-2.5 text-sm ${
+                      className={`max-w-[90%] rounded-lg p-2.5 text-sm ${
                         msg.author === 'user'
-                          ? 'bg-primary text-primary-foreground prose-invert'
+                          ? 'bg-primary text-primary-foreground'
                           : 'bg-muted'
                       }`}
                     >
@@ -107,7 +115,15 @@ function SidebarContentWrapper() {
                           <span>Thinking...</span>
                         </div>
                       ) : (
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <ReactMarkdown
+                          className={
+                            msg.author === 'user'
+                              ? 'space-y-2 break-words text-primary-foreground [&_*]:text-primary-foreground [&_a]:underline [&_code]:rounded [&_code]:bg-primary-foreground/15 [&_code]:px-1 [&_code]:py-0.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-0 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5'
+                              : 'prose prose-sm max-w-none dark:prose-invert'
+                          }
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
                       )}
                     </div>
                   </div>
@@ -134,7 +150,7 @@ function SidebarContentWrapper() {
             onKeyDown={(e) =>
               e.key === 'Enter' && !e.shiftKey && handleSendMessage()
             }
-            placeholder="Ask to edit your bio or generate content..."
+            placeholder="Ask to improve your Work Repository or build part of your application..."
             disabled={isGenerating}
             rows={1}
             className="resize-none"
@@ -161,10 +177,10 @@ function DesktopSidebarHeader() {
     <div className="flex items-center justify-between border-b p-4 text-left">
       <div className="flex flex-col">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Bot /> AI Co-pilot
+            <Bot /> AI Coach
         </h2>
         <p className="text-sm text-muted-foreground">
-            Your assistant for the application process.
+            Your assistant while you build this application.
         </p>
       </div>
        <Button variant="ghost" size="icon" onClick={() => setIsCoPilotSidebarOpen(false)}>
@@ -193,10 +209,10 @@ export function CoPilotSidebar() {
         <SheetContent className="flex w-full flex-col p-0 sm:max-w-[520px]">
           <SheetHeader className="border-b p-4 text-left">
             <SheetTitle className="flex items-center gap-2">
-              <Bot /> AI Co-pilot
+              <Bot /> AI Coach
             </SheetTitle>
             <SheetDescription>
-              Your assistant for the entire application process.
+              Your assistant while you build this application.
             </SheetDescription>
           </SheetHeader>
           <SidebarContentWrapper />
