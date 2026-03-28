@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { 
   ArrowLeft,
@@ -85,7 +85,7 @@ const getStatusMeta = (status?: JobStatus) => {
   return STATUS_OPTIONS.find((option) => option.value === normalized) || STATUS_OPTIONS[0];
 };
 
-export default function AdminPage() {
+function AdminPageContent() {
   const { savedJobs, setSavedJobs } = useAppContext();
   const { user } = useAuth();
   const router = useRouter();
@@ -536,5 +536,21 @@ export default function AdminPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+function AdminPageFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-muted/20 p-8">
+      <div className="text-sm text-muted-foreground">Loading application tracker...</div>
+    </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<AdminPageFallback />}>
+      <AdminPageContent />
+    </Suspense>
   );
 }
