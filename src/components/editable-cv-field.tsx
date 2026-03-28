@@ -18,6 +18,7 @@ interface EditableCvFieldProps {
   className?: string;
   isBlock?: boolean;
   multiline?: boolean;
+  displayValue?: React.ReactNode;
 }
 
 export function EditableCvField({
@@ -28,6 +29,7 @@ export function EditableCvField({
   className,
   isBlock = false,
   multiline = false,
+  displayValue,
 }: EditableCvFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
@@ -166,7 +168,7 @@ export function EditableCvField({
       className={cn('cursor-pointer rounded-sm hover:bg-slate-100 p-1 -m-1', className)}
       onClick={handleEditClick}
     >
-      {value}
+      {displayValue ?? value}
     </Wrapper>
   );
 }

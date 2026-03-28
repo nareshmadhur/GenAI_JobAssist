@@ -31,6 +31,7 @@ export function CircularProgress({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (value / 100) * circumference;
+  const computedFontSize = Math.max(14, Math.round(size * (value >= 100 ? 0.18 : 0.22)));
 
   return (
     <div className={cn('relative', className)} style={{ width: size, height: size }}>
@@ -59,7 +60,12 @@ export function CircularProgress({
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className={cn('text-xl font-bold text-foreground', valueClassName)}>{`${value}%`}</span>
+        <span
+          className={cn('whitespace-nowrap text-xl font-bold leading-none tabular-nums text-foreground', valueClassName)}
+          style={{ fontSize: `${computedFontSize}px` }}
+        >
+          {`${value}%`}
+        </span>
       </div>
     </div>
   );

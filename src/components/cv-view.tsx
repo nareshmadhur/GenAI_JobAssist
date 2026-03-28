@@ -19,6 +19,7 @@ import type { CvOutput, DeepAnalysisOutput } from '@/lib/schemas';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Separator } from './ui/separator';
+import { cn } from '@/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -40,7 +41,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { EditableCvField } from './editable-cv-field';
 import { openCvPrintExport } from '@/lib/cv-export';
-import { getRoleAlignmentHighlights } from '@/lib/role-alignment';
+import { getHighlightedTextSegments, getRoleAlignmentTerms } from '@/lib/role-alignment';
 
 
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
@@ -72,6 +73,30 @@ const hasMissingInfo = (cvData: CvOutput): boolean => {
   }
   return false;
 };
+
+function InlineHighlightText({
+  text,
+  highlightTerms,
+}: {
+  text: string;
+  highlightTerms: string[];
+}) {
+  const segments = getHighlightedTextSegments(text, highlightTerms);
+
+  return (
+    <>
+      {segments.map((segment, index) =>
+        segment.isHighlighted ? (
+          <strong key={`${segment.text}-${index}`} className="font-semibold text-slate-900">
+            {segment.text}
+          </strong>
+        ) : (
+          <React.Fragment key={`${segment.text}-${index}`}>{segment.text}</React.Fragment>
+        )
+      )}
+    </>
+  );
+}
 
 
 const ExportButton = ({
@@ -192,7 +217,7 @@ export function CvView({
 }: CvViewProps) {
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
-  const roleAlignmentHighlights = getRoleAlignmentHighlights({
+  const roleAlignmentTerms = getRoleAlignmentTerms({
     cvData,
     deepAnalysis,
     jobDescription,
@@ -316,7 +341,7 @@ export function CvView({
           <Separator className="my-6 bg-slate-200" />
 
           {/* Summary Section */}
-          <div className="space-y-4" data-missing={isMissing(cvData.summary)}>
+          <div data-missing={isMissing(cvData.summary)}>
             <h2 className="mb-2 flex items-center gap-2 text-xl font-semibold text-slate-800">
               <User className="h-5 w-5" /> Professional Summary
             </h2>
@@ -328,26 +353,14 @@ export function CvView({
                   isMissing={isMissing(cvData.summary)}
                   isBlock
                   multiline
+                  displayValue={
+                    <InlineHighlightText
+                      text={cvData.summary}
+                      highlightTerms={roleAlignmentTerms}
+                    />
+                  }
                 />
             </div>
-            {roleAlignmentHighlights.length > 0 ? (
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-                <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-                  <Briefcase className="h-4 w-4" />
-                  Role Alignment Highlights
-                </div>
-                <div className="space-y-3">
-                  {roleAlignmentHighlights.map((highlight, index) => (
-                    <div key={`${highlight.title}-${index}`} className="rounded-xl bg-white/80 px-3 py-2">
-                      <p className="text-sm leading-relaxed text-slate-700">
-                        <span className="font-semibold text-slate-900">{highlight.title}.</span>{' '}
-                        {highlight.detail}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </div>
 
           <Separator className="my-6 bg-slate-200" />
@@ -397,6 +410,12 @@ export function CvView({
                           onSave={(newValue) => handleFieldUpdate(`workExperience.${index}.responsibilities.${i}`, newValue)}
                           fieldName="Responsibility"
                           isMissing={isMissing(responsibility)}
+                          displayValue={
+                            <InlineHighlightText
+                              text={responsibility}
+                              highlightTerms={roleAlignmentTerms}
+                            />
+                          }
                         />
                       </li>
                     ))}
@@ -459,7 +478,16 @@ export function CvView({
             </h2>
             <div className="flex flex-wrap gap-2">
               {cvData.skills.map((skill, index) => (
-                  <div key={index} className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700" data-missing={isMissing(skill)}>
+                  <div
+                    key={index}
+                    className={cn(
+                      'rounded-full px-3 py-1 text-sm',
+                      roleAlignmentTerms.some((term) => term.toLowerCase() === skill.toLowerCase())
+                        ? 'bg-primary/10 font-semibold text-primary ring-1 ring-primary/20'
+                        : 'bg-slate-100 text-slate-700'
+                    )}
+                    data-missing={isMissing(skill)}
+                  >
                     <EditableCvField
                       value={skill}
                       onSave={(newValue) => handleFieldUpdate(`skills.${index}`, newValue)}

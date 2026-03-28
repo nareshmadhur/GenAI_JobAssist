@@ -1,7 +1,7 @@
 'use client';
 
 import type { CvOutput, DeepAnalysisOutput } from '@/lib/schemas';
-import { getRoleAlignmentHighlights } from '@/lib/role-alignment';
+import { getHighlightedTextSegments, getRoleAlignmentTerms } from '@/lib/role-alignment';
 
 interface CvPrintTemplateProps {
   cvData: CvOutput;
@@ -14,7 +14,7 @@ export function CvPrintTemplate({
   jobDescription,
   deepAnalysis,
 }: CvPrintTemplateProps) {
-  const roleAlignmentHighlights = getRoleAlignmentHighlights({
+  const roleAlignmentTerms = getRoleAlignmentTerms({
     cvData,
     deepAnalysis,
     jobDescription,
@@ -35,22 +35,17 @@ export function CvPrintTemplate({
         <h2 className="border-b border-slate-200 pb-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
           Professional Summary
         </h2>
-        <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">{cvData.summary}</p>
-        {roleAlignmentHighlights.length > 0 ? (
-          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-              Role Alignment Highlights
-            </p>
-            <div className="mt-3 space-y-2">
-              {roleAlignmentHighlights.map((highlight, index) => (
-                <p key={`${highlight.title}-${index}`} className="text-sm text-slate-700">
-                  <span className="font-semibold text-slate-900">{highlight.title}.</span>{' '}
-                  {highlight.detail}
-                </p>
-              ))}
-            </div>
-          </div>
-        ) : null}
+        <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">
+          {getHighlightedTextSegments(cvData.summary, roleAlignmentTerms).map((segment, index) =>
+            segment.isHighlighted ? (
+              <strong key={`${segment.text}-${index}`} className="font-semibold text-slate-900">
+                {segment.text}
+              </strong>
+            ) : (
+              <span key={`${segment.text}-${index}`}>{segment.text}</span>
+            )
+          )}
+        </p>
       </section>
 
       <section className="resume-print-section mt-7 [break-inside:avoid]">
@@ -70,7 +65,15 @@ export function CvPrintTemplate({
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
                 {job.responsibilities.map((responsibility, responsibilityIndex) => (
                   <li key={`${job.company}-${responsibilityIndex}`} className="whitespace-pre-wrap">
-                    {responsibility}
+                    {getHighlightedTextSegments(responsibility, roleAlignmentTerms).map((segment, index) =>
+                      segment.isHighlighted ? (
+                        <strong key={`${segment.text}-${index}`} className="font-semibold text-slate-900">
+                          {segment.text}
+                        </strong>
+                      ) : (
+                        <span key={`${segment.text}-${index}`}>{segment.text}</span>
+                      )
+                    )}
                   </li>
                 ))}
               </ul>
@@ -104,7 +107,14 @@ export function CvPrintTemplate({
         </h2>
         <div className="mt-4 flex flex-wrap gap-2">
           {cvData.skills.map((skill, index) => (
-            <span key={`${skill}-${index}`} className="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700">
+            <span
+              key={`${skill}-${index}`}
+              className={
+                roleAlignmentTerms.some((term) => term.toLowerCase() === skill.toLowerCase())
+                  ? 'rounded-full border border-slate-900 px-3 py-1 text-xs font-semibold text-slate-900'
+                  : 'rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700'
+              }
+            >
               {skill}
             </span>
           ))}

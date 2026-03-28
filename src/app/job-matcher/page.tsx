@@ -94,6 +94,7 @@ function JobMatcherContent() {
   const [isInitialFormLoad, setIsInitialFormLoad] = useState(true);
   const [jobMeta, setJobMeta] = useState<JobMeta | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   
   const { toast } = useToast();
@@ -120,6 +121,9 @@ function JobMatcherContent() {
     resolver: zodResolver(JobApplicationSchema.omit({ generationType: true })),
     defaultValues: { jobDescription: '', workRepository: '', questions: '' },
   });
+  const watchedJobDescription = formMethods.watch('jobDescription');
+  const watchedWorkRepository = formMethods.watch('workRepository');
+  const watchedQuestions = formMethods.watch('questions');
 
   const getFallbackJobMeta = useCallback((jobDescription: string): JobMeta => {
     const firstLine = jobDescription
@@ -457,6 +461,10 @@ function JobMatcherContent() {
   }, [jobId, savedJobs, isInitialFormLoad]);
 
   const handleClear = () => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+    }
     formMethods.reset({ jobDescription: '', workRepository: '', questions: '' });
     setAllResults({});
     setActiveView('none');
@@ -471,6 +479,106 @@ function JobMatcherContent() {
       console.error('Failed to clear data from localStorage', e);
     }
   };
+
+  const upsertCurrentJob = useCallback(async ({ showToast = false }: { showToast?: boolean } = {}) => {
+    const { jobDescription, workRepository, questions } = formMethods.getValues();
+    if (!jobDescription.trim() || !workRepository.trim() || Object.keys(allResults).length === 0) {
+      return null;
+    }
+
+    const fallbackMeta = getFallbackJobMeta(jobDescription);
+    const existingJob = (currentJobId ? savedJobs.find((job) => job.id === currentJobId) : undefined) || null;
+    let resolvedMeta = existingJob
+      ? { jobTitle: existingJob.jobTitle, companyName: existingJob.companyName }
+      : (jobMeta || fallbackMeta);
+
+    const shouldRefreshDetails =
+      !existingJob &&
+      (!jobMeta ||
+        jobMeta.jobTitle === fallbackMeta.jobTitle ||
+        jobMeta.companyName === fallbackMeta.companyName);
+
+    if (shouldRefreshDetails) {
+      try {
+        const detailsResponse = await extractJobDetailsAction({ jobDescription });
+        if (!('error' in detailsResponse)) {
+          resolvedMeta = {
+            jobTitle: detailsResponse.jobTitle || fallbackMeta.jobTitle,
+            companyName: detailsResponse.companyName || fallbackMeta.companyName,
+          };
+        }
+      } catch {
+        resolvedMeta = fallbackMeta;
+      }
+    }
+
+    const nextJobId = existingJob?.id || currentJobId || crypto.randomUUID();
+    const nextSavedJob: SavedJob = {
+      id: nextJobId,
+      jobTitle: resolvedMeta.jobTitle,
+      companyName: resolvedMeta.companyName,
+      formData: { jobDescription, workRepository, questions },
+      allResults,
+      savedAt: existingJob?.savedAt || new Date().toISOString(),
+      status: existingJob?.status || 'draft',
+    };
+
+    if (existingJob) {
+      const existingSnapshot = JSON.stringify({
+        jobTitle: existingJob.jobTitle,
+        companyName: existingJob.companyName,
+        formData: existingJob.formData,
+        allResults: existingJob.allResults,
+        status: existingJob.status || 'draft',
+      });
+      const nextSnapshot = JSON.stringify({
+        jobTitle: nextSavedJob.jobTitle,
+        companyName: nextSavedJob.companyName,
+        formData: nextSavedJob.formData,
+        allResults: nextSavedJob.allResults,
+        status: nextSavedJob.status,
+      });
+
+      if (existingSnapshot === nextSnapshot) {
+        return existingJob;
+      }
+    }
+
+    setSavedJobs((prev) => {
+      const existingIndex = prev.findIndex((job) => job.id === nextJobId);
+      if (existingIndex === -1) {
+        return [nextSavedJob, ...prev];
+      }
+
+      return prev.map((job) => (job.id === nextJobId ? nextSavedJob : job));
+    });
+    setCurrentJobId(nextJobId);
+    setJobMeta(resolvedMeta);
+    router.replace(`/job-matcher?jobId=${nextJobId}`, { scroll: false });
+
+    if (showToast) {
+      toast({
+        title: existingJob
+          ? 'Application Updated'
+          : user
+            ? 'Application Saved to Tracker!'
+            : 'Application Saved Locally!',
+        description: (
+          <div className="mt-1 flex flex-col gap-3">
+            <p className="text-sm">
+              &quot;{nextSavedJob.jobTitle}&quot; has been saved
+              {user ? ' to your application pipeline' : ' in this browser and will sync after login'}.
+            </p>
+            <Button asChild variant="secondary" size="sm" className="w-fit h-8 px-3 text-xs">
+              <Link href={`/admin?from=build&jobId=${nextSavedJob.id}`}>Go to Application Tracker</Link>
+            </Button>
+          </div>
+        ),
+      });
+    }
+
+    return nextSavedJob;
+  }, [allResults, currentJobId, formMethods, getFallbackJobMeta, jobMeta, router, savedJobs, setSavedJobs, toast, user]);
 
   const handleSaveJob = () => {
     formMethods.trigger('jobDescription').then((isValid) => {
@@ -491,50 +599,7 @@ function JobMatcherContent() {
       }
 
       startSaving(async () => {
-        const { jobDescription, workRepository, questions } = formMethods.getValues();
-        const detailsResponse = await extractJobDetailsAction({
-            jobDescription,
-        });
-
-        if ('error' in detailsResponse) {
-          toast({
-            variant: 'destructive',
-            title: 'Could not save job',
-            description: detailsResponse.error,
-          });
-          return;
-        }
-
-        const newSavedJob: SavedJob = {
-            id: crypto.randomUUID(),
-            ...detailsResponse,
-            formData: { jobDescription, workRepository, questions },
-            allResults,
-            savedAt: new Date().toISOString(),
-            status: 'draft',
-        };
-
-        setSavedJobs(prev => [newSavedJob, ...prev]);
-        setCurrentJobId(newSavedJob.id);
-        setJobMeta({
-          jobTitle: newSavedJob.jobTitle,
-          companyName: newSavedJob.companyName,
-        });
-        router.replace(`/job-matcher?jobId=${newSavedJob.id}`, { scroll: false });
-
-        toast({
-            title: user ? 'Application Saved to Tracker!' : 'Application Saved Locally!',
-            description: (
-              <div className="mt-1 flex flex-col gap-3">
-                <p className="text-sm">
-                  &quot;{newSavedJob.jobTitle}&quot; has been saved{user ? ' to your application pipeline' : ' in this browser and will sync after login'}.
-                </p>
-                <Button asChild variant="secondary" size="sm" className="w-fit h-8 px-3 text-xs">
-                  <Link href={`/admin?from=build&jobId=${newSavedJob.id}`}>Go to Application Tracker</Link>
-                </Button>
-              </div>
-            ),
-        });
+        await upsertCurrentJob({ showToast: true });
       });
     });
   };
@@ -578,7 +643,45 @@ function JobMatcherContent() {
     toast({ title: 'Job Deleted' });
   };
 
-  const { jobDescription, workRepository } = formMethods.getValues();
+  useEffect(() => {
+    if (
+      isInitialFormLoad ||
+      isGenerating ||
+      isGeneratingAll ||
+      Object.keys(allResults).length === 0 ||
+      !watchedJobDescription?.trim() ||
+      !watchedWorkRepository?.trim()
+    ) {
+      return;
+    }
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      void upsertCurrentJob();
+    }, 900);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
+      }
+    };
+  }, [
+    allResults,
+    isGenerating,
+    isGeneratingAll,
+    isInitialFormLoad,
+    upsertCurrentJob,
+    watchedJobDescription,
+    watchedQuestions,
+    watchedWorkRepository,
+  ]);
+
+  const jobDescription = watchedJobDescription || '';
+  const workRepository = watchedWorkRepository || '';
 
   const getLastGeneratedOutput = (): string => {
     if (activeView === 'none' || !allResults[activeView]) return '';
@@ -627,7 +730,7 @@ function JobMatcherContent() {
       icon: MessageSquareMore,
       label: 'Answers',
       description: 'Prepare for application questions and interview follow-ups.',
-      locked: !formMethods.watch('questions')?.trim(),
+      locked: !watchedQuestions?.trim(),
       lockedMessage: 'Add questions in Prepare to unlock',
     },
   ];
@@ -906,7 +1009,7 @@ function JobMatcherContent() {
                   <div>
                     <h2 className="text-3xl font-bold tracking-tight text-foreground">Build Your Application</h2>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Using the role and background you prepared.
+                      Using the role and background you prepared. Results are saved automatically as you build.
                     </p>
                   </div>
                 </div>
@@ -929,7 +1032,7 @@ function JobMatcherContent() {
                     ) : (
                       <Save className="mr-2 h-4 w-4" />
                     )}
-                    Save Application
+                    Save Now
                   </Button>
                   <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
                     <Link href={trackerHref}>

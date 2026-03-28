@@ -1,16 +1,13 @@
 'use client';
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   ArrowLeft,
   Briefcase, 
-  ChevronRight, 
   Clock, 
   ExternalLink, 
   FileCheck, 
-  FileText, 
-  Filter, 
   GripVertical,
   LayoutGrid, 
   List, 
@@ -26,10 +23,11 @@ import { DndContext, PointerSensor, closestCenter, useDroppable, useSensor, useS
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
-import { useAppContext, useAuth } from '@/context/app-context';
+import { useAppContext } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +36,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { JobStatus, SavedJob } from '@/lib/schemas';
@@ -87,11 +95,12 @@ const getStatusMeta = (status?: JobStatus) => {
 
 function AdminPageContent() {
   const { savedJobs, setSavedJobs } = useAppContext();
-  const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
+  const [pendingClearStatus, setPendingClearStatus] = useState<TrackerStatus | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const source = searchParams.get('from');
   const sourceJobId = searchParams.get('jobId');
@@ -100,6 +109,18 @@ function AdminPageContent() {
     job.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     job.jobTitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const selectedJobCount = selectedJobIds.length;
+  const pendingClearCount = pendingClearStatus
+    ? filteredJobs.filter((job) => normalizeJobStatus(job.status) === pendingClearStatus).length
+    : 0;
+
+  useEffect(() => {
+    const visibleJobIds = new Set(filteredJobs.map((job) => job.id));
+    setSelectedJobIds((prev) => {
+      const next = prev.filter((id) => visibleJobIds.has(id));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [filteredJobs]);
 
   const updateJobStatus = (jobId: string, newStatus: TrackerStatus) => {
     setSavedJobs(prev => prev.map(job => 
@@ -107,8 +128,45 @@ function AdminPageContent() {
     ));
   };
 
+  const updateJobsStatus = (jobIds: string[], newStatus: TrackerStatus, options?: { clearSelection?: boolean }) => {
+    if (jobIds.length === 0) return;
+
+    setSavedJobs((prev) =>
+      prev.map((job) => (jobIds.includes(job.id) ? { ...job, status: newStatus } : job))
+    );
+
+    if (options?.clearSelection) {
+      setSelectedJobIds((prev) => prev.filter((id) => !jobIds.includes(id)));
+    }
+  };
+
   const deleteJob = (jobId: string) => {
     setSavedJobs(prev => prev.filter(job => job.id !== jobId));
+  };
+
+  const deleteJobsByIds = (jobIds: string[]) => {
+    if (jobIds.length === 0) return;
+
+    setSavedJobs((prev) => prev.filter((job) => !jobIds.includes(job.id)));
+    setSelectedJobIds((prev) => prev.filter((id) => !jobIds.includes(id)));
+  };
+
+  const clearJobsInStatus = (status: TrackerStatus) => {
+    const jobIds = filteredJobs
+      .filter((job) => normalizeJobStatus(job.status) === status)
+      .map((job) => job.id);
+    deleteJobsByIds(jobIds);
+    setPendingClearStatus(null);
+  };
+
+  const toggleJobSelection = (jobId: string) => {
+    setSelectedJobIds((prev) =>
+      prev.includes(jobId) ? prev.filter((id) => id !== jobId) : [...prev, jobId]
+    );
+  };
+
+  const clearSelection = () => {
+    setSelectedJobIds([]);
   };
 
   const handleBack = () => {
@@ -146,11 +204,27 @@ function AdminPageContent() {
     if (!draggedJob) return;
 
     const nextStatus = resolveStatusFromDropTarget(String(over.id));
-    if (!nextStatus || normalizeJobStatus(draggedJob.status) === nextStatus) {
+    if (!nextStatus) {
       return;
     }
 
-    updateJobStatus(activeJobId, nextStatus);
+    const affectedJobIds =
+      selectedJobIds.includes(activeJobId) && selectedJobIds.length > 1
+        ? selectedJobIds
+        : [activeJobId];
+
+    const hasAnyChange = affectedJobIds.some((jobId) => {
+      const job = savedJobs.find((item) => item.id === jobId);
+      return job && normalizeJobStatus(job.status) !== nextStatus;
+    });
+
+    if (!hasAnyChange) {
+      return;
+    }
+
+    updateJobsStatus(affectedJobIds, nextStatus, {
+      clearSelection: affectedJobIds.length > 1,
+    });
   };
 
   const KanbanColumn = ({
@@ -171,9 +245,22 @@ function AdminPageContent() {
             <span className={cn("h-1.5 w-1.5 rounded-full", column.color.split(' ')[1])} />
             {column.label}
           </h3>
-          <Badge variant="outline" className="text-[10px] h-5 bg-background border-muted-foreground/10 text-muted-foreground">
-            {jobs.length}
-          </Badge>
+          <div className="flex items-center gap-1">
+            <Badge variant="outline" className="text-[10px] h-5 bg-background border-muted-foreground/10 text-muted-foreground">
+              {jobs.length}
+            </Badge>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              disabled={jobs.length === 0}
+              onClick={() => setPendingClearStatus(column.value as TrackerStatus)}
+              aria-label={`Remove all from ${column.label}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <div
           ref={setNodeRef}
@@ -217,9 +304,22 @@ function AdminPageContent() {
           <h4 className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
             {meta.label}
           </h4>
-          <Badge variant="outline" className="h-5 text-[10px]">
-            {jobs.length}
-          </Badge>
+          <div className="flex items-center gap-1">
+            <Badge variant="outline" className="h-5 text-[10px]">
+              {jobs.length}
+            </Badge>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              disabled={jobs.length === 0}
+              onClick={() => setPendingClearStatus(status)}
+              aria-label={`Remove all from ${meta.label}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <div
           ref={setNodeRef}
@@ -247,15 +347,20 @@ function AdminPageContent() {
     dragAttributes,
     dragListeners,
     isDragging = false,
+    isSelected = false,
+    onToggleSelect,
   }: {
     job: SavedJob;
     dragAttributes?: DraggableAttributes;
     dragListeners?: SyntheticListenerMap;
     isDragging?: boolean;
+    isSelected?: boolean;
+    onToggleSelect: (jobId: string) => void;
   }) => (
     <Card className={cn(
       'group relative overflow-hidden transition-all hover:shadow-md border-muted-foreground/10 bg-card/50 backdrop-blur-sm',
-      isDragging && 'shadow-xl ring-2 ring-primary/20'
+      isDragging && 'shadow-xl ring-2 ring-primary/20',
+      isSelected && 'border-primary/40 bg-primary/5 ring-2 ring-primary/20'
     )}>
       <CardHeader className="p-4 pb-2">
         <div className="flex items-start justify-between gap-2">
@@ -268,6 +373,13 @@ function AdminPageContent() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-1">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={() => onToggleSelect(job.id)}
+              onClick={(event) => event.stopPropagation()}
+              aria-label={`Select ${job.jobTitle}`}
+              className="border-muted-foreground/30"
+            />
             <Button
               variant="ghost"
               size="icon"
@@ -342,6 +454,8 @@ function AdminPageContent() {
           dragAttributes={attributes}
           dragListeners={listeners}
           isDragging={isDragging}
+          isSelected={selectedJobIds.includes(job.id)}
+          onToggleSelect={toggleJobSelection}
         />
       </div>
     );
@@ -422,6 +536,49 @@ function AdminPageContent() {
               </div>
             </div>
           </div>
+
+          {viewMode === 'kanban' && selectedJobCount > 0 ? (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {selectedJobCount} application{selectedJobCount > 1 ? 's' : ''} selected
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Move them together, then clear the selection when you&apos;re done.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm">
+                        Move selected
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Move selected to</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {STATUS_OPTIONS.map((option) => (
+                        <DropdownMenuItem
+                          key={option.value}
+                          onClick={() =>
+                            updateJobsStatus(selectedJobIds, option.value, {
+                              clearSelection: true,
+                            })
+                          }
+                        >
+                          {option.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button variant="ghost" size="sm" onClick={clearSelection}>
+                    Clear selection
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
           {savedJobs.length === 0 ? (
              <div className="flex min-h-[400px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-muted-foreground/20 bg-card/30 p-12 text-center">
@@ -535,6 +692,32 @@ function AdminPageContent() {
           )}
         </div>
       </main>
+
+      <AlertDialog open={pendingClearStatus !== null} onOpenChange={(open) => !open && setPendingClearStatus(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove all from this section?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingClearStatus
+                ? `This will remove ${pendingClearCount} application${pendingClearCount === 1 ? '' : 's'} from ${getStatusMeta(pendingClearStatus).label}.`
+                : 'This action will remove the applications in this section.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (pendingClearStatus) {
+                  clearJobsInStatus(pendingClearStatus);
+                }
+              }}
+            >
+              Remove all
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

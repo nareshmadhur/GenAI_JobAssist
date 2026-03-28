@@ -1,13 +1,5 @@
 import type { CvOutput, DeepAnalysisOutput } from '@/lib/schemas';
 
-export interface RoleAlignmentHighlight {
-  title: string;
-  detail: string;
-  emphasis: 'mandatory' | 'preferred' | 'skill';
-}
-
-const MAX_DETAIL_LENGTH = 120;
-
 const stripMarkdown = (value: string) =>
   value
     .replace(/\*\*/g, '')
@@ -16,54 +8,32 @@ const stripMarkdown = (value: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-const truncate = (value: string, maxLength = MAX_DETAIL_LENGTH) => {
-  if (value.length <= maxLength) {
-    return value;
-  }
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-  const shortened = value.slice(0, maxLength).trim();
-  const safeBreakpoint = Math.max(
-    shortened.lastIndexOf('.'),
-    shortened.lastIndexOf(','),
-    shortened.lastIndexOf(' ')
-  );
+const uniqueTerms = (values: string[]) => {
+  const seen = new Set<string>();
+  const result: string[] = [];
 
-  return `${shortened.slice(0, safeBreakpoint > 40 ? safeBreakpoint : maxLength).trim()}...`;
+  values.forEach((value) => {
+    const cleaned = stripMarkdown(value);
+    if (cleaned.length < 3) {
+      return;
+    }
+
+    const normalized = cleaned.toLowerCase();
+    if (seen.has(normalized)) {
+      return;
+    }
+
+    seen.add(normalized);
+    result.push(cleaned);
+  });
+
+  return result;
 };
 
-const summariseJustification = (value: string) => {
-  const cleaned = stripMarkdown(value);
-  const firstSentence = cleaned.split(/(?<=[.!?])\s/)[0] || cleaned;
-  return truncate(firstSentence);
-};
-
-const findEvidenceForSkill = (cvData: CvOutput, skill: string) => {
-  const skillNeedle = skill.toLowerCase();
-  const matchingBullet = cvData.workExperience
-    .flatMap((job) => job.responsibilities)
-    .find((responsibility) => responsibility.toLowerCase().includes(skillNeedle));
-
-  if (matchingBullet) {
-    return truncate(stripMarkdown(matchingBullet));
-  }
-
-  if (cvData.summary.toLowerCase().includes(skillNeedle)) {
-    return 'Highlighted directly in your tailored professional summary.';
-  }
-
-  return 'Included as one of the most relevant skills for this application.';
-};
-
-export function getRoleAlignmentHighlights({
-  cvData,
-  deepAnalysis,
-  jobDescription,
-}: {
-  cvData: CvOutput;
-  deepAnalysis?: DeepAnalysisOutput | null;
-  jobDescription?: string;
-}): RoleAlignmentHighlight[] {
-  const matchedRequirements = (deepAnalysis?.requirements || [])
+const extractRequirementCandidates = (deepAnalysis?: DeepAnalysisOutput | null) =>
+  (deepAnalysis?.requirements || [])
     .filter((requirement) => requirement.isMet)
     .sort((left, right) => {
       if (left.isMandatory === right.isMandatory) {
@@ -71,34 +41,64 @@ export function getRoleAlignmentHighlights({
       }
       return left.isMandatory ? -1 : 1;
     })
-    .slice(0, 3)
-    .map((requirement) => ({
-      title: requirement.requirement,
-      detail: summariseJustification(requirement.justification),
-      emphasis: requirement.isMandatory ? ('mandatory' as const) : ('preferred' as const),
-    }));
+    .flatMap((requirement) => {
+      const cleanedRequirement = stripMarkdown(requirement.requirement);
+      if (cleanedRequirement.length > 48) {
+        return [];
+      }
 
-  if (matchedRequirements.length > 0) {
-    return matchedRequirements;
-  }
+      return [cleanedRequirement];
+    });
 
+export function getRoleAlignmentTerms({
+  cvData,
+  deepAnalysis,
+  jobDescription,
+}: {
+  cvData: CvOutput;
+  deepAnalysis?: DeepAnalysisOutput | null;
+  jobDescription?: string;
+}) {
   const normalizedJobDescription = jobDescription?.toLowerCase() || '';
-  const matchedSkills = cvData.skills
-    .filter((skill) => normalizedJobDescription.includes(skill.toLowerCase()))
-    .slice(0, 3)
-    .map((skill) => ({
-      title: skill,
-      detail: findEvidenceForSkill(cvData, skill),
-      emphasis: 'skill' as const,
-    }));
+  const prioritizedSkills = cvData.skills
+    .filter((skill) => normalizedJobDescription.includes(skill.toLowerCase()));
 
-  if (matchedSkills.length > 0) {
-    return matchedSkills;
+  const candidateTerms = uniqueTerms([
+    ...prioritizedSkills,
+    ...extractRequirementCandidates(deepAnalysis),
+    ...cvData.skills,
+  ])
+    .sort((left, right) => right.length - left.length)
+    .slice(0, 8);
+
+  return candidateTerms;
+}
+
+export function getHighlightedTextSegments(text: string, highlightTerms: string[]) {
+  if (!text.trim() || highlightTerms.length === 0) {
+    return [{ text, isHighlighted: false }];
   }
 
-  return cvData.skills.slice(0, 3).map((skill) => ({
-    title: skill,
-    detail: findEvidenceForSkill(cvData, skill),
-    emphasis: 'skill' as const,
-  }));
+  const matchingTerms = highlightTerms
+    .filter((term) => text.toLowerCase().includes(term.toLowerCase()))
+    .sort((left, right) => right.length - left.length);
+
+  if (matchingTerms.length === 0) {
+    return [{ text, isHighlighted: false }];
+  }
+
+  const matcher = new RegExp(
+    `(${matchingTerms.map((term) => escapeRegex(term)).join('|')})`,
+    'gi'
+  );
+
+  return text
+    .split(matcher)
+    .filter(Boolean)
+    .map((segment) => ({
+      text: segment,
+      isHighlighted: matchingTerms.some(
+        (term) => term.toLowerCase() === segment.toLowerCase()
+      ),
+    }));
 }
