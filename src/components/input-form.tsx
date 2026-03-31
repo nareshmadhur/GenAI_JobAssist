@@ -29,6 +29,7 @@ import { exampleJobDescription, exampleWorkRepository } from '@/lib/example-data
 import { Skeleton } from './ui/skeleton';
 import { extractJobDetailsAction, extractUrlTextAction, prettifyWorkRepositoryAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from './ui/input';
 
 interface InputFormProps {
   isInitialLoading: boolean;
@@ -45,6 +46,7 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   const { watch } = formMethods;
   const [isRepositoryAssistantOpen, setIsRepositoryAssistantOpen] = useState(false);
   const [isExtractingUrl, setIsExtractingUrl] = useState(false);
+  const [jobUrl, setJobUrl] = useState('');
   const { toast } = useToast();
   
   const jobDescription = watch('jobDescription');
@@ -158,16 +160,20 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   );
 
   const handleExtractUrl = async () => {
-    let url = formMethods.getValues('jobDescription').trim();
-    
-    if (!url.startsWith('http')) {
-      const promptedUrl = window.prompt('Please paste the Job URL here:');
-      if (!promptedUrl || !promptedUrl.startsWith('http')) return;
-      url = promptedUrl;
+    const pastedJobDescription = formMethods.getValues('jobDescription').trim();
+    const candidateUrl = jobUrl.trim() || (pastedJobDescription.startsWith('http') ? pastedJobDescription : '');
+
+    if (!candidateUrl.startsWith('http')) {
+      toast({
+        title: 'Add a job posting link first',
+        description: 'Paste the job URL into the link field before importing.',
+        variant: 'destructive',
+      });
+      return;
     }
-    
+
     setIsExtractingUrl(true);
-    const result = await extractUrlTextAction(url);
+    const result = await extractUrlTextAction(candidateUrl);
     setIsExtractingUrl(false);
 
     if (result.error) {
@@ -178,12 +184,35 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
       });
     } else if (result.text) {
       formMethods.setValue('jobDescription', result.text);
+      setJobUrl(candidateUrl);
       toast({
-        title: 'Extracted Successfully',
-        description: 'The job description has been populated from the URL.',
+        title: 'Job posting imported',
+        description: 'We fetched the page and cleaned it into a usable job description.',
       });
       // Trigger background question detection after URL extraction
       handleDetectQuestions(result.text);
+    }
+  };
+
+  const handlePasteJobUrl = async () => {
+    try {
+      setIsPasting('jobUrl');
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        setJobUrl(text.trim());
+        toast({
+          title: 'Link pasted',
+          description: 'Your job posting link is ready to import.',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Paste Failed',
+        description: 'Please ensure you have granted clipboard permissions.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPasting(null);
     }
   };
 
@@ -204,29 +233,67 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   };
 
   const urlExtractorTrigger = (
-    <div className='flex flex-wrap items-center justify-start gap-2 sm:justify-end'>
+    <div className="space-y-3">
+      <div className="rounded-2xl border bg-muted/30 p-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <LinkIcon className="h-3.5 w-3.5" />
+              Import from Job Posting Link
+            </div>
+            <Input
+              value={jobUrl}
+              onChange={(event) => setJobUrl(event.target.value)}
+              placeholder="Paste the job posting URL here"
+              inputMode="url"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              className="bg-background"
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              We fetch the page, pull the likely job posting content, and clean it before filling the description.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handlePasteJobUrl}
+              disabled={isPasting === 'jobUrl'}
+              className="sm:self-end"
+            >
+              <ClipboardPaste className="mr-2 h-4 w-4" />
+              Paste Link
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExtractUrl}
+              disabled={isExtractingUrl}
+              className="sm:self-end"
+            >
+              {isExtractingUrl ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Import Job Posting
+            </Button>
+          </div>
+        </div>
+      </div>
+      <div className='flex flex-wrap items-center justify-start gap-2 sm:justify-end'>
         <Button 
             type="button" 
             variant="ghost" 
             size="sm" 
             onClick={() => handlePaste('jobDescription')}
             disabled={isPasting === 'jobDescription'}
-            className="-mt-2 text-muted-foreground hover:text-primary"
+            className="-mt-1 text-muted-foreground hover:text-primary"
         >
             <ClipboardPaste className="mr-2 h-4 w-4" />
             Paste J.D.
         </Button>
-        <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            onClick={handleExtractUrl}
-            disabled={isExtractingUrl}
-            className="-mt-2"
-        >
-            {isExtractingUrl ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LinkIcon className="mr-2 h-4 w-4" />}
-            Extract from URL
-        </Button>
+      </div>
     </div>
   );
 
@@ -294,12 +361,12 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
                         }
                       }}
                       label="Job Description"
-                      placeholder="Paste the full job description text or a URL here. If pasting a URL, click 'Extract from URL' below."
+                      placeholder="Paste the full job description text here, or import it from a job posting link below."
                       footer={urlExtractorTrigger}
                       onAction={handleExtractUrl}
                       isActionLoading={isExtractingUrl}
-                      actionLabel="Extract from URL"
-                      actionIcon={<LinkIcon className="mr-2 h-4 w-4" />}
+                      actionLabel="Import from Link"
+                      actionIcon={<Sparkles className="mr-2 h-4 w-4 text-amber-500" />}
                       showTabs={false}
                     />
                   )}

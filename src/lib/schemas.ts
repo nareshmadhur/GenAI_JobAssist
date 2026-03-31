@@ -174,6 +174,8 @@ export type JobDetailsOutput = z.infer<typeof JobDetailsOutputSchema>;
 
 
 export type JobStatus = 'draft' | 'applied' | 'in_process' | 'accepted' | 'rejected' | 'interviewing' | 'offer';
+export type SavedJobView = 'coverLetter' | 'cv' | 'deepAnalysis' | 'qAndA';
+export type ResultInputSignatures = Partial<Record<SavedJobView, string>>;
 
 // Schema for a saved job in localStorage
 export interface SavedJob {
@@ -181,6 +183,8 @@ export interface SavedJob {
   companyName: string;
   jobTitle: string;
   status?: JobStatus;
+  lastActiveView?: SavedJobView;
+  resultInputSignatures?: ResultInputSignatures;
   formData: Omit<JobApplicationData, 'generationType'>;
   allResults: AllGenerationResults;
   savedAt: string;

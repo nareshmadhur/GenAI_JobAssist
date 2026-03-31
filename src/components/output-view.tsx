@@ -76,6 +76,7 @@ interface OutputViewProps {
   headerDescription?: string;
   headerActions?: React.ReactNode;
   onCoachRequest?: (message: string) => void;
+  isActiveViewStale?: boolean;
 }
 
 const VIEW_CONFIG: Record<
@@ -773,6 +774,7 @@ export function OutputView({
   headerDescription,
   headerActions,
   onCoachRequest,
+  isActiveViewStale = false,
 }: OutputViewProps): JSX.Element {
   const { toast } = useToast();
   const formMethods = useFormContext<JobApplicationData>();
@@ -943,6 +945,15 @@ export function OutputView({
             ) : null}
           </div>
         </div>
+        {isActiveViewStale ? (
+          <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-300" />
+            <AlertTitle>Inputs changed after this was generated</AlertTitle>
+            <AlertDescription>
+              This section reflects an older version of your job description, Work Repository, or questions. Refresh it to match the latest inputs.
+            </AlertDescription>
+          </Alert>
+        ) : null}
       </CardHeader>
       <CardContent>{renderActiveView()}</CardContent>
     </Card>

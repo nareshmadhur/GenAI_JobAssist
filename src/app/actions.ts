@@ -17,6 +17,7 @@ import { fillQaGap, type FillQaGapInput, type FillQaGapOutput } from '@/ai/flows
 import { generateLearningPath, type GenerateLearningPathInput, type GenerateLearningPathOutput } from '@/ai/flows/generate-learning-path';
 import { prettifyWorkRepository } from '@/ai/flows/prettify-work-repository';
 import { generateInterviewPrep } from '@/ai/flows/generate-interview-prep';
+import { extractJobDescriptionFromWebpage } from '@/ai/flows/extract-job-description-from-webpage';
 
 import type {
   BioCompletenessOutput,
@@ -195,11 +196,25 @@ export async function extractUrlTextAction(url: string): Promise<{ text?: string
     return { error: 'Invalid URL provided.' };
   }
   try {
-    const text = await fetchAndExtractTextFromUrl(url);
-    if (!text || text.length < 50) {
+    const extractedContent = await fetchAndExtractTextFromUrl(url);
+    if (!extractedContent.pageText || extractedContent.pageText.length < 50) {
       return { error: 'Could not extract meaningful text from this URL. Please paste the text manually.' };
     }
-    return { text };
+    const cleanedJobPage = await extractJobDescriptionFromWebpage({
+      url,
+      pageTitle: extractedContent.pageTitle,
+      pageText: extractedContent.pageText,
+      candidateBlocksText:
+        extractedContent.candidateBlocks.length > 0
+          ? extractedContent.candidateBlocks.map((block) => `- ${block}`).join('\n\n')
+          : '- No clear candidate sections were detected.',
+    });
+
+    if (!cleanedJobPage.isLikelyJobPosting || cleanedJobPage.jobDescription.trim().length < 120) {
+      return { error: 'This page does not look like a clear job posting. Please paste the job description text manually.' };
+    }
+
+    return { text: cleanedJobPage.jobDescription };
   } catch (error: any) {
     console.error('Error in extractUrlTextAction:', error);
     return { error: error.message || 'Could not extract text from URL.' };

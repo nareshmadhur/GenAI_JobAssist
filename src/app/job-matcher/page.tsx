@@ -61,11 +61,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { useAuth, useAppContext } from '@/context/app-context';
 import { useToast } from '@/hooks/use-toast';
-import type { JobApplicationData, SavedJob } from '@/lib/schemas';
+import type { JobApplicationData, ResultInputSignatures, SavedJob } from '@/lib/schemas';
 import { JobApplicationSchema } from '@/lib/schemas';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
+import type { SavedJobView } from '@/lib/schemas';
 
 export type GenerationType =
   | 'coverLetter'
@@ -75,11 +76,26 @@ export type GenerationType =
 export type ActiveView = GenerationType | 'none';
 type JobMeta = { jobTitle: string; companyName: string };
 type WorkspaceView = 'prepare' | 'build';
+type SaveIndicatorState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
 
 const LOCAL_STORAGE_KEY_FORM = 'ai_job_assist_form_data';
 const LOCAL_STORAGE_KEY_QUERY_COUNT = 'ai_job_assist_query_count';
 const FREE_QUERY_LIMIT = 5;
+const GENERATION_ORDER: GenerationType[] = ['deepAnalysis', 'cv', 'coverLetter', 'qAndA'];
+
+const isSavedJobView = (value: string | null): value is SavedJobView =>
+  value === 'deepAnalysis' || value === 'cv' || value === 'coverLetter' || value === 'qAndA';
+
+const getGenerationInputSignature = (
+  formValues: Omit<JobApplicationData, 'generationType'>,
+  generationType: GenerationType
+) =>
+  JSON.stringify({
+    jobDescription: formValues.jobDescription.trim(),
+    workRepository: formValues.workRepository.trim(),
+    questions: generationType === 'qAndA' ? (formValues.questions || '').trim() : undefined,
+  });
 
 function JobMatcherContent() {
   const [isGenerating, startGenerating] = useTransition();
@@ -94,6 +110,8 @@ function JobMatcherContent() {
   const [isInitialFormLoad, setIsInitialFormLoad] = useState(true);
   const [jobMeta, setJobMeta] = useState<JobMeta | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveIndicatorState>('idle');
+  const [resultInputSignatures, setResultInputSignatures] = useState<ResultInputSignatures>({});
   const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   
@@ -112,6 +130,7 @@ function JobMatcherContent() {
   } = useAppContext();
   const searchParams = useSearchParams();
   const jobId = searchParams.get('jobId');
+  const activeSectionParam = searchParams.get('section');
 
   const scrollPageToTop = useCallback(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -138,8 +157,7 @@ function JobMatcherContent() {
   }, []);
 
   const getFirstAvailableView = useCallback((results: AllGenerationResults): ActiveView => {
-    const orderedViews: GenerationType[] = ['deepAnalysis', 'cv', 'coverLetter', 'qAndA'];
-    return orderedViews.find((key) => Boolean(results[key])) || 'none';
+    return GENERATION_ORDER.find((key) => Boolean(results[key])) || 'none';
   }, []);
 
   const refreshJobMeta = useCallback(async (jobDescription: string) => {
@@ -162,6 +180,47 @@ function JobMatcherContent() {
       return fallback;
     }
   }, [getFallbackJobMeta]);
+
+  const resolveSavedJobView = useCallback((job: SavedJob, preferredView?: string | null): GenerationType => {
+    const candidates: Array<string | undefined | null> = [
+      preferredView,
+      job.lastActiveView,
+      job.allResults.deepAnalysis ? 'deepAnalysis' : undefined,
+      getFirstAvailableView(job.allResults),
+    ];
+
+    const nextView = candidates.find(
+      (candidate): candidate is GenerationType => {
+        const normalizedCandidate: GenerationType | null =
+          candidate && isSavedJobView(candidate) ? candidate : null;
+        if (!normalizedCandidate) {
+          return false;
+        }
+
+        return Boolean(job.allResults[normalizedCandidate]);
+      }
+    );
+
+    return nextView || 'deepAnalysis';
+  }, [getFirstAvailableView]);
+
+  const buildResultInputSignatures = useCallback((
+    formValues: Omit<JobApplicationData, 'generationType'>,
+    results: AllGenerationResults,
+    existingSignatures?: ResultInputSignatures
+  ): ResultInputSignatures => {
+    const nextSignatures: ResultInputSignatures = { ...(existingSignatures || {}) };
+
+    GENERATION_ORDER.forEach((generationType) => {
+      if (results[generationType]) {
+        nextSignatures[generationType] =
+          existingSignatures?.[generationType] ||
+          getGenerationInputSignature(formValues, generationType);
+      }
+    });
+
+    return nextSignatures;
+  }, []);
 
   // Load query count from localStorage on mount
   useEffect(() => {
@@ -239,6 +298,11 @@ function JobMatcherContent() {
           delete newResults[generationType];
           return newResults;
         });
+        setResultInputSignatures((prev) => {
+          const next = { ...prev };
+          delete next[generationType];
+          return next;
+        });
       }
 
       startGenerating(async () => {
@@ -251,6 +315,10 @@ function JobMatcherContent() {
           setAllResults((prev) => ({
             ...prev,
             [generationType]: response,
+          }));
+          setResultInputSignatures((prev) => ({
+            ...prev,
+            [generationType]: getGenerationInputSignature(formMethods.getValues(), generationType),
           }));
           void refreshJobMeta(jobDescription);
 
@@ -284,7 +352,10 @@ function JobMatcherContent() {
   }, [allResults, formMethods, openExistingResult, queryCount, refreshJobMeta, toast, user]);
 
   const handleGenerateAll = useCallback(async () => {
-    const primaryViews: GenerationType[] = ['coverLetter', 'cv', 'deepAnalysis', 'qAndA'];
+    const hasQuestions = Boolean(formMethods.getValues('questions')?.trim());
+    const primaryViews: GenerationType[] = hasQuestions
+      ? ['coverLetter', 'cv', 'deepAnalysis', 'qAndA']
+      : ['coverLetter', 'cv', 'deepAnalysis'];
     const missingViews = primaryViews.filter((key) => !allResults[key]);
     const firstAvailableView = getFirstAvailableView(allResults);
 
@@ -315,7 +386,6 @@ function JobMatcherContent() {
 
     const { jobDescription, workRepository, questions } = formMethods.getValues();
     const base = { jobDescription, workRepository };
-    const hasQuestions = Boolean(questions?.trim());
 
     try {
       void refreshJobMeta(jobDescription);
@@ -350,6 +420,22 @@ function JobMatcherContent() {
         deepAnalysis: prev.deepAnalysis || ('error' in da ? undefined : da as any),
         interviewPrep: prev.interviewPrep || ('error' in ip ? undefined : ip as any),
       }));
+      setResultInputSignatures((prev) => {
+        const next = { ...prev };
+        if (!('error' in cl)) {
+          next.coverLetter = next.coverLetter || getGenerationInputSignature(formMethods.getValues(), 'coverLetter');
+        }
+        if (!('error' in cv)) {
+          next.cv = next.cv || getGenerationInputSignature(formMethods.getValues(), 'cv');
+        }
+        if (!('error' in da)) {
+          next.deepAnalysis = next.deepAnalysis || getGenerationInputSignature(formMethods.getValues(), 'deepAnalysis');
+        }
+        if (hasQuestions && !('error' in qa)) {
+          next.qAndA = next.qAndA || getGenerationInputSignature(formMethods.getValues(), 'qAndA');
+        }
+        return next;
+      });
 
       if (!hasQuestions) {
         toast({
@@ -395,13 +481,18 @@ function JobMatcherContent() {
       const savedData = localStorage.getItem(LOCAL_STORAGE_KEY_FORM);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        formMethods.reset({
+        const restoredFormData = {
           jobDescription: parsedData.jobDescription || '',
           workRepository: parsedData.workRepository || parsedData.bio || '',
           questions: parsedData.questions || '',
-        });
+        };
+        formMethods.reset(restoredFormData);
         if (parsedData.allResults) {
           setAllResults(parsedData.allResults);
+          setResultInputSignatures(
+            parsedData.resultInputSignatures ||
+              buildResultInputSignatures(restoredFormData, parsedData.allResults)
+          );
         }
       }
     } catch (e) {
@@ -420,6 +511,7 @@ function JobMatcherContent() {
           workRepository: value.workRepository,
           questions: value.questions,
           allResults: allResults,
+          resultInputSignatures,
         };
         localStorage.setItem(
           LOCAL_STORAGE_KEY_FORM,
@@ -430,7 +522,7 @@ function JobMatcherContent() {
       }
     });
     return () => subscription.unsubscribe();
-  }, [formMethods, formMethods.watch, allResults]);
+  }, [allResults, formMethods, formMethods.watch, resultInputSignatures]);
 
   useEffect(() => {
     if (previousViewRef.current !== view && view === 'build') {
@@ -471,6 +563,8 @@ function JobMatcherContent() {
     setGenerationError(null);
     setJobMeta(null);
     setCurrentJobId(null);
+    setSaveStatus('idle');
+    setResultInputSignatures({});
     setView('prepare');
     router.replace('/job-matcher', { scroll: false });
     try {
@@ -483,6 +577,7 @@ function JobMatcherContent() {
   const upsertCurrentJob = useCallback(async ({ showToast = false }: { showToast?: boolean } = {}) => {
     const { jobDescription, workRepository, questions } = formMethods.getValues();
     if (!jobDescription.trim() || !workRepository.trim() || Object.keys(allResults).length === 0) {
+      setSaveStatus('idle');
       return null;
     }
 
@@ -513,10 +608,18 @@ function JobMatcherContent() {
     }
 
     const nextJobId = existingJob?.id || currentJobId || crypto.randomUUID();
+    const nextActiveView =
+      activeView !== 'none'
+        ? activeView
+        : isSavedJobView(existingJob?.lastActiveView ?? null)
+          ? existingJob!.lastActiveView
+          : undefined;
     const nextSavedJob: SavedJob = {
       id: nextJobId,
       jobTitle: resolvedMeta.jobTitle,
       companyName: resolvedMeta.companyName,
+      lastActiveView: nextActiveView,
+      resultInputSignatures,
       formData: { jobDescription, workRepository, questions },
       allResults,
       savedAt: existingJob?.savedAt || new Date().toISOString(),
@@ -527,6 +630,8 @@ function JobMatcherContent() {
       const existingSnapshot = JSON.stringify({
         jobTitle: existingJob.jobTitle,
         companyName: existingJob.companyName,
+        lastActiveView: existingJob.lastActiveView,
+        resultInputSignatures: existingJob.resultInputSignatures,
         formData: existingJob.formData,
         allResults: existingJob.allResults,
         status: existingJob.status || 'draft',
@@ -534,12 +639,15 @@ function JobMatcherContent() {
       const nextSnapshot = JSON.stringify({
         jobTitle: nextSavedJob.jobTitle,
         companyName: nextSavedJob.companyName,
+        lastActiveView: nextSavedJob.lastActiveView,
+        resultInputSignatures: nextSavedJob.resultInputSignatures,
         formData: nextSavedJob.formData,
         allResults: nextSavedJob.allResults,
         status: nextSavedJob.status,
       });
 
       if (existingSnapshot === nextSnapshot) {
+        setSaveStatus('saved');
         return existingJob;
       }
     }
@@ -554,7 +662,13 @@ function JobMatcherContent() {
     });
     setCurrentJobId(nextJobId);
     setJobMeta(resolvedMeta);
-    router.replace(`/job-matcher?jobId=${nextJobId}`, { scroll: false });
+    setSaveStatus('saved');
+    router.replace(
+      nextSavedJob.lastActiveView
+        ? `/job-matcher?jobId=${nextJobId}&section=${nextSavedJob.lastActiveView}`
+        : `/job-matcher?jobId=${nextJobId}`,
+      { scroll: false }
+    );
 
     if (showToast) {
       toast({
@@ -570,7 +684,7 @@ function JobMatcherContent() {
               {user ? ' to your application pipeline' : ' in this browser and will sync after login'}.
             </p>
             <Button asChild variant="secondary" size="sm" className="w-fit h-8 px-3 text-xs">
-              <Link href={`/admin?from=build&jobId=${nextSavedJob.id}`}>Go to Application Tracker</Link>
+              <Link href={`/admin?from=build&jobId=${nextSavedJob.id}${nextSavedJob.lastActiveView ? `&section=${nextSavedJob.lastActiveView}` : ''}`}>Go to Application Tracker</Link>
             </Button>
           </div>
         ),
@@ -578,7 +692,7 @@ function JobMatcherContent() {
     }
 
     return nextSavedJob;
-  }, [allResults, currentJobId, formMethods, getFallbackJobMeta, jobMeta, router, savedJobs, setSavedJobs, toast, user]);
+  }, [activeView, allResults, currentJobId, formMethods, getFallbackJobMeta, jobMeta, resultInputSignatures, router, savedJobs, setSavedJobs, toast, user]);
 
   const handleSaveJob = () => {
     formMethods.trigger('jobDescription').then((isValid) => {
@@ -617,13 +731,17 @@ function JobMatcherContent() {
       jobTitle: job.jobTitle,
       companyName: job.companyName,
     });
-    const firstView = (Object.keys(job.allResults) as (keyof AllGenerationResults)[])
-      .find(key => key !== 'interviewPrep') as ActiveView;
-    setActiveView(job.allResults.deepAnalysis ? 'deepAnalysis' : (firstView || 'deepAnalysis'));
+    setResultInputSignatures(
+      job.resultInputSignatures ||
+        buildResultInputSignatures(formData, job.allResults)
+    );
+    const restoredView = resolveSavedJobView(job, activeSectionParam);
+    setActiveView(restoredView);
+    setSaveStatus('saved');
     suppressNextOutputScrollRef.current = true;
     setView('build');
     scrollPageToTop();
-    router.replace(`/job-matcher?jobId=${job.id}`, { scroll: false });
+    router.replace(`/job-matcher?jobId=${job.id}&section=${restoredView}`, { scroll: false });
     try {
       localStorage.setItem(
         LOCAL_STORAGE_KEY_FORM,
@@ -652,6 +770,9 @@ function JobMatcherContent() {
       !watchedJobDescription?.trim() ||
       !watchedWorkRepository?.trim()
     ) {
+      if (Object.keys(allResults).length === 0) {
+        setSaveStatus('idle');
+      }
       return;
     }
 
@@ -659,7 +780,9 @@ function JobMatcherContent() {
       clearTimeout(autoSaveTimeoutRef.current);
     }
 
+    setSaveStatus('pending');
     autoSaveTimeoutRef.current = setTimeout(() => {
+      setSaveStatus('saving');
       void upsertCurrentJob();
     }, 900);
 
@@ -678,7 +801,20 @@ function JobMatcherContent() {
     watchedJobDescription,
     watchedQuestions,
     watchedWorkRepository,
+    activeView,
   ]);
+
+  useEffect(() => {
+    if (view !== 'build' || !currentJobId || activeView === 'none') {
+      return;
+    }
+
+    if (jobId === currentJobId && activeSectionParam === activeView) {
+      return;
+    }
+
+    router.replace(`/job-matcher?jobId=${currentJobId}&section=${activeView}`, { scroll: false });
+  }, [activeSectionParam, activeView, currentJobId, jobId, router, view]);
 
   const jobDescription = watchedJobDescription || '';
   const workRepository = watchedWorkRepository || '';
@@ -696,8 +832,8 @@ function JobMatcherContent() {
   const hasAnyResults = Object.keys(allResults).length > 0;
   const trackerHref = view === 'build'
     ? currentJobId
-      ? `/admin?from=build&jobId=${currentJobId}`
-      : '/admin?from=build'
+      ? `/admin?from=build&jobId=${currentJobId}&section=${selectedView}`
+      : `/admin?from=build&section=${selectedView}`
     : '/admin';
   const buildSections: Array<{
     generationType: GenerationType;
@@ -735,6 +871,57 @@ function JobMatcherContent() {
     },
   ];
   const selectedSection = buildSections.find((section) => section.generationType === selectedView) || buildSections[0];
+  const currentFormValues = {
+    jobDescription,
+    workRepository,
+    questions: watchedQuestions || '',
+  };
+  const staleSections = buildSections.reduce<Record<GenerationType, boolean>>((acc, section) => {
+    const existingSignature = resultInputSignatures[section.generationType];
+    acc[section.generationType] = Boolean(
+      allResults[section.generationType] &&
+      existingSignature &&
+      existingSignature !== getGenerationInputSignature(currentFormValues, section.generationType)
+    );
+    return acc;
+  }, {
+    coverLetter: false,
+    cv: false,
+    deepAnalysis: false,
+    qAndA: false,
+  });
+  const recommendedSection = !allResults.deepAnalysis
+    ? buildSections.find((section) => section.generationType === 'deepAnalysis')
+    : !allResults.cv
+      ? buildSections.find((section) => section.generationType === 'cv')
+      : !allResults.coverLetter
+        ? buildSections.find((section) => section.generationType === 'coverLetter')
+        : watchedQuestions?.trim() && !allResults.qAndA
+          ? buildSections.find((section) => section.generationType === 'qAndA')
+          : null;
+  const recommendedAction = recommendedSection
+    ? {
+        title: recommendedSection.label,
+        description: recommendedSection.description,
+        cta:
+          recommendedSection.generationType === 'deepAnalysis'
+            ? 'Start with Fit Summary'
+            : `Create ${recommendedSection.label}`,
+        onClick: () => handleGeneration(recommendedSection.generationType),
+      }
+    : !watchedQuestions?.trim()
+      ? {
+          title: 'Unlock Answers',
+          description: 'Go back to Prepare and add application questions if you want tailored written answers and interview prep.',
+          cta: 'Add Questions in Prepare',
+          onClick: () => setView('prepare'),
+        }
+      : {
+          title: 'Everything Core Is Ready',
+          description: 'Your main materials are ready. Move this application through the tracker or refine any section in place.',
+          cta: 'Open Tracker',
+          onClick: () => router.push(trackerHref),
+        };
   const readySections = buildSections.filter((section) => !!allResults[section.generationType]).map((section) => section.label);
   const coachPrompts = [
     'What should I do first for this role?',
@@ -757,14 +944,18 @@ function JobMatcherContent() {
       label,
       description,
       locked = false,
-      lockedMessage
+      lockedMessage,
+      recommended = false,
+      stale = false,
   }: {
       generationType: GenerationType,
       icon: React.ElementType,
       label: string,
       description: string,
       locked?: boolean,
-      lockedMessage?: string
+      lockedMessage?: string,
+      recommended?: boolean
+      stale?: boolean
   }) => {
       const hasResult = !!allResults[generationType];
       const isGeneratingThis = isGenerating && activeView === generationType;
@@ -777,7 +968,9 @@ function JobMatcherContent() {
           className={cn(
             'relative overflow-hidden transition-all duration-300 bg-card/80 border-muted-foreground/10',
             locked ? 'opacity-60 cursor-not-allowed bg-muted/30 grayscale' : 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md',
-            'data-[active=true]:bg-primary/5 data-[active=true]:border-primary/50 data-[active=true]:shadow-primary/10'
+            'data-[active=true]:bg-primary/5 data-[active=true]:border-primary/50 data-[active=true]:shadow-primary/10',
+            recommended && !locked && 'border-primary/30 bg-primary/5',
+            stale && !locked && 'border-amber-500/30 bg-amber-500/5'
           )}
       >
         <div className="flex items-start gap-4 p-4 lg:p-5">
@@ -794,8 +987,18 @@ function JobMatcherContent() {
                 'font-semibold text-sm transition-colors',
                 locked ? 'text-muted-foreground' : 'text-foreground'
             )}>{label}</span>
+            {recommended && !locked ? (
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                Recommended next
+              </span>
+            ) : null}
+            {stale && !locked ? (
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
+                Needs refresh
+              </span>
+            ) : null}
             <span className="text-sm text-muted-foreground">{description}</span>
-            {hasResult && !locked ? <span className="pt-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Open saved result</span> : null}
+            {hasResult && !locked && !stale ? <span className="pt-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">Open saved result</span> : null}
             {locked && lockedMessage ? <span className="pt-1 text-[11px] font-semibold text-rose-500 line-clamp-2">{lockedMessage}</span> : null}
           </div>
           {isGeneratingThis && (
@@ -1005,6 +1208,26 @@ function JobMatcherContent() {
                   <div className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
                     <span>Stage 2</span>
                     {jobMeta ? <span className="rounded-full bg-muted px-2 py-1 normal-case tracking-normal text-foreground">{jobMeta.jobTitle} at {jobMeta.companyName}</span> : null}
+                    {hasAnyResults ? (
+                      <span
+                        className={cn(
+                          'rounded-full px-2 py-1 normal-case tracking-normal',
+                          saveStatus === 'error'
+                            ? 'bg-destructive/10 text-destructive'
+                            : saveStatus === 'saving' || saveStatus === 'pending'
+                              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                              : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                        )}
+                      >
+                        {saveStatus === 'saving'
+                          ? 'Saving changes...'
+                          : saveStatus === 'pending'
+                            ? 'Saving soon...'
+                            : saveStatus === 'error'
+                              ? 'Save issue'
+                              : 'All changes saved'}
+                      </span>
+                    ) : null}
                   </div>
                   <div>
                     <h2 className="text-3xl font-bold tracking-tight text-foreground">Build Your Application</h2>
@@ -1082,6 +1305,24 @@ function JobMatcherContent() {
 
               <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
                 <div className="space-y-4">
+                  <Card className="border-primary/20 bg-primary/5">
+                    <div className="space-y-3 p-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                          Recommended next step
+                        </p>
+                        <h3 className="mt-2 text-lg font-semibold text-foreground">
+                          {recommendedAction.title}
+                        </h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {recommendedAction.description}
+                        </p>
+                      </div>
+                      <Button className="w-full" onClick={recommendedAction.onClick}>
+                        {recommendedAction.cta}
+                      </Button>
+                    </div>
+                  </Card>
                   <Button
                     onClick={handleGenerateAll}
                     disabled={isGeneratingAll || isGenerating}
@@ -1110,6 +1351,8 @@ function JobMatcherContent() {
                         description={section.description}
                         locked={section.locked}
                         lockedMessage={section.lockedMessage}
+                        recommended={section.generationType === recommendedSection?.generationType}
+                        stale={staleSections[section.generationType]}
                       />
                     ))}
                   </div>
@@ -1147,6 +1390,7 @@ function JobMatcherContent() {
                       generationError={generationError}
                       onRetry={() => handleGeneration(selectedView, { force: true })}
                       showSectionSwitcher={false}
+                      isActiveViewStale={staleSections[selectedView]}
                       headerDescription={selectedSection.description}
                       onCoachRequest={(message) => {
                         const requirementLine = message
@@ -1162,7 +1406,7 @@ function JobMatcherContent() {
                       headerActions={allResults[selectedView] ? (
                         <Button type="button" variant="outline" size="sm" onClick={() => handleGeneration(selectedView, { force: true })}>
                           <Sparkles className="mr-2 h-4 w-4" />
-                          Regenerate
+                          {staleSections[selectedView] ? 'Refresh with Current Inputs' : 'Regenerate'}
                         </Button>
                       ) : null}
                     />

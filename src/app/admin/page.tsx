@@ -104,6 +104,7 @@ function AdminPageContent() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const source = searchParams.get('from');
   const sourceJobId = searchParams.get('jobId');
+  const sourceSection = searchParams.get('section');
 
   const filteredJobs = savedJobs.filter(job => 
     job.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -169,9 +170,41 @@ function AdminPageContent() {
     setSelectedJobIds([]);
   };
 
+  const toggleSelectJobsByStatus = (status: TrackerStatus) => {
+    const jobIds = filteredJobs
+      .filter((job) => normalizeJobStatus(job.status) === status)
+      .map((job) => job.id);
+
+    if (jobIds.length === 0) {
+      return;
+    }
+
+    setSelectedJobIds((prev) => {
+      const allSelected = jobIds.every((id) => prev.includes(id));
+      if (allSelected) {
+        return prev.filter((id) => !jobIds.includes(id));
+      }
+
+      return Array.from(new Set([...prev, ...jobIds]));
+    });
+  };
+
+  const handleMoveAction = (jobId: string, newStatus: TrackerStatus) => {
+    const shouldMoveSelection = selectedJobIds.includes(jobId);
+    const jobIdsToMove = shouldMoveSelection ? selectedJobIds : [jobId];
+
+    updateJobsStatus(jobIdsToMove, newStatus, {
+      clearSelection: shouldMoveSelection,
+    });
+  };
+
   const handleBack = () => {
     if (source === 'build' && sourceJobId) {
-      router.push(`/job-matcher?jobId=${sourceJobId}`);
+      router.push(
+        sourceSection
+          ? `/job-matcher?jobId=${sourceJobId}&section=${sourceSection}`
+          : `/job-matcher?jobId=${sourceJobId}`
+      );
       return;
     }
 
@@ -183,7 +216,8 @@ function AdminPageContent() {
     router.push('/job-matcher');
   };
 
-  const buildFlowHref = (jobId: string) => `/job-matcher?jobId=${jobId}`;
+  const buildFlowHref = (jobId: string, section?: string) =>
+    section ? `/job-matcher?jobId=${jobId}&section=${section}` : `/job-matcher?jobId=${jobId}`;
 
   const resolveStatusFromDropTarget = (targetId: string): TrackerStatus | null => {
     const directColumnMatch = STATUS_OPTIONS.find((column) => column.value === targetId);
@@ -237,6 +271,7 @@ function AdminPageContent() {
     const { isOver, setNodeRef } = useDroppable({
       id: column.value,
     });
+    const allSelected = jobs.length > 0 && jobs.every((job) => selectedJobIds.includes(job.id));
 
     return (
       <div className="flex min-w-0 flex-col gap-4">
@@ -249,6 +284,16 @@ function AdminPageContent() {
             <Badge variant="outline" className="text-[10px] h-5 bg-background border-muted-foreground/10 text-muted-foreground">
               {jobs.length}
             </Badge>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[10px] text-muted-foreground"
+              disabled={jobs.length === 0}
+              onClick={() => toggleSelectJobsByStatus(column.value as TrackerStatus)}
+            >
+              {allSelected ? 'Clear' : 'Select'}
+            </Button>
             <Button
               type="button"
               variant="ghost"
@@ -297,6 +342,7 @@ function AdminPageContent() {
     const { isOver, setNodeRef } = useDroppable({
       id: status,
     });
+    const allSelected = jobs.length > 0 && jobs.every((job) => selectedJobIds.includes(job.id));
 
     return (
       <div className="flex flex-col gap-3">
@@ -308,6 +354,16 @@ function AdminPageContent() {
             <Badge variant="outline" className="h-5 text-[10px]">
               {jobs.length}
             </Badge>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[10px] text-muted-foreground"
+              disabled={jobs.length === 0}
+              onClick={() => toggleSelectJobsByStatus(status)}
+            >
+              {allSelected ? 'Clear' : 'Select'}
+            </Button>
             <Button
               type="button"
               variant="ghost"
@@ -400,7 +456,7 @@ function AdminPageContent() {
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href={buildFlowHref(job.id)} className="flex items-center">
+                  <Link href={buildFlowHref(job.id, job.lastActiveView)} className="flex items-center">
                     <ExternalLink className="mr-2 h-4 w-4" /> Open in Build Flow
                   </Link>
                 </DropdownMenuItem>
@@ -409,8 +465,15 @@ function AdminPageContent() {
                 {STATUS_OPTIONS.map(col => (
                   <DropdownMenuItem 
                     key={col.value} 
-                    onClick={() => updateJobStatus(job.id, col.value)}
-                    disabled={normalizeJobStatus(job.status) === col.value}
+                    onClick={() => handleMoveAction(job.id, col.value)}
+                    disabled={
+                      (selectedJobIds.includes(job.id)
+                        ? selectedJobIds.every((selectedId) => {
+                            const selectedJob = savedJobs.find((savedJob) => savedJob.id === selectedId);
+                            return selectedJob && normalizeJobStatus(selectedJob.status) === col.value;
+                          })
+                        : normalizeJobStatus(job.status) === col.value)
+                    }
                   >
                     {col.label}
                   </DropdownMenuItem>
@@ -667,7 +730,7 @@ function AdminPageContent() {
                                 <td className="p-4 text-right">
                                   <div className="flex justify-end gap-2">
                                     <Button asChild variant="ghost" size="sm" className="h-8 px-3 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                                      <Link href={buildFlowHref(job.id)}>Open Build Flow</Link>
+                                      <Link href={buildFlowHref(job.id, job.lastActiveView)}>Open Build Flow</Link>
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100" onClick={() => deleteJob(job.id)}>
                                       <Trash2 className="h-4 w-4" />
