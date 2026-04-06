@@ -3,15 +3,31 @@ import {
   doc,
   setDoc,
   getDoc,
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  deleteDoc,
   updateDoc,
-  serverTimestamp,
 } from 'firebase/firestore';
-import type { JobApplicationData, SavedJob, SavedRepository } from './schemas';
+import type { SavedJob, SavedRepository } from './schemas';
+
+const stripUndefinedDeep = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedDeep(item)) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, entryValue]) => entryValue !== undefined)
+        .map(([key, entryValue]) => [key, stripUndefinedDeep(entryValue)])
+    ) as T;
+  }
+
+  return value;
+};
+
+const sanitizeSavedJobsForFirestore = (jobs: SavedJob[]) =>
+  stripUndefinedDeep(jobs) as SavedJob[];
+
+const sanitizeSavedRepositoriesForFirestore = (repos: SavedRepository[]) =>
+  stripUndefinedDeep(repos) as SavedRepository[];
 
 // User data operations
 export const getUserData = async (userId: string) => {
@@ -58,24 +74,27 @@ export const mergeLocalDataToFirestore = async (
     (repo, index, self) => index === self.findIndex((r) => r.id === repo.id)
   );
 
+  const sanitizedJobs = sanitizeSavedJobsForFirestore(mergedJobs);
+  const sanitizedRepositories = sanitizeSavedRepositoriesForFirestore(mergedRepositories);
+
   await setDoc(userRef, {
-    savedJobs: mergedJobs,
-    savedRepositories: mergedRepositories,
+    savedJobs: sanitizedJobs,
+    savedRepositories: sanitizedRepositories,
   }, { merge: true });
 
-  return { savedJobs: mergedJobs, savedRepositories: mergedRepositories };
+  return { savedJobs: sanitizedJobs, savedRepositories: sanitizedRepositories };
 };
 
 // Update saved jobs list
 export const updateSavedJobs = async (userId: string, jobs: SavedJob[]) => {
   const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, { savedJobs: jobs });
+  await updateDoc(userRef, { savedJobs: sanitizeSavedJobsForFirestore(jobs) });
 };
 
 // Update saved repositories list
 export const updateSavedRepositories = async (userId: string, repos: SavedRepository[]) => {
   const userRef = doc(db, 'users', userId);
-  await updateDoc(userRef, { savedRepositories: repos });
+  await updateDoc(userRef, { savedRepositories: sanitizeSavedRepositoriesForFirestore(repos) });
 };
 
 // Detailed Job operations (Individual documents if needed in future)
@@ -99,7 +118,7 @@ export const saveRepository = async (userId: string, name: string, workRepositor
   };
 
   await updateDoc(userRef, {
-    savedRepositories: [newRepo, ...currentRepos]
+    savedRepositories: sanitizeSavedRepositoriesForFirestore([newRepo, ...currentRepos])
   });
 
   return newRepo;

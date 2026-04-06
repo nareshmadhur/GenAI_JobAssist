@@ -50,6 +50,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,7 +77,7 @@ export type GenerationType =
 export type ActiveView = GenerationType | 'none';
 type JobMeta = { jobTitle: string; companyName: string };
 type WorkspaceView = 'prepare' | 'build';
-type SaveIndicatorState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
+type SaveIndicatorState = 'idle' | 'pending' | 'saving' | 'saved' | 'error' | 'review';
 
 
 const LOCAL_STORAGE_KEY_FORM = 'ai_job_assist_form_data';
@@ -86,6 +87,12 @@ const GENERATION_ORDER: GenerationType[] = ['deepAnalysis', 'cv', 'coverLetter',
 
 const isSavedJobView = (value: string | null): value is SavedJobView =>
   value === 'deepAnalysis' || value === 'cv' || value === 'coverLetter' || value === 'qAndA';
+
+const normalizeComparisonText = (text: string) =>
+  text
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 
 const getGenerationInputSignature = (
   formValues: Omit<JobApplicationData, 'generationType'>,
@@ -112,6 +119,7 @@ function JobMatcherContent() {
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveIndicatorState>('idle');
   const [resultInputSignatures, setResultInputSignatures] = useState<ResultInputSignatures>({});
+  const [savedJobBaselineDescription, setSavedJobBaselineDescription] = useState<string | null>(null);
   const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   
@@ -255,10 +263,56 @@ function JobMatcherContent() {
     setView('build');
   }, []);
 
+  const startNewApplicationFromCurrentInputs = useCallback(({ showToast = true }: { showToast?: boolean } = {}) => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+    }
+
+    setAllResults({});
+    setActiveView('none');
+    setGenerationError(null);
+    setCurrentJobId(null);
+    setSaveStatus('idle');
+    setResultInputSignatures({});
+    setSavedJobBaselineDescription(null);
+    router.replace('/job-matcher', { scroll: false });
+    void refreshJobMeta(formMethods.getValues('jobDescription'));
+
+    if (showToast) {
+      toast({
+        title: 'Started a new application',
+        description: 'Your previous application stays intact. Generate fresh results for this new role.',
+      });
+    }
+  }, [formMethods, refreshJobMeta, router, toast]);
+
+  const keepUpdatingCurrentApplication = useCallback(() => {
+    const nextJobDescription = formMethods.getValues('jobDescription');
+    setSavedJobBaselineDescription(nextJobDescription);
+    void refreshJobMeta(nextJobDescription);
+    toast({
+      title: 'Continuing in the current application',
+      description: 'We will keep this application linked to the updated role details and mark older results for refresh.',
+    });
+  }, [formMethods, refreshJobMeta, toast]);
+
+  const currentSavedJob = currentJobId ? savedJobs.find((job) => job.id === currentJobId) || null : null;
+  const jobChangeNeedsDecision = Boolean(
+    currentSavedJob &&
+      savedJobBaselineDescription &&
+      normalizeComparisonText(watchedJobDescription || '') !== normalizeComparisonText(savedJobBaselineDescription)
+  );
+
   const handleGeneration = useCallback((generationType: GenerationType, options?: { force?: boolean }) => {
     const shouldForceRegenerate = options?.force ?? false;
+    const shouldBranchToNewApplication = jobChangeNeedsDecision;
 
-    if (!shouldForceRegenerate && allResults[generationType]) {
+    if (shouldBranchToNewApplication) {
+      startNewApplicationFromCurrentInputs({ showToast: false });
+    }
+
+    if (!shouldBranchToNewApplication && !shouldForceRegenerate && allResults[generationType]) {
       openExistingResult(generationType);
       return;
     }
@@ -320,7 +374,7 @@ function JobMatcherContent() {
             ...prev,
             [generationType]: getGenerationInputSignature(formMethods.getValues(), generationType),
           }));
-          void refreshJobMeta(jobDescription);
+          void refreshJobMeta(formMethods.getValues('jobDescription'));
 
           // If Q&A is generated, also trigger Interview Prep in the background if not already present
           if (generationType === 'qAndA' && !allResults.interviewPrep) {
@@ -349,15 +403,22 @@ function JobMatcherContent() {
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allResults, formMethods, openExistingResult, queryCount, refreshJobMeta, toast, user]);
+  }, [allResults, formMethods, jobChangeNeedsDecision, openExistingResult, queryCount, refreshJobMeta, startNewApplicationFromCurrentInputs, toast, user]);
 
   const handleGenerateAll = useCallback(async () => {
+    const shouldBranchToNewApplication = jobChangeNeedsDecision;
+    const currentResults = shouldBranchToNewApplication ? {} as AllGenerationResults : allResults;
+
+    if (shouldBranchToNewApplication) {
+      startNewApplicationFromCurrentInputs({ showToast: false });
+    }
+
     const hasQuestions = Boolean(formMethods.getValues('questions')?.trim());
     const primaryViews: GenerationType[] = hasQuestions
       ? ['coverLetter', 'cv', 'deepAnalysis', 'qAndA']
       : ['coverLetter', 'cv', 'deepAnalysis'];
-    const missingViews = primaryViews.filter((key) => !allResults[key]);
-    const firstAvailableView = getFirstAvailableView(allResults);
+    const missingViews = primaryViews.filter((key) => !currentResults[key]);
+    const firstAvailableView = getFirstAvailableView(currentResults);
 
     if (missingViews.length === 0 && firstAvailableView !== 'none') {
       setActiveView('deepAnalysis');
@@ -391,22 +452,22 @@ function JobMatcherContent() {
       void refreshJobMeta(jobDescription);
 
       const [cl, cv, qa, da, ip] = await Promise.all([
-        allResults.coverLetter
-          ? Promise.resolve(allResults.coverLetter)
+        currentResults.coverLetter
+          ? Promise.resolve(currentResults.coverLetter)
           : generateAction({ ...base, generationType: 'coverLetter' }),
-        allResults.cv
-          ? Promise.resolve(allResults.cv)
+        currentResults.cv
+          ? Promise.resolve(currentResults.cv)
           : generateAction({ ...base, generationType: 'cv' }),
-        allResults.qAndA
-          ? Promise.resolve(allResults.qAndA)
+        currentResults.qAndA
+          ? Promise.resolve(currentResults.qAndA)
           : hasQuestions
             ? generateAction({ ...base, generationType: 'qAndA', questions: questions || '' })
             : Promise.resolve({ error: 'Skipped because no questions were provided.' }),
-        allResults.deepAnalysis
-          ? Promise.resolve(allResults.deepAnalysis)
+        currentResults.deepAnalysis
+          ? Promise.resolve(currentResults.deepAnalysis)
           : generateAction({ ...base, generationType: 'deepAnalysis' }),
-        allResults.interviewPrep
-          ? Promise.resolve(allResults.interviewPrep)
+        currentResults.interviewPrep
+          ? Promise.resolve(currentResults.interviewPrep)
           : hasQuestions
             ? generateInterviewPrepAction(base)
             : Promise.resolve({ error: 'Skipped because no questions were provided.' }),
@@ -455,7 +516,7 @@ function JobMatcherContent() {
       setIsGeneratingAll(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allResults, formMethods, getFirstAvailableView, queryCount, refreshJobMeta, toast, user]);
+  }, [allResults, formMethods, getFirstAvailableView, jobChangeNeedsDecision, queryCount, refreshJobMeta, startNewApplicationFromCurrentInputs, toast, user]);
 
   // This effect provides the tool functions to the global context.
   useEffect(() => {
@@ -565,6 +626,7 @@ function JobMatcherContent() {
     setCurrentJobId(null);
     setSaveStatus('idle');
     setResultInputSignatures({});
+    setSavedJobBaselineDescription(null);
     setView('prepare');
     router.replace('/job-matcher', { scroll: false });
     try {
@@ -588,10 +650,12 @@ function JobMatcherContent() {
       : (jobMeta || fallbackMeta);
 
     const shouldRefreshDetails =
-      !existingJob &&
-      (!jobMeta ||
-        jobMeta.jobTitle === fallbackMeta.jobTitle ||
-        jobMeta.companyName === fallbackMeta.companyName);
+      (existingJob &&
+        normalizeComparisonText(existingJob.formData.jobDescription || '') !== normalizeComparisonText(jobDescription)) ||
+      (!existingJob &&
+        (!jobMeta ||
+          jobMeta.jobTitle === fallbackMeta.jobTitle ||
+          jobMeta.companyName === fallbackMeta.companyName));
 
     if (shouldRefreshDetails) {
       try {
@@ -663,6 +727,7 @@ function JobMatcherContent() {
     setCurrentJobId(nextJobId);
     setJobMeta(resolvedMeta);
     setSaveStatus('saved');
+    setSavedJobBaselineDescription(jobDescription);
     router.replace(
       nextSavedJob.lastActiveView
         ? `/job-matcher?jobId=${nextJobId}&section=${nextSavedJob.lastActiveView}`
@@ -703,6 +768,13 @@ function JobMatcherContent() {
         });
         return;
       }
+      if (jobChangeNeedsDecision) {
+        toast({
+          title: 'Start a new application first',
+          description: 'Because the target role changed, generate fresh results for this role before saving it as a separate application.',
+        });
+        return;
+      }
       if (Object.keys(allResults).length === 0) {
         toast({
           variant: 'destructive',
@@ -727,6 +799,7 @@ function JobMatcherContent() {
     formMethods.reset(formData);
     setAllResults(job.allResults);
     setCurrentJobId(job.id);
+    setSavedJobBaselineDescription(formData.jobDescription);
     setJobMeta({
       jobTitle: job.jobTitle,
       companyName: job.companyName,
@@ -766,10 +839,14 @@ function JobMatcherContent() {
       isInitialFormLoad ||
       isGenerating ||
       isGeneratingAll ||
+      jobChangeNeedsDecision ||
       Object.keys(allResults).length === 0 ||
       !watchedJobDescription?.trim() ||
       !watchedWorkRepository?.trim()
     ) {
+      if (jobChangeNeedsDecision) {
+        setSaveStatus('review');
+      }
       if (Object.keys(allResults).length === 0) {
         setSaveStatus('idle');
       }
@@ -797,6 +874,7 @@ function JobMatcherContent() {
     isGenerating,
     isGeneratingAll,
     isInitialFormLoad,
+    jobChangeNeedsDecision,
     upsertCurrentJob,
     watchedJobDescription,
     watchedQuestions,
@@ -1150,6 +1228,29 @@ function JobMatcherContent() {
             })}
           </div>
 
+          {jobChangeNeedsDecision ? (
+            <Alert className="mb-6 border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-300" />
+              <AlertTitle>This looks like a new target role</AlertTitle>
+              <AlertDescription className="space-y-4">
+                <p>
+                  You changed the job description for
+                  {' '}
+                  <span className="font-semibold">{currentSavedJob?.jobTitle || 'this saved application'}</span>.
+                  Start a new application to keep the previous results intact, or keep updating this one if the role change is intentional.
+                </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button type="button" onClick={() => startNewApplicationFromCurrentInputs()}>
+                    Start New Application
+                  </Button>
+                  <Button type="button" variant="outline" onClick={keepUpdatingCurrentApplication}>
+                    Keep Updating This Application
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
           {view === 'prepare' ? (
             <div className="flex flex-col gap-8 animate-in fade-in duration-500">
               <div className="max-w-3xl">
@@ -1214,7 +1315,7 @@ function JobMatcherContent() {
                           'rounded-full px-2 py-1 normal-case tracking-normal',
                           saveStatus === 'error'
                             ? 'bg-destructive/10 text-destructive'
-                            : saveStatus === 'saving' || saveStatus === 'pending'
+                            : saveStatus === 'saving' || saveStatus === 'pending' || saveStatus === 'review'
                               ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
                               : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
                         )}
@@ -1223,6 +1324,8 @@ function JobMatcherContent() {
                           ? 'Saving changes...'
                           : saveStatus === 'pending'
                             ? 'Saving soon...'
+                            : saveStatus === 'review'
+                              ? 'Role change detected'
                             : saveStatus === 'error'
                               ? 'Save issue'
                               : 'All changes saved'}

@@ -126,7 +126,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newJobs = typeof updater === 'function' ? updater(savedJobs) : updater;
     setSavedJobs(newJobs);
     if (user) {
-      updateSavedJobs(user.uid, newJobs);
+      void updateSavedJobs(user.uid, newJobs).catch((error) => {
+        console.error('Failed to sync saved jobs to Firestore:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Save sync issue',
+          description: 'We kept your local changes, but could not sync them to the cloud just now.',
+        });
+      });
     } else {
       localStorage.setItem(LOCAL_STORAGE_KEY_JOBS, JSON.stringify(newJobs));
     }
@@ -136,7 +143,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newRepos = typeof updater === 'function' ? updater(savedRepositories) : updater;
     setSavedRepositories(newRepos);
     if (user) {
-      updateSavedRepositories(user.uid, newRepos);
+      void updateSavedRepositories(user.uid, newRepos).catch((error) => {
+        console.error('Failed to sync saved repositories to Firestore:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Repository sync issue',
+          description: 'We kept your local changes, but could not sync them to the cloud just now.',
+        });
+      });
     } else {
       localStorage.setItem(LOCAL_STORAGE_KEY_REPOSITORIES, JSON.stringify(newRepos));
     }
