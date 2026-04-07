@@ -84,6 +84,16 @@ const LOCAL_STORAGE_KEY_COPILOT_CHAT = 'ai_job_assist_copilot_chat';
 const LOCAL_STORAGE_KEY_JOBS = 'ai_job_assist_saved_jobs';
 const LOCAL_STORAGE_KEY_REPOSITORIES = 'ai_job_assist_saved_repos_v2';
 
+const applySavedJobsUpdater = (
+  currentJobs: SavedJob[],
+  updater: SavedJob[] | ((prev: SavedJob[]) => SavedJob[])
+) => (typeof updater === 'function' ? updater(currentJobs) : updater);
+
+const applySavedRepositoriesUpdater = (
+  currentRepositories: SavedRepository[],
+  updater: SavedRepository[] | ((prev: SavedRepository[]) => SavedRepository[])
+) => (typeof updater === 'function' ? updater(currentRepositories) : updater);
+
 const getFriendlyErrorMessage = (error: any): string => {
     if (!error || !error.message) {
         return 'An unexpected error occurred.';
@@ -118,6 +128,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // New state for saved data, to be synced with Firestore or localStorage
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
   const [savedRepositories, setSavedRepositories] = useState<SavedRepository[]>([]);
+  const savedJobsRef = useRef<SavedJob[]>([]);
+  const savedRepositoriesRef = useRef<SavedRepository[]>([]);
+  const isSavedDataReadyRef = useRef(false);
+  const pendingSavedJobUpdatersRef = useRef<Array<SavedJob[] | ((prev: SavedJob[]) => SavedJob[])>>([]);
+  const pendingSavedRepositoryUpdatersRef = useRef<
+    Array<SavedRepository[] | ((prev: SavedRepository[]) => SavedRepository[])>
+  >([]);
 
 
   // Auth State
@@ -131,9 +148,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     analyticsSessionIdRef.current = getAnalyticsSessionId();
   }, []);
 
+  useEffect(() => {
+    savedJobsRef.current = savedJobs;
+  }, [savedJobs]);
+
+  useEffect(() => {
+    savedRepositoriesRef.current = savedRepositories;
+  }, [savedRepositories]);
+
   const handleSetSavedJobs = (updater: SavedJob[] | ((prev: SavedJob[]) => SavedJob[])) => {
-    const newJobs = typeof updater === 'function' ? updater(savedJobs) : updater;
+    const newJobs = applySavedJobsUpdater(savedJobsRef.current, updater);
+    savedJobsRef.current = newJobs;
     setSavedJobs(newJobs);
+
+    if (user && !isSavedDataReadyRef.current) {
+      pendingSavedJobUpdatersRef.current.push(updater);
+      return;
+    }
+
     if (user) {
       void updateSavedJobs(user.uid, newJobs).catch((error) => {
         console.error('Failed to sync saved jobs to Firestore:', error);
@@ -149,8 +181,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const handleSetSavedRepositories = (updater: SavedRepository[] | ((prev: SavedRepository[]) => SavedRepository[])) => {
-    const newRepos = typeof updater === 'function' ? updater(savedRepositories) : updater;
+    const newRepos = applySavedRepositoriesUpdater(savedRepositoriesRef.current, updater);
+    savedRepositoriesRef.current = newRepos;
     setSavedRepositories(newRepos);
+
+    if (user && !isSavedDataReadyRef.current) {
+      pendingSavedRepositoryUpdatersRef.current.push(updater);
+      return;
+    }
+
     if (user) {
       void updateSavedRepositories(user.uid, newRepos).catch((error) => {
         console.error('Failed to sync saved repositories to Firestore:', error);
@@ -168,6 +207,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Auth state change listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      isSavedDataReadyRef.current = false;
       setUser(currentUser);
       if (currentUser) {
         // User is signed in, load/merge data from Firestore
@@ -178,9 +218,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const localRepos = localReposRaw ? JSON.parse(localReposRaw) : [];
           
           const userData = await mergeLocalDataToFirestore(currentUser.uid, localJobs, localRepos);
-          
-          setSavedJobs(userData.savedJobs);
-          setSavedRepositories(userData.savedRepositories || []);
+          const pendingJobUpdaters = pendingSavedJobUpdatersRef.current;
+          const pendingRepositoryUpdaters = pendingSavedRepositoryUpdatersRef.current;
+
+          let nextSavedJobs = userData.savedJobs;
+          let nextSavedRepositories = userData.savedRepositories || [];
+
+          if (pendingJobUpdaters.length > 0) {
+            nextSavedJobs = pendingJobUpdaters.reduce<SavedJob[]>(
+              (jobs, queuedUpdater) => applySavedJobsUpdater(jobs, queuedUpdater),
+              nextSavedJobs
+            );
+            pendingSavedJobUpdatersRef.current = [];
+            await updateSavedJobs(currentUser.uid, nextSavedJobs);
+          }
+
+          if (pendingRepositoryUpdaters.length > 0) {
+            nextSavedRepositories = pendingRepositoryUpdaters.reduce<SavedRepository[]>(
+              (repos, queuedUpdater) => applySavedRepositoriesUpdater(repos, queuedUpdater),
+              nextSavedRepositories
+            );
+            pendingSavedRepositoryUpdatersRef.current = [];
+            await updateSavedRepositories(currentUser.uid, nextSavedRepositories);
+          }
+
+          savedJobsRef.current = nextSavedJobs;
+          savedRepositoriesRef.current = nextSavedRepositories;
+          setSavedJobs(nextSavedJobs);
+          setSavedRepositories(nextSavedRepositories);
 
           // Clear local storage after merging to avoid re-merging
           localStorage.removeItem(LOCAL_STORAGE_KEY_JOBS);
@@ -195,14 +260,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
             const localJobsRaw = localStorage.getItem(LOCAL_STORAGE_KEY_JOBS);
             const localReposRaw = localStorage.getItem(LOCAL_STORAGE_KEY_REPOSITORIES);
-            setSavedJobs(localJobsRaw ? JSON.parse(localJobsRaw) : []);
-            setSavedRepositories(localReposRaw ? JSON.parse(localReposRaw) : []);
+            const nextSavedJobs = localJobsRaw ? JSON.parse(localJobsRaw) : [];
+            const nextSavedRepositories = localReposRaw ? JSON.parse(localReposRaw) : [];
+            pendingSavedJobUpdatersRef.current = [];
+            pendingSavedRepositoryUpdatersRef.current = [];
+            savedJobsRef.current = nextSavedJobs;
+            savedRepositoriesRef.current = nextSavedRepositories;
+            setSavedJobs(nextSavedJobs);
+            setSavedRepositories(nextSavedRepositories);
         } catch (error) {
             console.error("Failed to load data from localStorage:", error);
+            pendingSavedJobUpdatersRef.current = [];
+            pendingSavedRepositoryUpdatersRef.current = [];
+            savedJobsRef.current = [];
+            savedRepositoriesRef.current = [];
             setSavedJobs([]);
             setSavedRepositories([]);
         }
       }
+      isSavedDataReadyRef.current = true;
       setAuthLoading(false);
     });
     return () => unsubscribe();
