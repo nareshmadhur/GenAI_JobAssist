@@ -126,6 +126,7 @@ function JobMatcherContent() {
   const { toast } = useToast();
   const outputRef = useRef<HTMLDivElement>(null);
   const previousViewRef = useRef<WorkspaceView>('prepare');
+  const trackedWorkspaceViewRef = useRef<WorkspaceView | null>(null);
   const suppressNextOutputScrollRef = useRef(false);
   const router = useRouter();
   const { user, authLoading, logout } = useAuth();
@@ -135,6 +136,7 @@ function JobMatcherContent() {
     setToolContext,
     savedJobs,
     setSavedJobs,
+    trackAnalyticsEvent,
   } = useAppContext();
   const searchParams = useSearchParams();
   const jobId = searchParams.get('jobId');
@@ -255,7 +257,10 @@ function JobMatcherContent() {
     setActiveView((current) => (current === 'none' ? 'deepAnalysis' : current));
     setView('build');
     scrollPageToTop();
-  }, [formMethods, refreshJobMeta, scrollPageToTop, toast]);
+    trackAnalyticsEvent('continue_to_build', {
+      hasQuestions: Boolean(formMethods.getValues('questions')?.trim()),
+    });
+  }, [formMethods, refreshJobMeta, scrollPageToTop, toast, trackAnalyticsEvent]);
 
   const openExistingResult = useCallback((generationType: GenerationType) => {
     setActiveView(generationType);
@@ -375,6 +380,18 @@ function JobMatcherContent() {
             [generationType]: getGenerationInputSignature(formMethods.getValues(), generationType),
           }));
           void refreshJobMeta(formMethods.getValues('jobDescription'));
+          trackAnalyticsEvent(
+            generationType === 'deepAnalysis'
+              ? 'fit_summary_generated'
+              : generationType === 'cv'
+                ? 'resume_generated'
+                : generationType === 'coverLetter'
+                  ? 'cover_letter_generated'
+                  : 'answers_generated',
+            {
+              source: shouldForceRegenerate ? 'refresh' : 'generate',
+            }
+          );
 
           // If Q&A is generated, also trigger Interview Prep in the background if not already present
           if (generationType === 'qAndA' && !allResults.interviewPrep) {
@@ -403,7 +420,7 @@ function JobMatcherContent() {
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allResults, formMethods, jobChangeNeedsDecision, openExistingResult, queryCount, refreshJobMeta, startNewApplicationFromCurrentInputs, toast, user]);
+  }, [allResults, formMethods, jobChangeNeedsDecision, openExistingResult, queryCount, refreshJobMeta, startNewApplicationFromCurrentInputs, toast, trackAnalyticsEvent, user]);
 
   const handleGenerateAll = useCallback(async () => {
     const shouldBranchToNewApplication = jobChangeNeedsDecision;
@@ -440,6 +457,10 @@ function JobMatcherContent() {
       toast({ variant: 'destructive', title: 'Please fill out both fields before generating.' });
       return;
     }
+    trackAnalyticsEvent('create_everything_clicked', {
+      hasQuestions,
+      missingCount: missingViews.length,
+    });
     setIsGeneratingAll(true);
     setGenerationError(null);
     setActiveView('deepAnalysis');
@@ -510,13 +531,17 @@ function JobMatcherContent() {
         setQueryCount(newCount);
         localStorage.setItem(LOCAL_STORAGE_KEY_QUERY_COUNT, newCount.toString());
       }
+      trackAnalyticsEvent('create_everything_completed', {
+        hasQuestions,
+        missingCount: missingViews.length,
+      });
     } catch (e: any) {
       setGenerationError(e.message || 'Generation failed.');
     } finally {
       setIsGeneratingAll(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allResults, formMethods, getFirstAvailableView, jobChangeNeedsDecision, queryCount, refreshJobMeta, startNewApplicationFromCurrentInputs, toast, user]);
+  }, [allResults, formMethods, getFirstAvailableView, jobChangeNeedsDecision, queryCount, refreshJobMeta, startNewApplicationFromCurrentInputs, toast, trackAnalyticsEvent, user]);
 
   // This effect provides the tool functions to the global context.
   useEffect(() => {
@@ -636,6 +661,52 @@ function JobMatcherContent() {
     }
   };
 
+  const handleStartNewJob = () => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+      autoSaveTimeoutRef.current = null;
+    }
+
+    const preservedRepository = formMethods.getValues('workRepository');
+    formMethods.reset({
+      jobDescription: '',
+      workRepository: preservedRepository,
+      questions: '',
+    });
+    setAllResults({});
+    setActiveView('none');
+    setGenerationError(null);
+    setJobMeta(null);
+    setCurrentJobId(null);
+    setSaveStatus('idle');
+    setResultInputSignatures({});
+    setSavedJobBaselineDescription(null);
+    setView('prepare');
+    router.replace('/job-matcher', { scroll: false });
+    try {
+      localStorage.setItem(
+        LOCAL_STORAGE_KEY_FORM,
+        JSON.stringify({
+          jobDescription: '',
+          workRepository: preservedRepository,
+          questions: '',
+          allResults: {},
+          resultInputSignatures: {},
+        })
+      );
+    } catch (e) {
+      console.error('Failed to reset local data for a new job', e);
+    }
+
+    toast({
+      title: 'Ready for a new job',
+      description: 'We kept your Work Repository and cleared role-specific content so you can target another role.',
+    });
+    trackAnalyticsEvent('new_job_started', {
+      preservedRepository: Boolean(preservedRepository.trim()),
+    });
+  };
+
   const upsertCurrentJob = useCallback(async ({ showToast = false }: { showToast?: boolean } = {}) => {
     const { jobDescription, workRepository, questions } = formMethods.getValues();
     if (!jobDescription.trim() || !workRepository.trim() || Object.keys(allResults).length === 0) {
@@ -728,6 +799,14 @@ function JobMatcherContent() {
     setJobMeta(resolvedMeta);
     setSaveStatus('saved');
     setSavedJobBaselineDescription(jobDescription);
+    if (!existingJob) {
+      trackAnalyticsEvent('application_saved', {
+        hasCoverLetter: Boolean(allResults.coverLetter),
+        hasResume: Boolean(allResults.cv),
+        hasFitSummary: Boolean(allResults.deepAnalysis),
+        hasAnswers: Boolean(allResults.qAndA),
+      });
+    }
     router.replace(
       nextSavedJob.lastActiveView
         ? `/job-matcher?jobId=${nextJobId}&section=${nextSavedJob.lastActiveView}`
@@ -757,7 +836,7 @@ function JobMatcherContent() {
     }
 
     return nextSavedJob;
-  }, [activeView, allResults, currentJobId, formMethods, getFallbackJobMeta, jobMeta, resultInputSignatures, router, savedJobs, setSavedJobs, toast, user]);
+  }, [activeView, allResults, currentJobId, formMethods, getFallbackJobMeta, jobMeta, resultInputSignatures, router, savedJobs, setSavedJobs, toast, trackAnalyticsEvent, user]);
 
   const handleSaveJob = () => {
     formMethods.trigger('jobDescription').then((isValid) => {
@@ -1011,10 +1090,25 @@ function JobMatcherContent() {
 
   const openCoach = (message?: string | { message: string; displayMessage?: string }) => {
     setIsCoPilotSidebarOpen(true);
+    trackAnalyticsEvent(message ? 'coach_prompt_used' : 'coach_opened', {
+      hasPrompt: Boolean(message),
+      view,
+    });
     if (message) {
       handleCoPilotSubmit(message);
     }
   };
+
+  useEffect(() => {
+    if (trackedWorkspaceViewRef.current === view) {
+      return;
+    }
+
+    trackAnalyticsEvent(view === 'prepare' ? 'prepare_viewed' : 'build_viewed', {
+      hasResults: hasAnyResults,
+    });
+    trackedWorkspaceViewRef.current = view;
+  }, [hasAnyResults, trackAnalyticsEvent, view]);
 
   const ActionButton = ({
       generationType,
@@ -1208,14 +1302,50 @@ function JobMatcherContent() {
             ].map((step) => {
               const isActive = view === step.key;
               const isComplete = step.key === 'prepare' && view === 'build';
+              const canNavigateToStep =
+                step.key === 'prepare' || Boolean(watchedJobDescription?.trim() && watchedWorkRepository?.trim());
 
               return (
                 <div
                   key={step.key}
+                  role={canNavigateToStep && !isActive ? 'button' : undefined}
+                  tabIndex={canNavigateToStep && !isActive ? 0 : -1}
+                  onClick={() => {
+                    if (!canNavigateToStep || isActive) {
+                      return;
+                    }
+
+                    if (step.key === 'prepare') {
+                      setView('prepare');
+                      scrollPageToTop();
+                      return;
+                    }
+
+                    void handleContinueToBuild();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') {
+                      return;
+                    }
+                    event.preventDefault();
+
+                    if (!canNavigateToStep || isActive) {
+                      return;
+                    }
+
+                    if (step.key === 'prepare') {
+                      setView('prepare');
+                      scrollPageToTop();
+                      return;
+                    }
+
+                    void handleContinueToBuild();
+                  }}
                   className={cn(
                     'rounded-2xl border px-4 py-3 transition-colors',
                     isActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/10 bg-card/60',
-                    isComplete && 'border-emerald-500/20 bg-emerald-500/5'
+                    isComplete && 'border-emerald-500/20 bg-emerald-500/5',
+                    canNavigateToStep && !isActive && 'cursor-pointer hover:border-primary/30 hover:bg-primary/5'
                   )}
                 >
                   <div className="flex items-center gap-2 text-sm font-semibold">
@@ -1269,8 +1399,36 @@ function JobMatcherContent() {
                 <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                        <ArrowRight className="mr-2 h-4 w-4" />
+                        Start New Job
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <ArrowRight className="h-5 w-5 text-primary" />
+                          Start a new job?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          We&apos;ll keep your Work Repository, but clear the current job description, questions, generated results, and saved application link so you can target a new role cleanly.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleStartNewJob}
+                        >
+                          Start New Job
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
                       <Button variant="destructive" size="sm" className="w-full sm:w-auto">
-                        <Trash2 className="mr-2" />
+                        <Trash2 className="mr-2 h-4 w-4" />
                         Clear Everything
                       </Button>
                     </AlertDialogTrigger>
@@ -1278,10 +1436,10 @@ function JobMatcherContent() {
                       <AlertDialogHeader>
                         <AlertDialogTitle className="flex items-center gap-2">
                           <AlertTriangle className="h-6 w-6 text-destructive" />
-                          Are you sure?
+                          Clear everything?
                         </AlertDialogTitle>
                         <AlertDialogDescription>
-                          This will permanently clear the job description, Work Repository, and all generated content. This action cannot be undone.
+                          This will permanently clear the job description, Work Repository, and all generated content from this browser session. Use this only if you want a full reset.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

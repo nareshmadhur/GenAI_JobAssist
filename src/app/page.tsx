@@ -25,11 +25,13 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
+import { isOwnerUid } from '@/lib/analytics';
 
 import { motion } from 'framer-motion';
 
 export default function WelcomePage() {
   const { user, authLoading, logout } = useAuth();
+  const isOwner = isOwnerUid(user?.uid);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -70,6 +72,11 @@ export default function WelcomePage() {
                 <List className="mr-2 h-4 w-4" /> Application Tracker
               </Link>
             </Button>
+            {isOwner ? (
+              <Button asChild variant="ghost" className="hidden xl:flex">
+                <Link href="/owner/analytics">Owner Analytics</Link>
+              </Button>
+            ) : null}
             {authLoading ? (
               <Button variant="outline" size="icon" disabled>
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -88,6 +95,11 @@ export default function WelcomePage() {
                   <DropdownMenuItem asChild>
                     <Link href="/admin">Application Tracker</Link>
                   </DropdownMenuItem>
+                  {isOwner ? (
+                    <DropdownMenuItem asChild>
+                      <Link href="/owner/analytics">Owner Analytics</Link>
+                    </DropdownMenuItem>
+                  ) : null}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout}>
                     <LogOut className="mr-2 h-4 w-4" />

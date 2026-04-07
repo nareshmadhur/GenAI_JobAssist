@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { 
   ArrowLeft,
@@ -24,6 +24,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { useAppContext } from '@/context/app-context';
+import { useAuth } from '@/context/app-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -52,6 +53,7 @@ import { JobStatus, SavedJob } from '@/lib/schemas';
 import { formatDistanceToNow } from 'date-fns';
 import { AiJobAssistLogo } from '@/components/ai-job-assist-logo';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
+import { isOwnerUid } from '@/lib/analytics';
 
 type TrackerStatus = 'draft' | 'applied' | 'in_process' | 'accepted' | 'rejected';
 type TrackerColumnKey = 'draft' | 'applied' | 'in_process' | 'final';
@@ -94,17 +96,20 @@ const getStatusMeta = (status?: JobStatus) => {
 };
 
 function AdminPageContent() {
-  const { savedJobs, setSavedJobs } = useAppContext();
+  const { savedJobs, setSavedJobs, trackAnalyticsEvent = () => undefined } = useAppContext();
+  const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const [pendingClearStatus, setPendingClearStatus] = useState<TrackerStatus | null>(null);
+  const hasTrackedViewRef = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const source = searchParams.get('from');
   const sourceJobId = searchParams.get('jobId');
   const sourceSection = searchParams.get('section');
+  const isOwner = isOwnerUid(user?.uid);
 
   const filteredJobs = savedJobs.filter(job => 
     job.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -123,10 +128,26 @@ function AdminPageContent() {
     });
   }, [filteredJobs]);
 
+  useEffect(() => {
+    if (hasTrackedViewRef.current) {
+      return;
+    }
+
+    trackAnalyticsEvent('tracker_viewed', {
+      jobCount: savedJobs.length,
+    });
+    hasTrackedViewRef.current = true;
+  }, [savedJobs.length, trackAnalyticsEvent]);
+
   const updateJobStatus = (jobId: string, newStatus: TrackerStatus) => {
     setSavedJobs(prev => prev.map(job => 
       job.id === jobId ? { ...job, status: newStatus } : job
     ));
+    trackAnalyticsEvent('application_status_changed', {
+      count: 1,
+      status: newStatus,
+      source: 'single',
+    });
   };
 
   const updateJobsStatus = (jobIds: string[], newStatus: TrackerStatus, options?: { clearSelection?: boolean }) => {
@@ -135,6 +156,11 @@ function AdminPageContent() {
     setSavedJobs((prev) =>
       prev.map((job) => (jobIds.includes(job.id) ? { ...job, status: newStatus } : job))
     );
+    trackAnalyticsEvent('application_status_changed', {
+      count: jobIds.length,
+      status: newStatus,
+      source: options?.clearSelection ? 'batch' : 'group',
+    });
 
     if (options?.clearSelection) {
       setSelectedJobIds((prev) => prev.filter((id) => !jobIds.includes(id)));
@@ -539,6 +565,11 @@ function AdminPageContent() {
             <Button asChild variant="ghost" size="sm" className="hidden sm:flex">
               <Link href="/job-matcher">Build Your Application</Link>
             </Button>
+            {isOwner ? (
+              <Button asChild variant="ghost" size="sm" className="hidden md:flex">
+                <Link href="/owner/analytics">Owner Analytics</Link>
+              </Button>
+            ) : null}
             <ThemeToggleButton />
           </nav>
         </div>

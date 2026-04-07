@@ -30,6 +30,7 @@ import { Skeleton } from './ui/skeleton';
 import { extractJobDetailsAction, extractUrlTextAction, prettifyWorkRepositoryAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input';
+import { useAppContext } from '@/context/app-context';
 
 interface InputFormProps {
   isInitialLoading: boolean;
@@ -48,6 +49,7 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
   const [isExtractingUrl, setIsExtractingUrl] = useState(false);
   const [jobUrl, setJobUrl] = useState('');
   const { toast } = useToast();
+  const { trackAnalyticsEvent } = useAppContext();
   
   const jobDescription = watch('jobDescription');
   const workRepository = watch('workRepository');
@@ -177,6 +179,9 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
     setIsExtractingUrl(false);
 
     if (result.error) {
+      trackAnalyticsEvent('job_url_import_failed', {
+        hasPastedUrl: Boolean(candidateUrl),
+      });
       toast({
         title: 'Extraction Failed',
         description: result.error,
@@ -185,6 +190,9 @@ export function InputForm({ isInitialLoading }: InputFormProps): JSX.Element {
     } else if (result.text) {
       formMethods.setValue('jobDescription', result.text);
       setJobUrl(candidateUrl);
+      trackAnalyticsEvent('job_url_import_success', {
+        importedLength: result.text.length,
+      });
       toast({
         title: 'Job posting imported',
         description: 'We fetched the page and cleaned it into a usable job description.',

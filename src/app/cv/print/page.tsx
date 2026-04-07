@@ -1,14 +1,14 @@
 
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { FileText, ArrowLeft } from 'lucide-react';
-import { readCvPrintExport, type CvPrintExportPayload } from '@/lib/cv-export';
+import { clearCvPrintExport, readCvPrintExport, type CvPrintExportPayload } from '@/lib/cv-export';
 import { CvPrintTemplate } from '@/components/cv-print-template';
 
 /**
@@ -18,23 +18,29 @@ function PrintView() {
   const searchParams = useSearchParams();
   const [exportPayload, setExportPayload] = useState<CvPrintExportPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedExportRef = useRef(false);
+  const exportId = useMemo(() => searchParams.get('exportId'), [searchParams]);
 
   useEffect(() => {
-    const exportId = searchParams.get('exportId');
-    if (exportId) {
-      try {
-        const exportData = readCvPrintExport(exportId);
-        if (!exportData) {
-          setError('Could not load this resume export. Please try exporting again from the application.');
-          return;
-        }
-        setExportPayload(exportData);
-      } catch (e) {
-        console.error('Failed to parse CV data', e);
-        setError('Could not load CV data. Please try exporting again.');
-      }
+    if (!exportId || hasLoadedExportRef.current) {
+      return;
     }
-  }, [searchParams]);
+
+    hasLoadedExportRef.current = true;
+
+    try {
+      const exportData = readCvPrintExport(exportId);
+      if (!exportData) {
+        setError('Could not load this resume export. Please try exporting again from the application.');
+        return;
+      }
+      setExportPayload(exportData);
+      clearCvPrintExport(exportId);
+    } catch (e) {
+      console.error('Failed to parse CV data', e);
+      setError('Could not load CV data. Please try exporting again.');
+    }
+  }, [exportId]);
 
   useEffect(() => {
     if (exportPayload) {

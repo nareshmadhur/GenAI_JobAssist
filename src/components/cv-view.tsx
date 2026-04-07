@@ -41,7 +41,12 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { EditableCvField } from './editable-cv-field';
 import { openCvPrintExport } from '@/lib/cv-export';
-import { getHighlightedTextSegments, getRoleAlignmentTerms } from '@/lib/role-alignment';
+import {
+  getHighlightedTextSegments,
+  getRoleAlignmentHighlights,
+  getRoleAlignmentTerms,
+} from '@/lib/role-alignment';
+import { useAppContext } from '@/context/app-context';
 
 
 const MISSING_INFO_PLACEHOLDER = '[Information not found in bio]';
@@ -77,22 +82,45 @@ const hasMissingInfo = (cvData: CvOutput): boolean => {
 function InlineHighlightText({
   text,
   highlightTerms,
+  highlightReasons,
 }: {
   text: string;
   highlightTerms: string[];
+  highlightReasons?: Record<string, string>;
 }) {
   const segments = getHighlightedTextSegments(text, highlightTerms);
 
   return (
     <>
       {segments.map((segment, index) =>
-        segment.isHighlighted ? (
-          <strong key={`${segment.text}-${index}`} className="font-semibold text-slate-900">
-            {segment.text}
-          </strong>
-        ) : (
+        segment.isHighlighted ? (() => {
+          const explanation = highlightReasons?.[segment.text.toLowerCase()];
+
+          if (!explanation) {
+            return (
+              <strong key={`${segment.text}-${index}`} className="font-semibold text-slate-900">
+                {segment.text}
+              </strong>
+            );
+          }
+
+          return (
+            <TooltipProvider key={`${segment.text}-${index}`}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <strong className="cursor-help rounded-sm border-b border-dotted border-primary/60 font-semibold text-slate-900 decoration-dotted underline-offset-4 transition-colors hover:bg-primary/10">
+                    {segment.text}
+                  </strong>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs bg-slate-900 text-white">
+                  <p className="text-xs leading-relaxed">{explanation}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        })() : (
           <React.Fragment key={`${segment.text}-${index}`}>{segment.text}</React.Fragment>
-        )
+        ),
       )}
     </>
   );
@@ -109,10 +137,14 @@ const ExportButton = ({
   deepAnalysis?: DeepAnalysisOutput;
 }) => {
   const showsWarning = hasMissingInfo(cvData);
+  const { trackAnalyticsEvent } = useAppContext();
 
   const handleExport = () => {
     try {
       openCvPrintExport({ cvData, jobDescription, deepAnalysis });
+      trackAnalyticsEvent('resume_printed', {
+        hasMissingInfo: showsWarning,
+      });
     } catch (error) {
       console.error('Failed to serialize CV data for printing:', error);
       alert('An error occurred while preparing the CV for export.');
@@ -222,6 +254,15 @@ export function CvView({
     deepAnalysis,
     jobDescription,
   });
+  const roleAlignmentHighlights = getRoleAlignmentHighlights({
+    cvData,
+    deepAnalysis,
+    jobDescription,
+  });
+  const highlightReasons = roleAlignmentHighlights.reduce<Record<string, string>>((acc, highlight) => {
+    acc[highlight.term.toLowerCase()] = highlight.explanation;
+    return acc;
+  }, {});
 
   if (!cvData) {
     return (
@@ -357,6 +398,7 @@ export function CvView({
                     <InlineHighlightText
                       text={cvData.summary}
                       highlightTerms={roleAlignmentTerms}
+                      highlightReasons={highlightReasons}
                     />
                   }
                 />
@@ -414,6 +456,7 @@ export function CvView({
                             <InlineHighlightText
                               text={responsibility}
                               highlightTerms={roleAlignmentTerms}
+                              highlightReasons={highlightReasons}
                             />
                           }
                         />
@@ -487,6 +530,7 @@ export function CvView({
                         : 'bg-slate-100 text-slate-700'
                     )}
                     data-missing={isMissing(skill)}
+                    title={highlightReasons[skill.toLowerCase()]}
                   >
                     <EditableCvField
                       value={skill}

@@ -5,6 +5,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useCallback,
   ReactNode,
   useTransition,
   useRef,
@@ -24,11 +25,13 @@ import {
 } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import {
-  getUserData,
   mergeLocalDataToFirestore,
+  trackAnalyticsEvent as persistAnalyticsEvent,
   updateSavedRepositories,
   updateSavedJobs,
 } from '@/lib/firestore-service';
+import type { AnalyticsEventName, AnalyticsMetadata } from '@/lib/analytics';
+import { getAnalyticsSessionId } from '@/lib/analytics';
 
 // Defines the shape of the tool context that the main page will provide.
 export type ToolContext = {
@@ -65,6 +68,7 @@ interface AppContextType {
   isGenerating: boolean;
   unreadCoachCount: number;
   markCoachRead: () => void;
+  trackAnalyticsEvent: (eventName: AnalyticsEventName, metadata?: AnalyticsMetadata) => void;
   handleCoPilotSubmit: (message: CoPilotSubmitInput) => void;
   setToolContext: (context: ToolContext | null) => void;
   // New state for saved data
@@ -109,6 +113,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [unreadCoachCount, setUnreadCoachCount] = useState(0);
   const hasInitializedChatRef = useRef(false);
   const previousChatLengthRef = useRef(0);
+  const analyticsSessionIdRef = useRef<string>('server-session');
   
   // New state for saved data, to be synced with Firestore or localStorage
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([]);
@@ -121,6 +126,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   
   const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    analyticsSessionIdRef.current = getAnalyticsSessionId();
+  }, []);
 
   const handleSetSavedJobs = (updater: SavedJob[] | ((prev: SavedJob[]) => SavedJob[])) => {
     const newJobs = typeof updater === 'function' ? updater(savedJobs) : updater;
@@ -306,9 +315,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [isCoPilotSidebarOpen]);
 
-  const markCoachRead = () => {
+  const markCoachRead = useCallback(() => {
     setUnreadCoachCount(0);
-  };
+  }, []);
+
+  const trackAnalyticsEvent = useCallback((eventName: AnalyticsEventName, metadata?: AnalyticsMetadata) => {
+    if (!user) {
+      return;
+    }
+
+    void persistAnalyticsEvent({
+      eventName,
+      userId: user.uid,
+      userEmail: user.email,
+      route: typeof window !== 'undefined' ? window.location.pathname : '/',
+      sessionId: analyticsSessionIdRef.current || getAnalyticsSessionId(),
+      metadata,
+    }).catch((error) => {
+      console.error('Failed to persist analytics event:', error);
+    });
+  }, [user]);
 
   const handleCoPilotSubmit = (input: CoPilotSubmitInput) => {
     const actualMessage = typeof input === 'string' ? input : input.message;
@@ -423,6 +449,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isGenerating,
     unreadCoachCount,
     markCoachRead,
+    trackAnalyticsEvent,
     handleCoPilotSubmit,
     setToolContext,
     savedJobs,

@@ -1,5 +1,11 @@
 import type { CvOutput, DeepAnalysisOutput } from '@/lib/schemas';
 
+export interface RoleAlignmentHighlight {
+  term: string;
+  explanation: string;
+  isMandatory: boolean;
+}
+
 const stripMarkdown = (value: string) =>
   value
     .replace(/\*\*/g, '')
@@ -72,6 +78,43 @@ export function getRoleAlignmentTerms({
     .slice(0, 8);
 
   return candidateTerms;
+}
+
+export function getRoleAlignmentHighlights({
+  cvData,
+  deepAnalysis,
+  jobDescription,
+}: {
+  cvData: CvOutput;
+  deepAnalysis?: DeepAnalysisOutput | null;
+  jobDescription?: string;
+}): RoleAlignmentHighlight[] {
+  const terms = getRoleAlignmentTerms({ cvData, deepAnalysis, jobDescription });
+  const normalizedJobDescription = jobDescription?.toLowerCase() || '';
+
+  return terms.map((term) => {
+    const matchedRequirement = deepAnalysis?.requirements.find(
+      (requirement) =>
+        requirement.isMet &&
+        requirement.requirement.toLowerCase().includes(term.toLowerCase())
+    );
+
+    if (matchedRequirement) {
+      return {
+        term,
+        explanation: `Emphasized because it supports the matched requirement: ${matchedRequirement.requirement}`,
+        isMandatory: matchedRequirement.isMandatory,
+      };
+    }
+
+    return {
+      term,
+      explanation: normalizedJobDescription.includes(term.toLowerCase())
+        ? 'Emphasized because this wording appears in the job description and is supported by your Work Repository.'
+        : 'Emphasized because it is one of the strongest relevant signals in your Work Repository for this role.',
+      isMandatory: false,
+    };
+  });
 }
 
 export function getHighlightedTextSegments(text: string, highlightTerms: string[]) {

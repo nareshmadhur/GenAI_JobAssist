@@ -28,6 +28,7 @@ jest.mock('@/context/app-context', () => ({
       }
     ],
     setSavedJobs: jest.fn(),
+    trackAnalyticsEvent: jest.fn(),
   }),
   useAuth: () => ({
     user: { uid: '123', email: 'test@example.com' },
@@ -51,6 +52,7 @@ jest.mock('lucide-react', () => ({
   ArrowRight: () => <span>ArrowRight</span>,
   ArrowLeft: () => <span>ArrowLeft</span>,
   Bot: () => <span>Bot</span>,
+  Check: () => <span>Check</span>,
   ChevronRight: () => <span>ChevronRight</span>,
   GripVertical: () => <span>GripVertical</span>,
 }));

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Copy,
   Edit,
+  FileDown,
   FileText,
   GraduationCap,
   Lightbulb,
@@ -63,6 +64,8 @@ import { Badge } from './ui/badge';
 import { CircularProgress } from './circular-progress';
 import { ErrorDisplay } from './error-display';
 import { Skeleton } from './ui/skeleton';
+import { openCoverLetterPrintExport } from '@/lib/cover-letter-export';
+import { useAppContext } from '@/context/app-context';
 
 interface OutputViewProps {
   activeView: ActiveView;
@@ -227,10 +230,12 @@ function GeneratedResponseView({
   initialValue,
   onRevision,
   onValueChange,
+  onExport,
 }: {
   initialValue: string;
   onRevision: (data: ReviseResponseData) => Promise<void>;
   onValueChange: (value: string) => void;
+  onExport?: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [localValue, setLocalValue] = useState(initialValue);
@@ -267,6 +272,16 @@ function GeneratedResponseView({
         <div className="prose prose-sm relative min-h-[150px] max-w-none rounded-md border bg-background p-4 dark:prose-invert whitespace-pre-wrap">
           <ReactMarkdown>{localValue}</ReactMarkdown>
           <div className="absolute right-0 top-0 flex">
+            {onExport ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onExport}
+                aria-label="Print cover letter"
+              >
+                <FileDown className="h-4 w-4" />
+              </Button>
+            ) : null}
             <CopyButton textToCopy={localValue} />
             <Button
               variant="ghost"
@@ -777,6 +792,7 @@ export function OutputView({
   isActiveViewStale = false,
 }: OutputViewProps): JSX.Element {
   const { toast } = useToast();
+  const { trackAnalyticsEvent } = useAppContext();
   const formMethods = useFormContext<JobApplicationData>();
   const [isPrepping, setIsPrepping] = useState(false);
 
@@ -862,6 +878,14 @@ export function OutputView({
             initialValue={allResults.coverLetter.responses}
             onValueChange={handleManualEdit}
             onRevision={handleRevision}
+            onExport={() =>
+              {
+                openCoverLetterPrintExport({
+                  coverLetter: allResults.coverLetter?.responses || '',
+                });
+                trackAnalyticsEvent('cover_letter_printed');
+              }
+            }
           />
         );
       case 'cv':

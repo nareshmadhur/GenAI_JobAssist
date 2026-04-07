@@ -1,11 +1,19 @@
 import { db } from './firebase';
 import {
+  addDoc,
+  collection,
   doc,
-  setDoc,
   getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  setDoc,
+  serverTimestamp,
   updateDoc,
 } from 'firebase/firestore';
 import type { SavedJob, SavedRepository } from './schemas';
+import type { AnalyticsEventInput, AnalyticsEventRecord } from './analytics';
 
 const stripUndefinedDeep = <T>(value: T): T => {
   if (Array.isArray(value)) {
@@ -28,6 +36,9 @@ const sanitizeSavedJobsForFirestore = (jobs: SavedJob[]) =>
 
 const sanitizeSavedRepositoriesForFirestore = (repos: SavedRepository[]) =>
   stripUndefinedDeep(repos) as SavedRepository[];
+
+const sanitizeAnalyticsEventForFirestore = (event: AnalyticsEventInput) =>
+  stripUndefinedDeep(event) as AnalyticsEventInput;
 
 // User data operations
 export const getUserData = async (userId: string) => {
@@ -134,4 +145,32 @@ export const deleteSavedRepository = async (userId: string, repoId: string) => {
   const userData = await getUserData(userId);
   const filteredRepos = (userData.savedRepositories || []).filter((r: SavedRepository) => r.id !== repoId);
   await updateDoc(userRef, { savedRepositories: filteredRepos });
+};
+
+export const trackAnalyticsEvent = async (event: AnalyticsEventInput) => {
+  const payload = sanitizeAnalyticsEventForFirestore(event);
+  await addDoc(collection(db, 'analytics_events'), {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
+};
+
+export const getAnalyticsEvents = async (maxResults = 1000): Promise<AnalyticsEventRecord[]> => {
+  const snapshot = await getDocs(
+    query(collection(db, 'analytics_events'), orderBy('createdAt', 'desc'), limit(maxResults))
+  );
+
+  return snapshot.docs.map((document) => {
+    const data = document.data() as Record<string, any>;
+    return {
+      id: document.id,
+      eventName: data.eventName,
+      userId: data.userId,
+      userEmail: data.userEmail || null,
+      route: data.route,
+      sessionId: data.sessionId,
+      metadata: data.metadata || {},
+      createdAt: data.createdAt?.toDate?.() || null,
+    } satisfies AnalyticsEventRecord;
+  });
 };
