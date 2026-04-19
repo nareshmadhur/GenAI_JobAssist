@@ -214,10 +214,18 @@ function OwnerAnalyticsPage() {
                 Usage signals from signed-in users across the build flow, tracker, imports, coach, and export actions.
               </p>
             </div>
-            <Button onClick={() => void loadAnalytics()} disabled={isLoading}>
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-              Refresh
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button asChild>
+                <Link href="/job-matcher?newJob=1">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Clear JD & Start New Job
+                </Link>
+              </Button>
+              <Button onClick={() => void loadAnalytics()} disabled={isLoading} variant="outline">
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                Refresh
+              </Button>
+            </div>
           </div>
 
           {error ? (

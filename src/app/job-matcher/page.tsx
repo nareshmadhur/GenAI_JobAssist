@@ -141,6 +141,7 @@ function JobMatcherContent() {
   const searchParams = useSearchParams();
   const jobId = searchParams.get('jobId');
   const activeSectionParam = searchParams.get('section');
+  const startNewJobParam = searchParams.get('newJob');
 
   const scrollPageToTop = useCallback(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -661,7 +662,7 @@ function JobMatcherContent() {
     }
   };
 
-  const handleStartNewJob = () => {
+  const handleStartNewJob = useCallback(() => {
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
       autoSaveTimeoutRef.current = null;
@@ -705,7 +706,15 @@ function JobMatcherContent() {
     trackAnalyticsEvent('new_job_started', {
       preservedRepository: Boolean(preservedRepository.trim()),
     });
-  };
+  }, [formMethods, router, toast, trackAnalyticsEvent]);
+
+  useEffect(() => {
+    if (startNewJobParam !== '1' || isInitialFormLoad) {
+      return;
+    }
+
+    handleStartNewJob();
+  }, [handleStartNewJob, isInitialFormLoad, startNewJobParam]);
 
   const upsertCurrentJob = useCallback(async ({ showToast = false }: { showToast?: boolean } = {}) => {
     const { jobDescription, workRepository, questions } = formMethods.getValues();

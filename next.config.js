@@ -25,6 +25,16 @@ const nextConfig = {
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@genkit-ai/firebase': false,
+      '@opentelemetry/exporter-jaeger': false,
+      '@opentelemetry/winston-transport': false,
+    };
+
+    return config;
+  },
 };
 
 module.exports = nextConfig;
