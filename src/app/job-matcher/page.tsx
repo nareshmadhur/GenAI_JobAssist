@@ -828,7 +828,7 @@ function JobMatcherContent() {
               {user ? ' to your application pipeline' : ' in this browser and will sync after login'}.
             </p>
             <Button asChild variant="secondary" size="sm" className="w-fit h-8 px-3 text-xs">
-              <Link href={`/admin?from=build&jobId=${nextSavedJob.id}${nextSavedJob.lastActiveView ? `&section=${nextSavedJob.lastActiveView}` : ''}`}>Go to Application Tracker</Link>
+              <Link href={`/tracker?from=build&jobId=${nextSavedJob.id}${nextSavedJob.lastActiveView ? `&section=${nextSavedJob.lastActiveView}` : ''}`}>Go to Application Tracker</Link>
             </Button>
           </div>
         ),
@@ -989,9 +989,9 @@ function JobMatcherContent() {
   const hasAnyResults = Object.keys(allResults).length > 0;
   const trackerHref = view === 'build'
     ? currentJobId
-      ? `/admin?from=build&jobId=${currentJobId}&section=${selectedView}`
-      : `/admin?from=build&section=${selectedView}`
-    : '/admin';
+      ? `/tracker?from=build&jobId=${currentJobId}&section=${selectedView}`
+      : `/tracker?from=build&section=${selectedView}`
+    : '/tracker';
   const buildSections: Array<{
     generationType: GenerationType;
     icon: React.ElementType;

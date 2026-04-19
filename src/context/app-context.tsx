@@ -19,6 +19,7 @@ import { auth } from '@/lib/firebase';
 import { 
     onAuthStateChanged, 
     createUserWithEmailAndPassword, 
+    sendPasswordResetEmail,
     signInWithEmailAndPassword,
     signOut,
     type User 
@@ -53,6 +54,7 @@ interface AuthContextType {
   authLoading: boolean;
   signup: (email: string, pass: string) => Promise<{ error?: string } | void>;
   login: (email: string, pass: string) => Promise<{ error?: string } | void>;
+  resetPassword: (email: string) => Promise<{ error?: string } | void>;
   logout: () => void;
 }
 
@@ -308,6 +310,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return { error: getFriendlyErrorMessage(e) };
     }
   };
+
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return;
+    } catch (e: any) {
+      return { error: getFriendlyErrorMessage(e) };
+    }
+  };
   
 
   const logout = () => {
@@ -539,6 +550,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       authLoading,
       signup,
       login,
+      resetPassword,
       logout
   }
 

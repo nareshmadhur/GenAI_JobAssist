@@ -26,6 +26,7 @@ const loginSchema = z.object({
   password: z.string().min(1, { message: 'Password is required.' }),
 });
 
+const resetEmailSchema = z.string().email({ message: 'Please enter a valid email before requesting a reset link.' });
 
 type LoginData = z.infer<typeof loginSchema>;
 type SignupData = z.infer<typeof signupSchema>;
@@ -33,7 +34,8 @@ type SignupData = z.infer<typeof signupSchema>;
 function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login, signup } = useAuth();
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { login, signup, resetPassword } = useAuth();
 
   const isLoginMode = mode === 'login';
   const schema = isLoginMode ? loginSchema : signupSchema;
@@ -49,6 +51,7 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
 
   const onSubmit = async (data: LoginData | SignupData) => {
     setError(null);
+    setSuccessMessage(null);
     setIsPending(true);
 
     let result;
@@ -64,9 +67,29 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
     
     setIsPending(false);
   };
-  
-  const { formState: { errors } } = form;
 
+  const handlePasswordReset = async () => {
+    setError(null);
+    setSuccessMessage(null);
+
+    const emailResult = resetEmailSchema.safeParse(form.getValues('email'));
+    if (!emailResult.success) {
+      setError(emailResult.error.issues[0]?.message || 'Please enter a valid email.');
+      return;
+    }
+
+    setIsPending(true);
+    const result = await resetPassword(emailResult.data);
+    setIsPending(false);
+
+    if (result?.error && !result.error.toLowerCase().includes('user found')) {
+      setError(result.error);
+      return;
+    }
+
+    setSuccessMessage('If an account exists for this email, we sent a password reset link.');
+  };
+  
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -96,6 +119,20 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
             </FormItem>
           )}
         />
+
+        {isLoginMode && (
+          <div className="-mt-2 flex justify-end">
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto px-0 text-xs font-semibold text-accent"
+              disabled={isPending}
+              onClick={() => void handlePasswordReset()}
+            >
+              Forgot password?
+            </Button>
+          </div>
+        )}
 
         {!isLoginMode && (
             <FormField
@@ -128,6 +165,7 @@ function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
         )}
 
         {error && <p className="text-xs text-destructive pt-1">{error}</p>}
+        {successMessage && <p className="text-xs text-emerald-600 pt-1 dark:text-emerald-400">{successMessage}</p>}
         
         <Button type="submit" className="w-full" disabled={isPending}>
           {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

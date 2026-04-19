@@ -68,7 +68,7 @@ export default function WelcomePage() {
               <Link href="/job-matcher">Build Your Application</Link>
             </Button>
             <Button asChild variant="ghost" className="hidden lg:flex">
-              <Link href="/admin">
+              <Link href="/tracker">
                 <List className="mr-2 h-4 w-4" /> Application Tracker
               </Link>
             </Button>
@@ -93,7 +93,7 @@ export default function WelcomePage() {
                   <DropdownMenuItem disabled>{user.email}</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/admin">Application Tracker</Link>
+                    <Link href="/tracker">Application Tracker</Link>
                   </DropdownMenuItem>
                   {isOwner ? (
                     <DropdownMenuItem asChild>

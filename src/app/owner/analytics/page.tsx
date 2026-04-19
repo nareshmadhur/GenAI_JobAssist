@@ -190,7 +190,7 @@ function OwnerAnalyticsPage() {
               <Link href="/job-matcher">Build Your Application</Link>
             </Button>
             <Button asChild variant="ghost" size="sm" className="hidden md:flex">
-              <Link href="/admin">Application Tracker</Link>
+              <Link href="/tracker">Application Tracker</Link>
             </Button>
             <ThemeToggleButton />
           </nav>
@@ -202,7 +202,7 @@ function OwnerAnalyticsPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Button asChild variant="ghost" size="sm" className="-ml-2 mb-3 w-fit">
-                <Link href="/admin">
+                <Link href="/tracker">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Tracker
                 </Link>

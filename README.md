@@ -78,13 +78,15 @@ The app also includes an `Application Tracker` with Kanban and list views, guest
 |---|---|
 | `/` | Landing page |
 | `/job-matcher` | Main prepare/build workflow |
-| `/admin` | Application Tracker |
+| `/tracker` | Application Tracker |
+| `/admin` | Compatibility redirect to `/tracker` |
+| `/owner/analytics` | Owner-only usage analytics |
 | `/cv/print` | Print-optimized resume export route |
 | `/login` | Authentication |
 
 Deep links:
 - `/job-matcher?jobId=<id>` loads a saved application into the build flow
-- `/admin?from=build&jobId=<id>` preserves return context back to the active application
+- `/tracker?from=build&jobId=<id>` preserves return context back to the active application
 
 ## Architecture Overview
 
@@ -93,7 +95,8 @@ src/
 ├── app/
 │   ├── page.tsx
 │   ├── job-matcher/page.tsx
-│   ├── admin/page.tsx
+│   ├── tracker/page.tsx
+│   ├── owner/analytics/page.tsx
 │   ├── cv/print/page.tsx
 │   ├── login/page.tsx
 │   ├── actions.ts
@@ -118,7 +121,8 @@ Important runtime responsibilities:
 - `src/app/job-matcher/page.tsx`: main product journey and generation orchestration
 - `src/components/output-view.tsx`: result rendering, fit analysis, revision UI
 - `src/context/app-context.tsx`: auth, saved jobs, coach state, unread coach count
-- `src/app/admin/page.tsx`: tracker, drag/drop, contextual back navigation
+- `src/app/tracker/page.tsx`: tracker, drag/drop, contextual back navigation
+- `src/app/owner/analytics/page.tsx`: owner-only usage dashboard
 
 ## AI Flows
 

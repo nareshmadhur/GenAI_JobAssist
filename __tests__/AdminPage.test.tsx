@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import AdminPage from '@/app/admin/page';
+import TrackerPage from '@/app/tracker/page';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -66,20 +66,20 @@ jest.mock('@/components/theme-toggle-button', () => ({
   ThemeToggleButton: () => <button>Theme</button>,
 }));
 
-describe('AdminPage', () => {
+describe('TrackerPage', () => {
   it('renders the Application Tracker title', () => {
-    render(<AdminPage />);
+    render(<TrackerPage />);
     expect(screen.getAllByText(/Application Tracker/i).length).toBeGreaterThan(0);
   });
 
   it('renders the job card with correct title and company', () => {
-    render(<AdminPage />);
+    render(<TrackerPage />);
     expect(screen.getByText('Test Role')).toBeInTheDocument();
     expect(screen.getByText('Test Company')).toBeInTheDocument();
   });
 
   it('renders the status badge', () => {
-    render(<AdminPage />);
+    render(<TrackerPage />);
     // Check for the column header or the badge in the card
     expect(screen.getAllByText('Applied').length).toBeGreaterThan(0);
   });
